@@ -103,5 +103,5 @@ ENV/
 =======
 *.js linguist-language=python
 *.css linguist-language=python
-*.html linguist-language=python
+*.html linguist-language=R
 >>>>>>> dc913f90a280eb353e73d4fc9818e9c730b8084f
