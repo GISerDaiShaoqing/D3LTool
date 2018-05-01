@@ -1,14 +1,1 @@
-
-*.swp
-
-.DS_Store
-
-*.py
-
-data/GeoDa-Github-Website-2bd8df3fe4f2.p12
-
-logs/*
-
-s3/logs/*
-
-s3/logs/
+*.html linguist-language=Python
