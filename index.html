@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>D3L Tool of NASA Satellite</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+    	*{margin:0;padding:0;}
+	.shadowfilter {
+	-webkit-filter: drop-shadow(12px 12px 7px rgba(0,0,0,0.5));
+	filter: url(shadow.svg#drop-shadow);
+	}
+	.intro1 { margin-left: -45px;}
+    </style>
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+    <link rel="stylesheet" href="stylesheets/simple-slideshow-styles.css">
+    <style>
+	figcaption {
+	  top: .70em;
+   	  left: .35em;
+ 	  bottom: auto!important;
+	  right: auto!important;
+	}
+    </style>
+  </head>
+  <body>
+<!-- Google Analytics -->
+<script>
+window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+ga('create', 'UA-72724100-1', 'auto');
+ga('send', 'pageview');
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+<!-- End Google Analytics -->
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-53RVF8"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-53RVF8');</script>
+<!-- End Google Tag Manager -->
+
+    <section class="page-header">
+      <h1 class="project-name">D3LTool</h1>
+      <h2 class="project-tagline">D3L Tool of NASA Satellite</h2>
+      <a href="//giserdaishaoqing.github.io/D3LTool/download.html" class="btn">Download</a>
+      <a href="https://github.com/GISerDaiShaoqing/D3LTool" class="btn">View on GitHub</a>
+       <a href="documentation.html" class="btn">Documentation</a>
+       <a href="//giserdaishaoqing.github.io/D3LTool/index-cn.html" class="btn">中文</a>
+    </section>
+
+
+
+    <section class="main-content">
+      <h3>
+<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introducing D3L Tool of NASA Satellite 1.0</h3>
+
+<p>D3L Tool of NASA Satellite is a free software tool that serves as a tool to download the nasa satellite data easily.</p>
+
+<p>D3L Tool of NASA Satellite was developed by <a href="https://giserdaishaoqing.github.io/mycv/">Mr. Dai</a> . The program provides a graphical interface to download satellite imagery from NASA, such as MODIS products, MERIS and more. Due to new NASA Policies LAADS FTP servers (both public and private) will be shutting down around Monday, April 20th 2018. NASA provide some scripts to download, but it's a little hard for some people who didn't use python. So I have developed the D3L Tool of NASA Satellite.</p>
+
+<br/>
+<h3>
+<a id="intro-toolbar" class="anchor" href="#intro-toolbar" aria-hidden="true"><span class="octicon octicon-link"></span></a>Main Interface</h3>
+<p><img src="images/Main.png" class="shadowfilter"></p>
+<p>D3L Tool of NASA Satellite runs on Windows</p>
+
+<br/>
+<h3>
+<a id="intro-data-formats" class="anchor" href="#intro-data-formats" aria-hidden="true"><span class="octicon octicon-link"></span></a>Getting Started With D3L Tool of NASA Satellite</h3>
+<p>The entire software include five files. As the picture showed.</p>
+<p><img src="images/gstarted.png" class="shadowfilter"></p>
+<p>Double click the D3LToolNASA.exe and start your download of NASA satellite.</p>
+
+
+<h3>
+<a id="dependencies" class="anchor" href="#dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>Dependencies</h3>
+
+<p>D3L Tool of NASA Satellite is released under a MIT license. It builds on several open source libraries and source-code files. Below is the list of the key projects that we would like to acknowledge.</p>
+
+<font style="font-size:small">
+<p>tkinter Cross-Platform GUI Library, version 8.5.
+License: BSD-style License.
+Authors: Many.
+Links: <a href="http://www.tcl.tk">http://www.tcl.tk</a></p>
+
+<p>selenium Libraries, version 3.4.3.
+Authors: Many.
+License: Apache 2.0 License.
+Links: <a href="https://www.seleniumhq.org/">https://www.seleniumhq.org/</a></p>
+
+<p>Pyinstaller Library, version 3.3.
+Authors:  Gordon McMillan and William Caban.
+License: GPL license.
+Links: <a href="http://www.pyinstaller.org/">http://www.pyinstaller.org/</a></p>
+
+<p>laads-data-download.py source code.
+Author: Tristan Quaife.
+License: Use laads-data-download.py in included source files.
+Links: <a href="https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/data-download-scripts/#python">https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/data-download-scripts/#python</a></p>
+</font>
+
+<br/>
+<h3>
+<a id="intro-ackn" class="anchor" href="#intro-ackn" aria-hidden="true"><span class="octicon octicon-link"></span></a>Acknowledgments</h3>
+<p>The development of D3L Tool of NASA Satellite has been supported by Tristan Quaife, MorvanZhou and NASA. Special thanks for GeoDa.</p>
+
+<h3>
+<a id="intro-support" class="anchor" href="#intro-support" aria-hidden="true"><span class="octicon octicon-link"></span></a>Support</h3>
+<p>We are currently updating the <a href="documentation.html">homepage</a> to reflect the new feature of D3L Tool of NASA Satellite 1.0.</p>
+
+<h3>
+<a id="intro-license" class="anchor" href="#intro-license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h3>
+<p>D3L Tool of NASA Satellite uses a <a href="https://mit-license.org/">MIT License</a>.</p>
+
+
+<h3>
+<a id="intro-contact" class="anchor" href="#intro-contact" aria-hidden="true"><span class="octicon octicon-link"></span></a>Contact</h3>
+<p>Questions? Contact <a href="dsq1993qingge@163.com">us</a>.</p>
+
+
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/GISerDaiShaoqing/D3LTool">D3L Tool of NASA Satellite</a> is maintained by <a href="https://github.com/GISerDaiShaoqing">giserdaishaoqing</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+  </body>
+</html>
