@@ -16,7 +16,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 |---|---|
 |邮箱|dsq1993qingge@163.com|
 
-[英文说明](https://giserdaishaoqing.github.io/D3LTool/README.md)
+[英文说明](https://github.com/GISerDaiShaoqing/D3LTool/)
 
 ## 简介
 

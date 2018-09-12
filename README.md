@@ -16,7 +16,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 |---|---|
 |E-mail|dsq1993qingge@163.com|
 
-[Chinese](https://giserdaishaoqing.github.io/D3LTool/READMEcn.md)
+[Chinese](https://github.com/GISerDaiShaoqing/D3LTool/blob/master/READMEcn.md)
 
 ## Introduction
 
