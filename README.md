@@ -22,7 +22,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
 D3L Tool of NASA Satellite is a free software tool that serves as a tool to download the nasa satellite data easily. 
 
-You can see the detailed information at: https://giserdaishaoqing.github.io/D3LTool/
+You can see the detailed information at: http://gisersqdai.top/D3LTool/
 
 You can download the software at [it](https://github.com/GISerDaiShaoqing/D3LTool/releases/download/v1.0/D3LTool.v1.0.zip).
 
@@ -30,7 +30,7 @@ If you failed, you can try these below links.
 
 [Baidu Pan](https://pan.baidu.com/share/home?uk=2855623577&suk=QR0keGnZkZWNh9Pf3aQyaQ&view=share#category/type=0)
 
-[Website download links](https://giserdaishaoqing.github.io/D3LTool/download.html)
+[Website download links](http://gisersqdai.top/D3LTool/download.html)
 
 ## Blog
 
