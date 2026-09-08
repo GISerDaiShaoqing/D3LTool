@@ -58,25 +58,50 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
     <section class="main-content">
       <h3>
-<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introducing D3L Tool of NASA Satellite 1.0</h3>
+<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introducing D3L Tool of NASA Satellite 2.0</h3>
 
-<p>D3L Tool of NASA Satellite is a free software tool that serves as a tool to download the nasa satellite data easily.</p>
+<p>D3L Tool of NASA Satellite is a free software tool to <b>search and download</b> NASA satellite data — the whole workflow inside one app.</p>
 
-<p>D3L Tool of NASA Satellite was developed by <a href="https://gisersqdai.top/mycv/">Mr. Dai</a> . The program provides a graphical interface to download satellite imagery from NASA, such as MODIS products, MERIS and more. Due to new NASA Policies LAADS FTP servers (both public and private) will be shutting down around Monday, April 20th 2018. NASA provide some scripts to download, but it's a little hard for some people who didn't use python. So I have developed the D3L Tool of NASA Satellite.</p>
+<p><b>v2.0 is a complete rewrite on top of NASA's official <a href="https://earthaccess.readthedocs.io/">earthaccess</a> library and the CMR search service</b>:
+no more manual order creation on the NASA website, and no more browser automation. Pick a product (MODIS / VIIRS / MERRA-2),
+a date range and click tiles on the built-in sinusoidal tile map (or type coordinates) — then search, tick and download.
+Resumable chunked downloads, parallel queue, automatic retries, size validation, bilingual UI (中文/English),
+and it runs on Windows, macOS and Linux.</p>
+
+<p>History: D3L Tool was created by <a href="https://gisersqdai.top/mycv/">Mr. Dai</a> in 2018 (v1.0), when the LAADS FTP
+servers were shut down and the official Python scripts were hard for non-programmers — v1 automated order downloads
+through browser automation. Eight years later, v2.0 rebuilds it on a modern stack.</p>
 
 <br/>
 <h3>
-<a id="intro-toolbar" class="anchor" href="#intro-toolbar" aria-hidden="true"><span class="octicon octicon-link"></span></a>Main Interface</h3>
-<p><img src="images/Main.png" class="shadowfilter"></p>
-<p>D3L Tool of NASA Satellite runs on Windows</p>
+<a id="intro-toolbar" class="anchor" href="#intro-toolbar" aria-hidden="true"><span class="octicon octicon-link"></span></a>Main Interface (v2.0)</h3>
+<p><img src="images/Main2.png" class="shadowfilter"></p>
+<p>Search panel on the left (product / time / clickable 36×18 tile map), search results and the live download queue on the right.</p>
 
 <br/>
 <h3>
-<a id="intro-data-formats" class="anchor" href="#intro-data-formats" aria-hidden="true"><span class="octicon octicon-link"></span></a>Getting Started With D3L Tool of NASA Satellite</h3>
-<p>The entire software include five files. As the picture showed.</p>
-<p><img src="images/gstarted.png" class="shadowfilter"></p>
-<p>Double click the D3LToolNASA.exe and start your download of NASA satellite.</p>
+<a id="intro-features" class="anchor" href="#intro-features" aria-hidden="true"><span class="octicon octicon-link"></span></a>What's new in v2.0</h3>
+<p>
+<ul>
+<li><b>Built-in search</b>: by product, date, tile (h##v##) or bounding box — no manual orders on the NASA site</li>
+<li><b>Coverage</b>: MODIS, VIIRS (LAADS DAAC) and MERRA-2 (GES DISC); any CMR short_name works too</li>
+<li><b>Robust downloads</b>: multi-threaded queue, chunked progress, HTTP resume, auto-retry, size validation</li>
+<li><b>Bilingual</b>: one-click 中文 / English switch</li>
+<li><b>Cross-platform</b>: Windows exe, macOS .app, Linux binary (CI builds), or simply <code>pip install d3ltool</code></li>
+<li><b>Proxy support</b> for complex network environments</li>
+</ul>
+</p>
 
+<br/>
+<h3>
+<a id="intro-data-formats" class="anchor" href="#intro-data-formats" aria-hidden="true"><span class="octicon octicon-link"></span></a>Getting Started</h3>
+<p>On Windows just double-click <code>D3LToolNASA.exe</code> (single file, no Python needed):
+sign in with your free <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata</a> account under "Settings"
+(search works without login; downloads need it), pick a product and area, hit Search, tick files and add them
+to the download queue.</p>
+<p>CLI users: <code>pip install d3ltool</code>, then
+<code>d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03</code>.
+See the <a href="documentation.html">documentation</a>.</p>
 
 <h3>
 <a id="dependencies" class="anchor" href="#dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>Dependencies</h3>
@@ -84,26 +109,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <p>D3L Tool of NASA Satellite is released under a MIT license. It builds on several open source libraries and source-code files. Below is the list of the key projects that we would like to acknowledge.</p>
 
 <font style="font-size:small">
-<p>tkinter Cross-Platform GUI Library, version 8.5.
-License: BSD-style License.
-Authors: Many.
-Links: <a href="http://www.tcl.tk">http://www.tcl.tk</a></p>
+<p>PySide6 (Qt for Python) Cross-Platform GUI Library, version 6.
+License: LGPL-3.0 License.
+Authors: Qt Company and many.
+Links: <a href="https://doc.qt.io/qtforpython/">https://doc.qt.io/qtforpython/</a></p>
 
-<p>selenium Libraries, version 3.4.3.
+<p>earthaccess — NASA Earthdata access library, version 0.19.
+Authors: NASA openscaping community etc.
+License: MIT License.
+Links: <a href="https://earthaccess.readthedocs.io/">https://earthaccess.readthedocs.io/</a></p>
+
+<p>requests Library.
 Authors: Many.
 License: Apache 2.0 License.
-Links: <a href="https://www.seleniumhq.org/">https://www.seleniumhq.org/</a></p>
+Links: <a href="https://requests.readthedocs.io/">https://requests.readthedocs.io/</a></p>
 
-<p>Pyinstaller Library, version 3.3.
-Authors:  Gordon McMillan and William Caban.
+<p>Pyinstaller Library.
+Authors: Many.
 License: GPL license.
 Links: <a href="http://www.pyinstaller.org/">http://www.pyinstaller.org/</a></p>
-
-<p>laads-data-download.py source code.
-Author: Tristan Quaife.
-License: Use laads-data-download.py in included source files.
-Links: <a href="https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/data-download-scripts/#python">https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/data-download-scripts/#python</a></p>
 </font>
+
+<p style="font-size:small">v1.0 (2018, browser automation) was built on tkinter, selenium and Tristan Quaife's
+laads-data-download.py; it is no longer maintained and stays in the repository history.</p>
 
 <br/>
 <h3>
@@ -112,7 +140,8 @@ Links: <a href="https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/data-d
 
 <h3>
 <a id="intro-support" class="anchor" href="#intro-support" aria-hidden="true"><span class="octicon octicon-link"></span></a>Support</h3>
-<p>We are currently updating the <a href="documentation.html">homepage</a> to reflect the new feature of D3L Tool of NASA Satellite 1.0.</p>
+<p>See the <a href="documentation.html">documentation</a> for v2.0 usage; issues are welcome on
+<a href="https://github.com/GISerDaiShaoqing/D3LTool/issues">GitHub Issues</a>.</p>
 
 <h3>
 <a id="intro-license" class="anchor" href="#intro-license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h3>

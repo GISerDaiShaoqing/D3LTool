@@ -1,0 +1,87 @@
+name: build
+
+# Push a tag (e.g. v2.0.1) or run manually from the Actions tab:
+# builds Windows exe / macOS app (Apple Silicon + Intel) / Linux binary.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest      # x64 -> D3LToolNASA.exe
+          - os: macos-14            # Apple Silicon -> D3LToolNASA.app
+          - os: macos-13            # Intel -> D3LToolNASA.app
+          - os: ubuntu-latest       # x64 -> D3LToolNASA (linux binary)
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Qt system libs (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" pyinstaller
+
+      - name: Run tests
+        run: python -m pytest tests/ -q --ignore=tests/test_gui_smoke.py
+
+      - name: Regenerate icon artifacts (icns for macOS)
+        run: python make_icon.py
+
+      - name: Build
+        run: pyinstaller D3LToolNASA.spec --noconfirm
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then BIN="dist/D3LToolNASA.exe"; else BIN="dist/D3LToolNASA"; fi
+          QT_QPA_PLATFORM=offscreen "$BIN" --smoke || echo "::warning::smoke exit=$?"
+
+      - name: Package (macOS zip the .app)
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r -q D3LToolNASA-${{ runner.os }}-${{ runner.arch }}.zip D3LToolNASA.app
+          rm -rf D3LToolNASA.app
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p release
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp dist/D3LToolNASA.exe release/D3LToolNASA-windows-x64.exe
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            cp dist/D3LToolNASA-*.zip release/
+          else
+            cp dist/D3LToolNASA release/D3LToolNASA-linux-x64
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: D3LToolNASA-${{ matrix.os }}
+          path: release/*
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*

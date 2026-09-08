@@ -52,14 +52,59 @@
 <a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true">
   <span class="octicon octicon-link"></span></a></h3>
 
-<p>
-<h3>D3L Tool of NASA Satellite User Guide</h3>
+<h3>D3L Tool of NASA Satellite User Guide (v2.0)</h3>
 
-<p><a href="https://gisersqdai.top/mycv/">Mr.Dai</a> is currently working on an updated version of the user guide for D3L Tool of NASA Satellite. The software and user gudie will continue to modify by suggestions.</p>
+<p>By <a href="https://gisersqdai.top/mycv/">Mr.Dai</a>. The software and user guide will continue to evolve with suggestions.</p>
 
 <br/>
 <h3>
-<a id="intro-toolbar" class="anchor" href="#intro-toolbar" aria-hidden="true"><span class="octicon octicon-link"></span></a>Main Interface</h3>
+<a id="v2-main" class="anchor" href="#v2-main" aria-hidden="true"><span class="octicon octicon-link"></span></a>v2.0 Main Interface</h3>
+<p><img src="images/Main2.png" class="shadowfilter"></p>
+<p>Double-click <code>D3LToolNASA.exe</code> (single file, no Python needed; macOS/Linux builds are on GitHub Releases,
+or <code>pip install d3ltool</code>). Search panel on the left, results top-right, download queue bottom-right.</p>
+
+<br/>
+<h3>
+<a id="v2-login" class="anchor" href="#v2-login" aria-hidden="true"><span class="octicon octicon-link"></span></a>1 Sign in</h3>
+<p>Menu "Settings → Sign in to Earthdata" with your free <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata</a>
+account. <b>Search works without login; downloads need it.</b> Credentials stay in the local <code>~/.netrc</code> only.</p>
+
+<br/>
+<h3>
+<a id="v2-search" class="anchor" href="#v2-search" aria-hidden="true"><span class="octicon octicon-link"></span></a>2 Search</h3>
+<p>Pick a product group and product (or "custom" for any CMR short_name), optional version (blank = latest),
+start/end dates; for the area either click tiles on the sinusoidal map below (multi-select, or type
+<code>h04v03</code>, or use the lat/lon locator), or enter a bounding box for MERRA-2 style data.
+Hit the red Search button and results appear in the top-right table.</p>
+
+<br/>
+<h3>
+<a id="v2-download" class="anchor" href="#v2-download" aria-hidden="true"><span class="octicon octicon-link"></span></a>3 Download</h3>
+<p>Tick files in the results table and click "Add to download queue". The task table shows live per-file progress
+and speed with pause/resume/retry; finished files are skipped on re-download and interrupted ones resume
+automatically. Download folder, concurrency and proxy live in "Settings".</p>
+
+<br/>
+<h3>
+<a id="v2-cli" class="anchor" href="#v2-cli" aria-hidden="true"><span class="octicon octicon-link"></span></a>4 Command line</h3>
+<p>After <code>pip install d3ltool</code>:</p>
+<p><code>d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03</code><br/>
+<code>d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data</code><br/>
+<code>d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40</code></p>
+
+<br/>
+<h3>
+<a id="v2-menu" class="anchor" href="#v2-menu" aria-hidden="true"><span class="octicon octicon-link"></span></a>5 Websites & resources menus</h3>
+<p>The "Websites" menu links the project site, Baidu Pan, the author's blog and NASA portals; "RS resources" is a
+curated list of remote-sensing resources; "Help" holds Donate and About. UI language switches under "Language".</p>
+
+<br/>
+<hr/>
+<h3>The rest of this page is the v1.0 (2018) legacy documentation, archived as-is — v1 is unmaintained</h3>
+<br/>
+
+<h3>
+<a id="intro-toolbar" class="anchor" href="#intro-toolbar" aria-hidden="true"><span class="octicon octicon-link"></span></a>Main Interface (v1.0)</h3>
 <p><img src="images/Main.png" class="shadowfilter"></p>
 <p>Dobule Cick the D3LToolNASA.exe.</p>
 

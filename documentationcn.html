@@ -52,14 +52,60 @@
 <a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true">
   <span class="octicon octicon-link"></span></a></h3>
 
-<p>
-<h3>NASA卫星的D3L工具用户指南</h3>
+<h3>NASA卫星的D3L工具用户指南（v2.0）</h3>
 
-<p><a href="https://gisersqdai.top/mycv/">戴先生</a>目前正在编写NASA卫星的D3L工具用户指南的更新版本。 软件和用户指南将继续根据使用者建议进行修改。</p>
+<p><a href="https://gisersqdai.top/mycv/">戴先生</a>编写。软件和用户指南将继续根据使用者建议进行修改。</p>
 
 <br/>
 <h3>
-<a id="intro-toolbar" class="anchor" href="#intro-toolbar" aria-hidden="true"><span class="octicon octicon-link"></span></a>主界面</h3>
+<a id="v2-main" class="anchor" href="#v2-main" aria-hidden="true"><span class="octicon octicon-link"></span></a>v2.0 主界面</h3>
+<p><img src="images/Main2.png" class="shadowfilter"></p>
+<p>双击 <code>D3LToolNASA.exe</code> 启动（单文件，无需安装 Python；macOS/Linux 可从 GitHub Releases 下载或 <code>pip install d3ltool</code>）。
+左侧为检索面板，右上为检索结果，右下为下载任务队列。</p>
+
+<br/>
+<h3>
+<a id="v2-login" class="anchor" href="#v2-login" aria-hidden="true"><span class="octicon octicon-link"></span></a>1 登录</h3>
+<p>菜单"设置 → 登录 Earthdata"，输入 <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata</a>
+账号密码（免费注册）。<b>检索不需要登录，下载需要</b>。凭据只保存在本机 <code>~/.netrc</code>，不会上传。</p>
+
+<br/>
+<h3>
+<a id="v2-search" class="anchor" href="#v2-search" aria-hidden="true"><span class="octicon octicon-link"></span></a>2 检索</h3>
+<p>左侧依次选择：产品组与产品（或切换"自定义产品"输入任意 CMR short_name）、版本（留空自动取最新）、
+开始/结束日期；区域支持两种方式——点击下方正弦瓦片地图选择 MODIS/VIIRS 瓦片（可多选，也可直接输入
+<code>h04v03</code>，或用经纬度"定位到瓦片"），或填写经纬度范围 bbox（MERRA-2 等点/栅格数据）。
+点击红色"检索"按钮，结果会出现在右上表格中。</p>
+
+<br/>
+<h3>
+<a id="v2-download" class="anchor" href="#v2-download" aria-hidden="true"><span class="octicon octicon-link"></span></a>3 下载</h3>
+<p>在结果表中勾选需要的文件，点击"加入下载队列"。右下任务表实时显示每个文件的进度与速度，
+支持暂停/继续/重试；已完成的文件再次下载会自动跳过，中断的文件自动断点续传。
+下载目录、并发数与代理在"设置"中配置。</p>
+
+<br/>
+<h3>
+<a id="v2-cli" class="anchor" href="#v2-cli" aria-hidden="true"><span class="octicon octicon-link"></span></a>4 命令行</h3>
+<p><code>pip install d3ltool</code> 后：</p>
+<p><code>d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03</code><br/>
+<code>d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data</code><br/>
+<code>d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40</code></p>
+
+<br/>
+<h3>
+<a id="v2-menu" class="anchor" href="#v2-menu" aria-hidden="true"><span class="octicon octicon-link"></span></a>5 网站与遥感资源菜单</h3>
+<p>"网站"菜单提供程序官网、百度网盘、作者博客与 NASA 官方入口；"遥感资源"是笔者整理的遥感资源清单
+（ENVI-IDL技术殿堂、国家遥感数据与应用服务平台、国家综合地球观测数据共享平台、地理空间数据云、
+国家遥感中心、USGS Landsat、中国资源卫星应用中心）；"帮助"菜单提供打赏与关于信息。语言可在"语言"菜单切换中文/English。</p>
+
+<br/>
+<hr/>
+<h3>以下为 v1.0（2018）历史文档，仅作存档 —— v1 已停止维护</h3>
+<br/>
+
+<h3>
+<a id="intro-toolbar" class="anchor" href="#intro-toolbar" aria-hidden="true"><span class="octicon octicon-link"></span></a>主界面（v1.0）</h3>
 <p><img src="images/Maincn.png" class="shadowfilter"></p>
 <p>双击D3LToolNASA.exe。</p>
 

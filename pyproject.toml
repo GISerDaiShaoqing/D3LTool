@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "d3ltool"
+version = "2.0.0"
+description = "D3L Tool of NASA Satellite v2 — search & download MODIS / VIIRS / MERRA-2 data (LAADS DAAC & GES DISC) with a bilingual PySide6 GUI and CLI"
+readme = "README_v2.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Dai Shaoqing", email = "dsq1993qingge@163.com" }]
+keywords = ["NASA", "MODIS", "VIIRS", "MERRA-2", "LAADS", "Earthdata", "download"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+dependencies = [
+    "earthaccess>=0.10",
+    "PySide6>=6.6",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+d3ltool = "d3ltool.cli:main"
+d3ltool-gui = "d3ltool.app:run_gui"
+
+[project.urls]
+Homepage = "https://giserdaishaoqing.github.io/D3LTool/"
+
+[tool.setuptools.packages.find]
+include = ["d3ltool*"]
+
+[tool.setuptools.package-data]
+d3ltool = ["resources/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
