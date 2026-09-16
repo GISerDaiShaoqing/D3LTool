@@ -30,6 +30,17 @@ STRINGS = {
         "login_success": "登录成功",
         "login_failed": "登录失败：{reason}",
         "login_need_account": "还没有账号？在 urs.earthdata.nasa.gov 免费注册",
+        "auth_bad_credentials": "Earthdata 用户名或密码不正确（URS 返回 401）。"
+                                "请先用浏览器在 https://urs.earthdata.nasa.gov 登录验证："
+                                "用户名不是邮箱；注意输入法可能引入全角字符或首尾空格；"
+                                "忘记密码可在该页面重置。",
+        "auth_network": "无法连接 urs.earthdata.nasa.gov，请检查网络或代理设置。",
+        "auth_blocked": "Earthdata 拒绝了本次登录（账号被锁定/受限或需要先在浏览器完成一次登录验证）。"
+                        "请先用浏览器登录 https://urs.earthdata.nasa.gov 后重试。",
+        "auth_urs_ok_but_failed": "URS 认可该账号，但登录流程未完成：{detail}。请重试一次；"
+                                  "若仍失败请到 GitHub Issues 反馈。",
+        "auth_earthaccess_generic": "Earthdata 登录未完成：{detail}。"
+                                    "若提示 EULA/权限，请先在 https://urs.earthdata.nasa.gov 登录并确认已同意相应 DAAC 协议。",
         "group_product": "产品",
         "group_time": "时间范围",
         "group_area": "区域",
@@ -138,6 +149,18 @@ STRINGS = {
         "login_success": "Signed in",
         "login_failed": "Sign-in failed: {reason}",
         "login_need_account": "No account? Register free at urs.earthdata.nasa.gov",
+        "auth_bad_credentials": "Earthdata username or password is incorrect (URS 401). "
+                                "Verify by signing in at https://urs.earthdata.nasa.gov in a browser: "
+                                "the username is not an email; watch for full-width IME characters "
+                                "or stray spaces; reset the password there if needed.",
+        "auth_network": "Cannot reach urs.earthdata.nasa.gov; check network or proxy settings.",
+        "auth_blocked": "Earthdata refused this sign-in (account locked/restricted, or a one-time "
+                        "browser verification is required). Sign in at https://urs.earthdata.nasa.gov first, then retry.",
+        "auth_urs_ok_but_failed": "URS accepts this account but the login flow did not complete: {detail}. "
+                                  "Please retry; if it persists, report it on GitHub Issues.",
+        "auth_earthaccess_generic": "Earthdata login did not complete: {detail}. "
+                                    "If EULA/permissions are mentioned, sign in at https://urs.earthdata.nasa.gov "
+                                    "and accept the relevant DAAC agreement.",
         "group_product": "Product",
         "group_time": "Time range",
         "group_area": "Area",
