@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pillow>=10"]
 
 [project.scripts]
 d3ltool = "d3ltool.cli:main"
