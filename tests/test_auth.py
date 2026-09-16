@@ -6,6 +6,12 @@ import pytest
 import d3ltool.auth as auth
 
 
+@pytest.fixture(autouse=True)
+def isolate_netrc(tmp_path, monkeypatch):
+    """Never let auth tests touch the real user's netrc file."""
+    monkeypatch.setenv("NETRC", str(tmp_path / "netrc_isolated"))
+
+
 class _StubEarthaccess:
     """Records what auth.py hands over and mimics login() outcomes."""
 
@@ -92,3 +98,28 @@ def test_probe_network_and_ok_paths(tmp_path, monkeypatch):
     with pytest.raises(auth.AuthError) as e2:
         auth.login("u", "p")
     assert str(e2.value) != str(e1.value)
+
+
+def test_successful_login_persists_netrc(tmp_path, monkeypatch):
+    netrc_file = tmp_path / "mynetrc"
+    monkeypatch.setenv("NETRC", str(netrc_file))
+    stub = _StubEarthaccess()
+    monkeypatch.setattr(auth, "earthaccess", stub)
+
+    auth.login("alice", "secret", persist=True)
+
+    content = netrc_file.read_text(encoding="utf-8")
+    assert "machine urs.earthdata.nasa.gov" in content
+    assert "login alice" in content
+    assert "password secret" in content
+
+
+def test_login_without_persist_skips_netrc(tmp_path, monkeypatch):
+    netrc_file = tmp_path / "mynetrc"
+    monkeypatch.setenv("NETRC", str(netrc_file))
+    stub = _StubEarthaccess()
+    monkeypatch.setattr(auth, "earthaccess", stub)
+
+    auth.login("alice", "secret", persist=False)
+
+    assert not netrc_file.exists()

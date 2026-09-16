@@ -171,6 +171,8 @@ def login(username: str, password: str, persist: bool = True) -> str:
 
     if result and is_authenticated():
         _logged_in_user["name"] = username
+        if persist:
+            _persist_to_netrc(username, password)
         return username
 
     # earthaccess could not complete the login: ask URS directly why
@@ -187,6 +189,45 @@ def login(username: str, password: str, persist: bool = True) -> str:
         raise AuthError(i18n.tr("auth_urs_ok_but_failed", detail=error_text[:300]))
     raise AuthError(i18n.tr("auth_earthaccess_generic",
                             detail=error_text[:300] or verdict))
+
+
+def _persist_to_netrc(username: str, password: str) -> bool:
+    """Store credentials locally so the next launch restores silently.
+
+    earthaccess 0.19 only persists for its interactive strategy, so do it here:
+    prefer earthaccess's own writer, else write the netrc file by hand
+    (Windows name `_netrc`, or the path from the NETRC environment variable).
+    """
+    singleton = _auth_singleton()
+    if singleton is not None:
+        try:
+            if singleton._persist_user_credentials(username, password):
+                return True
+        except Exception:
+            pass
+    try:
+        from pathlib import Path
+        import platform
+
+        env = os.environ.get("NETRC")
+        if env:
+            path = Path(env)
+        else:
+            path = Path.home() / ("_netrc" if platform.system() == "Windows" else ".netrc")
+        entry = f"machine urs.earthdata.nasa.gov login {username} password {password}\n"
+        existing = path.read_text(encoding="utf-8") if path.exists() else ""
+        if "urs.earthdata.nasa.gov" in existing:
+            return True          # entry already there; leave the file untouched
+        if existing and not existing.endswith("\n"):
+            existing += "\n"
+        path.write_text(existing + entry, encoding="utf-8")
+        try:
+            path.chmod(0o600)
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
 
 
 def new_download_session():

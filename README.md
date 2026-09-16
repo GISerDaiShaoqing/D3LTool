@@ -76,6 +76,15 @@ pyinstaller D3LToolNASA.spec --noconfirm   # -> dist/D3LToolNASA(.exe/.app)
   [文档（中文）](https://gisersqdai.top/D3LTool/documentationcn.html)
 - Legacy v1.0 (2018, browser automation) READMEs live in [docs/legacy/](docs/legacy/)
 
+## Changelog
+
+- **2026-09 v2.0.2** — reliable Earthdata login: adapts to the earthaccess 0.19 auth
+  singleton, session auto-restored from the local netrc file at startup, precise
+  login diagnostics (401 / network / blocked account)
+- 2026-09 v2.0.0 — full rewrite: earthaccess/CMR search, tile map, resumable downloads,
+  PySide6 bilingual UI, cross-platform
+- 2018-04-27 v1.0 — first release (browser automation order downloads)
+
 ## Credits & License
 
 - v1.0 (2018) created by Dai Shaoqing; v2.0 rewritten on top of
