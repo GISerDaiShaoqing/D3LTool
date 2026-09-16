@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it using the
+  metadata provided here.
+title: "D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data"
+authors:
+  - family-names: Dai
+    given-names: Shaoqing
+    orcid: "https://orcid.org/0000-0003-0858-4728"
+    email: dsq1993qingge@163.com
+version: 2.0.2
+date-released: "2026-09-16"
+license: MIT
+repository-code: "https://github.com/GISerDaiShaoqing/D3LTool"
+url: "https://gisersqdai.top/D3LTool/"
+abstract: >-
+  D3L Tool of NASA Satellite is a free, open-source desktop application
+  for searching and downloading NASA Earth science data (MODIS, VIIRS from
+  the LAADS DAAC, and MERRA-2 from the GES DISC). Built on NASA's official
+  earthaccess library and the Common Metadata Repository (CMR) search
+  service, it integrates authentication, product discovery (by product,
+  date range, sinusoidal tile map, or bounding box), and a robust,
+  resumable multi-threaded download queue in a bilingual (Chinese/English)
+  PySide6 graphical interface, with a command-line interface sharing the
+  same core library. It is designed for remote-sensing practitioners who
+  do not write code and for users in network-constrained environments.
+keywords:
+  - NASA
+  - MODIS
+  - VIIRS
+  - MERRA-2
+  - remote sensing
+  - Earthdata
+  - LAADS
+  - data download

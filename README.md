@@ -76,6 +76,21 @@ pyinstaller D3LToolNASA.spec --noconfirm   # -> dist/D3LToolNASA(.exe/.app)
   [文档（中文）](https://gisersqdai.top/D3LTool/documentationcn.html)
 - Legacy v1.0 (2018, browser automation) READMEs live in [docs/legacy/](docs/legacy/)
 
+## Citing
+
+If you use D3LTool in your research, please cite it — see [CITATION.cff](CITATION.cff):
+
+```bibtex
+@software{Dai_D3LTool_NASA_Satellite_2026,
+  author  = {Dai, Shaoqing},
+  orcid   = {0000-0003-0858-4728},
+  title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
+  version = {2.0.2},
+  year    = {2026},
+  url     = {https://github.com/GISerDaiShaoqing/D3LTool},
+}
+```
+
 ## Changelog
 
 - **2026-09 v2.0.2** — reliable Earthdata login: adapts to the earthaccess 0.19 auth
