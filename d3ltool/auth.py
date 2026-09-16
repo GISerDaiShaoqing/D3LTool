@@ -51,9 +51,12 @@ def login(username: str, password: str, persist: bool = True) -> str:
         raise AuthError("earthaccess is not installed")
     username = (username or "").strip()
     password = password or ""
-    if not username or not password:
+    if not username or not password.strip():
         raise AuthError("empty username or password")
 
+    os.environ["EARTHDATA_USERNAME"] = username
+    os.environ["EARTHDATA_PASSWORD"] = password
+    # older earthaccess releases read EDL_*; harmless to keep both
     os.environ["EDL_USERNAME"] = username
     os.environ["EDL_PASSWORD"] = password
 
