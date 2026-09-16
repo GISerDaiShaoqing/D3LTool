@@ -21,8 +21,10 @@ jobs:
         include:
           - os: windows-latest      # x64 -> D3LToolNASA.exe
           - os: macos-14            # Apple Silicon -> D3LToolNASA.app
-          - os: macos-13            # Intel -> D3LToolNASA.app
           - os: ubuntu-latest       # x64 -> D3LToolNASA (linux binary)
+        # Intel macOS (macos-13) dropped: GitHub retired that runner image and
+        # jobs queued forever. Intel-Mac users: `pip install d3ltool` (pure
+        # Python + Qt wheels for x86_64) or build from source on the machine.
     runs-on: ${{ matrix.os }}
 
     steps:

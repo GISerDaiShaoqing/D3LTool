@@ -83,6 +83,7 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 
 ## 更新日志
 
+- **2026-09 v2.0.3** — 产品目录窗口（按卫星浏览产品/版本/说明、可筛选、双击选用）；CI 因 GitHub 退役 macos-13 Intel runner 改为仅 Apple Silicon 构建（Intel Mac 用户用 `pip install d3ltool`）
 - **2026-09 v2.0.2** — Earthdata 登录彻底修复：适配 earthaccess 0.19 认证单例、启动时自动从本机 netrc 恢复会话、登录失败提示精准化（401/网络/账号受限）
 - **2026-09 v2.0.0** — 全新重构：earthaccess/CMR 检索、瓦片地图、断点续传、PySide6 双语界面、跨平台
 - 2018-04-27 v1.0 — 首个版本（浏览器模拟订单下载）

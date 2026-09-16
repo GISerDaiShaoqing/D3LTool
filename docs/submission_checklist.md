@@ -42,7 +42,7 @@
 待办（按序）：
 1. **Zenodo 归档拿 DOI**：
    - 登录 zenodo.org，授权 GitHub 账号，把 `GISerDaiShaoqing/D3LTool` 仓库打开托管；
-   - 对应 release（建议新打 `v2.0.3` 或用 v2.0.2）会被自动抓取成 Zenodo 版本，
+   - 对应 release（用 `v2.0.3`（已含产品目录等最新功能））会被自动抓取成 Zenodo 版本，
      把"版本 DOI"（不是概念 DOI）填进 `paper/paper.md` 头部；
 2. **补 affiliation**：paper.md 作者行现在是"Independent researcher"，若挂单位请改成单位名；
 3. **终校 paper.md**：字数（正文 250-1000 词已达标）、删掉给作者看的注释；

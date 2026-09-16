@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "d3ltool"
-version = "2.0.2"
+version = "2.0.3"
 description = "D3L Tool of NASA Satellite v2 — search & download MODIS / VIIRS / MERRA-2 data (LAADS DAAC & GES DISC) with a bilingual PySide6 GUI and CLI"
 readme = "README_v2.md"
 requires-python = ">=3.10"

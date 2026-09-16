@@ -93,6 +93,9 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-09 v2.0.3** — product catalog dialog (browse per satellite, bilingual
+  descriptions, filter, double-click to apply); CI switched to Apple Silicon
+  only (GitHub retired the macos-13 Intel runner)
 - **2026-09 v2.0.2** — reliable Earthdata login: adapts to the earthaccess 0.19 auth
   singleton, session auto-restored from the local netrc file at startup, precise
   login diagnostics (401 / network / blocked account)
