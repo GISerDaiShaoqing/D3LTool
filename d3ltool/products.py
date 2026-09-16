@@ -26,8 +26,8 @@ GROUPS = [
         ("MCD64A1", "6.1", "火烧迹地，月，500m", "Burned area, monthly, 500m"),
     ]),
     ("VIIRS", [
-        ("VNP46A1", "2", "夜间灯光 DNB 辐亮度（TOA），日，500m", "Nighttime lights DNB TOA radiance, daily, 500m"),
-        ("VNP46A2", "2", "夜间灯光 VPDN（去云），日，500m", "Nighttime lights VPDN (cloud-free), daily, 500m"),
+        ("VNP46A1", "2", "夜间灯光/夜光 DNB 辐亮度（TOA），日，500m", "Nighttime lights DNB TOA radiance, daily, 500m"),
+        ("VNP46A2", "2", "夜间灯光/夜光 VPDN（去云），日，500m", "Nighttime lights VPDN (cloud-free), daily, 500m"),
         ("VNP09GA", "2", "地表反射率，日，1km/500m", "Surface reflectance, daily, 1km/500m"),
         ("VNP13A1", "2", "植被指数 NDVI，16天，500m", "Vegetation indices NDVI, 16-day, 500m"),
     ]),

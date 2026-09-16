@@ -55,11 +55,19 @@ class SearchPanel(QWidget):
         self.product_combo.setEditable(True)
         self.product_combo.currentIndexChanged.connect(self._on_product_changed)
 
+        product_row = QHBoxLayout()
+        product_row.addWidget(self.product_combo, 1)
+        self.catalog_btn = QPushButton(i18n.tr("btn_catalog"))
+        self.catalog_btn.setToolTip(i18n.tr("catalog_hint"))
+        self.catalog_btn.clicked.connect(self._open_catalog)
+        self._catalog_dialog = None   # created on demand
+        product_row.addWidget(self.catalog_btn)
+
         self.version_edit = QLineEdit()
         self.version_edit.setPlaceholderText("6.1 / 2 / 5.12.4 / (empty)")
 
         form.addRow(i18n.tr("label_product_group"), self.group_combo)
-        form.addRow(i18n.tr("label_product"), self.product_combo)
+        form.addRow(i18n.tr("label_product"), product_row)
         form.addRow(i18n.tr("label_version"), self.version_edit)
         root.addWidget(prod_box)
 
@@ -132,6 +140,29 @@ class SearchPanel(QWidget):
         self._on_group_changed(0)
 
     # ------------------------------------------------------------------ slots
+
+    def _open_catalog(self):
+        from .product_catalog import ProductCatalogDialog
+
+        if self._catalog_dialog is None:
+            self._catalog_dialog = ProductCatalogDialog(self)
+            self._catalog_dialog.product_selected.connect(self._apply_catalog_choice)
+        self._catalog_dialog.show()
+        self._catalog_dialog.raise_()
+        self._catalog_dialog.activateWindow()
+
+    def _apply_catalog_choice(self, short_name: str, version: str) -> None:
+        """Fill product + version from the catalog (also used programmatically)."""
+        idx = self.product_combo.findData(short_name)
+        if idx < 0:
+            self.product_combo.blockSignals(True)
+            self.product_combo.addItem(short_name, userData=short_name)
+            self.product_combo.blockSignals(False)
+            idx = self.product_combo.findData(short_name)
+        self.product_combo.setCurrentIndex(idx)
+        self._on_product_changed(idx)
+        if version:
+            self.version_edit.setText(version)
 
     def _on_group_changed(self, index):
         text = self.group_combo.currentText()
