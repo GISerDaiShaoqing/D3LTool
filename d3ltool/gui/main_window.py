@@ -82,6 +82,9 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._build_menus()
+        if auth.try_restore_session():
+            self.statusBar().showMessage(
+                i18n.tr("status_logged_in", user=auth.current_user()))
         self._refresh_login_status()
 
     # -------------------------------------------------------------------- UI
@@ -197,13 +200,7 @@ class MainWindow(QMainWindow):
                 self._refresh_login_status()
 
     def _on_logout(self):
-        try:
-            import earthaccess
-
-            earthaccess.auth.logout()
-        except Exception:
-            pass
-        auth._logged_in_user["name"] = ""
+        auth.logout()
         self._refresh_login_status()
 
     # ---------------------------------------------------------------- search

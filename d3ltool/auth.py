@@ -19,17 +19,75 @@ def available() -> bool:
     return earthaccess is not None
 
 
+def _auth_singleton():
+    """The earthaccess Auth instance, tolerating API changes across versions.
+
+    earthaccess 0.19 keeps the live instance in the package-private
+    `earthaccess.__auth__`; older releases exposed it as `earthaccess.auth`.
+    In 0.19 `earthaccess.auth` is a MODULE, so non-instances are skipped.
+    """
+    import types
+
+    for name in ("__auth__", "auth"):
+        try:
+            candidate = getattr(earthaccess, name)
+        except AttributeError:
+            continue
+        if candidate is None:
+            continue
+        if isinstance(candidate, (type, types.ModuleType)):
+            continue
+        if hasattr(candidate, "authenticated"):
+            return candidate
+    return None
+
+
 def is_authenticated() -> bool:
     if earthaccess is None:
         return False
+    singleton = _auth_singleton()
     try:
-        return bool(earthaccess.auth.authenticated)
+        return bool(singleton.authenticated)
     except Exception:
         return False
 
 
 def current_user() -> str:
-    return _logged_in_user["name"]
+    name = _logged_in_user["name"]
+    singleton = _auth_singleton()
+    if singleton is not None:
+        try:
+            name = name or (singleton.username or "")
+        except Exception:
+            pass
+    return name
+
+
+def try_restore_session() -> bool:
+    """Silently restore a persisted login from ~/.netrc (best effort).
+
+    earthaccess's netrc strategy exchanges the stored credentials for a fresh
+    URS token, so this needs network; failures are silent.
+    """
+    if earthaccess is None:
+        return False
+    if is_authenticated():
+        return True
+    try:
+        _call_login(strategy="netrc", persist=False)
+    except Exception:
+        return False
+    return is_authenticated()
+
+
+def logout() -> None:
+    singleton = _auth_singleton()
+    if singleton is not None:
+        try:
+            singleton.authenticated = False
+        except Exception:
+            pass
+    _logged_in_user["name"] = ""
 
 
 def _call_login(**kwargs):
@@ -143,10 +201,12 @@ def new_download_session():
         try:
             return earthaccess.get_requests_https_session()
         except AttributeError:
-            try:
-                return earthaccess.auth.get_session()
-            except Exception:
-                pass
+            singleton = _auth_singleton()
+            if singleton is not None:
+                try:
+                    return singleton.get_session()
+                except Exception:
+                    pass
         except Exception:
             pass
     return requests.Session()
