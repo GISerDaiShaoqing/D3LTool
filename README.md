@@ -1,51 +1,85 @@
-Table of Contents
-=================
-
-* [D3L Tool of NASA Satellite](#d3l-tool-of-nasa-satellite)
-  * [Introduction](#introduction)
-  * [Blog](#blog)
-  * [Software](#software)
-  * [Release Log](#release-log)
-  * [Problems](#problems)
-
-Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
-
 # D3L Tool of NASA Satellite
 
 |Author|Shaoqing Dai|
 |---|---|
 |E-mail|dsq1993qingge@163.com|
+|Website|https://gisersqdai.top/D3LTool/|
 
-[Chinese](https://github.com/GISerDaiShaoqing/D3LTool/blob/master/READMEcn.md)
+[中文说明](READMEcn.md)
 
-## Introduction
+D3L Tool v2 is a free & open-source tool to **search and download** NASA Earth science data —
+the whole workflow (login → search → download) inside one app, built on NASA's official
+[earthaccess](https://earthaccess.readthedocs.io/) library and the CMR search service.
+No more manual order creation, no more browser automation.
 
-D3L Tool of NASA Satellite is a free software tool that serves as a tool to download the nasa satellite data easily. 
+## Features
 
-You can see the detailed information at: http://gisersqdai.top/D3LTool/
+- **Built-in search**: by product, date range, MODIS/VIIRS sinusoidal tile (clickable 36×18 tile map)
+  or bounding box — search works without an Earthdata login
+- **Coverage**: MODIS, VIIRS (LAADS DAAC), MERRA-2 (GES DISC); any CMR short_name works too
+- **Robust downloads**: multi-threaded queue, chunked progress, HTTP Range resume,
+  automatic retry, size validation
+- **Bilingual UI**: one-click 中文 / English switch (PySide6)
+- **Cross-platform**: Windows exe / macOS .app / Linux binary (CI builds), or `pip install d3ltool`
+- **Proxy support** for complex network environments
 
-You can download the software at [it](https://github.com/GISerDaiShaoqing/D3LTool/releases/download/v1.0/D3LTool.v1.0.zip).
+## Install
 
-If you failed, you can try these below links.
+Requires Python 3.10+.
 
-[Baidu Pan](https://pan.baidu.com/share/home?uk=2855623577&suk=QR0keGnZkZWNh9Pf3aQyaQ&view=share#category/type=0)
+```bash
+python -m pip install -e .
+```
 
-[Website download links](http://gisersqdai.top/D3LTool/download.html)
+Development (incl. pytest): `python -m pip install -e ".[dev]"`
 
-## Blog
+## Usage
 
-I have written some articles(in Chinese) about downloading the MODIS products. The links of other articles are in the first paragraph of this article.
+### GUI
 
-[MODIS数据的简介和下载（六）——基于浏览器模拟登陆下载的方式以及D3L Tool开发](https://giserdaishaoqing.github.io/2018/05/18/MODIS%E6%95%B0%E6%8D%AE%E7%9A%84%E7%AE%80%E4%BB%8B%E5%92%8C%E4%B8%8B%E8%BD%BD%EF%BC%88%E5%85%AD%EF%BC%89%E2%80%94%E2%80%94%E5%9F%BA%E4%BA%8E%E6%B5%8F%E8%A7%88%E5%99%A8%E6%A8%A1%E6%8B%9F%E7%99%BB%E9%99%86%E4%B8%8B%E8%BD%BD%E7%9A%84%E6%96%B9%E5%BC%8F%E4%BB%A5%E5%8F%8AD3L%20Tool%E5%BC%80%E5%8F%91/)
+```bash
+d3ltool-gui     # or: python -m d3ltool
+```
 
-## Software
+1. **Settings → Sign in to Earthdata** with your free
+   [NASA Earthdata](https://urs.earthdata.nasa.gov/) account
+   (search works without login; downloads need it; credentials stay in the local `~/.netrc`)
+2. Pick a product, date range, and click tiles on the map (or type `h04v03`, or enter a bbox)
+3. Hit **Search**, tick files, **Add to download queue**
 
-![](https://github.com/GISerDaiShaoqing/D3LTool/blob/master/images/Main.png)
+### CLI
 
-## Release Log
+```bash
+d3ltool login
+d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
+d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data
+d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40
+```
 
-**2018.4.27 v1.0**
+## Standalone builds / Release
 
-## Problems
+Download prebuilt packages from
+[GitHub Releases](https://github.com/GISerDaiShaoqing/D3LTool/releases/latest):
+Windows exe, macOS .app (Apple Silicon & Intel) and Linux binary are built
+automatically by CI when a `v*` tag is pushed.
 
-Questions? Contact us or submit issues.
+Build locally:
+
+```bash
+pyinstaller D3LToolNASA.spec --noconfirm   # -> dist/D3LToolNASA(.exe/.app)
+```
+
+## Documentation
+
+- Project website: <https://gisersqdai.top/D3LTool/>
+- [Documentation (EN)](https://gisersqdai.top/D3LTool/documentation.html) /
+  [文档（中文）](https://gisersqdai.top/D3LTool/documentationcn.html)
+- Legacy v1.0 (2018, browser automation) READMEs live in [docs/legacy/](docs/legacy/)
+
+## Credits & License
+
+- v1.0 (2018) created by Dai Shaoqing; v2.0 rewritten on top of
+  [earthaccess](https://earthaccess.readthedocs.io/) / CMR
+- Released under the [MIT license](https://mit-license.org/)
+- Questions? [Submit an issue](https://github.com/GISerDaiShaoqing/D3LTool/issues)
+  or contact dsq1993qingge@163.com

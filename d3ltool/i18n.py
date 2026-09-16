@@ -96,7 +96,6 @@ STRINGS = {
         "menu_sites": "网站",
         "menu_rs": "遥感资源",
         "site_home": "程序官网",
-        "site_baidupan": "百度网盘下载链接",
         "site_blog": "作者博客",
         "site_nasa": "NASA LAADS DAAC",
         "site_nasa_tools": "NASA 工具与服务",
@@ -201,11 +200,10 @@ STRINGS = {
                       "Search & download NASA MODIS / VIIRS / MERRA-2 data\n\n"
                       "v2.0 © 2026 GLM-5.3-Flash Rebuilt on earthaccess / CMR · \n\n"
                       "v1.0 © 2018 Dai Shaoqing (dsq1993qingge@163.com)\n\n"
-                      "Website: https://giserdaishaoqing.github.io/D3LTool/",
+                      "Website: https://gisersqdai.top/D3LTool/",
         "menu_sites": "Websites",
         "menu_rs": "RS resources",
         "site_home": "Project website",
-        "site_baidupan": "Baidu netdisk downloads",
         "site_blog": "Author's blog",
         "site_nasa": "NASA LAADS DAAC",
         "site_nasa_tools": "NASA tools & services",

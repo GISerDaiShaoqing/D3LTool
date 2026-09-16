@@ -21,8 +21,6 @@ RES_DIR = Path(__file__).resolve().parent.parent / "resources"
 
 SITE_URLS = {
     "site_home": "https://gisersqdai.top/D3LTool/",
-    "site_baidupan": "https://pan.baidu.com/share/home?uk=2855623577"
-                     "&suk=QR0keGnZkZWNh9Pf3aQyaQ&view=share#category/type=0",
     "site_blog": "https://gisersqdai.top/",
     "site_nasa": "https://ladsweb.modaps.eosdis.nasa.gov/",
     "site_nasa_tools": "https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/",
@@ -120,7 +118,7 @@ class MainWindow(QMainWindow):
     def _build_menus(self):
         # ---- websites: personal + NASA
         menu_sites = self.menuBar().addMenu(i18n.tr("menu_sites"))
-        for key in ("site_home", "site_baidupan", "site_blog"):
+        for key in ("site_home", "site_blog"):
             act = QAction(i18n.tr(key), self)
             act.triggered.connect(lambda _c=False, u=SITE_URLS[key]: self._open_url(u))
             menu_sites.addAction(act)

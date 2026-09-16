@@ -41,7 +41,8 @@ def test_legacy_menu_links_present():
     # personal sites: custom domain (verified 2026-09)
     assert SITE_URLS["site_home"] == "https://gisersqdai.top/D3LTool/"
     assert SITE_URLS["site_blog"] == "https://gisersqdai.top/"
-    assert "pan.baidu.com" in SITE_URLS["site_baidupan"]
+    # the dead Baidu pan share was removed from the menu entirely
+    assert "site_baidupan" not in SITE_URLS
     # all seven resource links kept, on their current (2026-09) domains
     assert len(RS_URLS) == 7
     urls = " ".join(url for _, url in RS_URLS)
@@ -59,15 +60,11 @@ def test_legacy_menu_links_present():
 def test_about_text_mentions_glm_and_earthaccess():
     from d3ltool import i18n
 
-    i18n.set_language("zh")
-    zh = i18n.tr("about_text")
-    assert "GLM-5.3-Flash" in zh
-    assert "v2.0" in zh
-    assert "earthaccess" in zh
-    # GLM-5.3-Flash comes right after v2.0
-    assert zh.index("v2.0") < zh.index("GLM-5.3-Flash")
-    assert "earthaccess" in zh[:zh.index("v2.0")]
-    i18n.set_language("en")
-    en = i18n.tr("about_text")
-    assert "GLM-5.3-Flash" in en and "earthaccess" in en
+    # content follows the author's wording; only assert the key tokens
+    for lang in ("zh", "en"):
+        i18n.set_language(lang)
+        text = i18n.tr("about_text")
+        assert "GLM-5.3-Flash" in text
+        assert "v2.0" in text
+        assert "earthaccess" in text
     i18n.set_language("zh")
