@@ -27,7 +27,7 @@ class AgentThread(QThread):
     tool_result = Signal(str, str)        # name, payload-json (truncated)
     failed = Signal(str)
     finished_turn = Signal()
-    confirm_needed = Signal(dict)         # {name, arguments, holder, event}
+    confirm_needed = Signal(object)       # {name, arguments, holder, event}
 
     def __init__(self, messages, settings, transport=None, parent=None):
         super().__init__(parent)

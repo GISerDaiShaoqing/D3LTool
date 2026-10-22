@@ -157,6 +157,9 @@ def attach_engine(engine_obj) -> None:
 )
 def check_auth() -> dict:
     signed_in = auth.is_authenticated()
+    if not signed_in:
+        # fresh process (MCP / agent): quietly reconnect from ~/.netrc
+        signed_in = auth.try_restore_session()
     return {
         "authenticated": signed_in,
         "user": auth.current_user() if signed_in else "",
@@ -275,7 +278,7 @@ def start_download(urls: list, dest: str = "") -> dict:
     urls = [str(u).strip() for u in (urls or []) if str(u).strip()]
     if not urls:
         return {"error": "no urls given"}
-    if not auth.is_authenticated():
+    if not auth.is_authenticated() and not auth.try_restore_session():
         return {
             "error": "not_authenticated",
             "hint": "downloads need Earthdata sign-in; the user must sign in "

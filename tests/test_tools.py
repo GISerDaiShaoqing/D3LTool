@@ -58,6 +58,9 @@ def _signed_in(monkeypatch, user="tester"):
 def _signed_out(monkeypatch):
     monkeypatch.setattr(auth, "is_authenticated", lambda: False)
     monkeypatch.setattr(auth, "current_user", lambda: "")
+    # start_download/check_auth fall back to try_restore_session() since the
+    # MCP patch; stub it so offline machines never attempt a real URS login.
+    monkeypatch.setattr(auth, "try_restore_session", lambda: False)
 
 
 # ----------------------------------------------------------------- registry

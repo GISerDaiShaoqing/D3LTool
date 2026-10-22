@@ -104,7 +104,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   author  = {Dai, Shaoqing},
   orcid   = {0000-0003-0858-4728},
   title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
-  version = {2.1.0},
+  version = {2.1.1},
   year    = {2026},
   url     = {https://github.com/GISerDaiShaoqing/D3LTool},
 }
@@ -112,6 +112,10 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-10 v2.1.1** — fix: AI-assistant download confirmation (a Yes click
+  was reported as declined — PySide6 `Signal(dict)` copies payloads across
+  the queued connection, now `Signal(object)`); MCP server lazily restores
+  the saved Earthdata session from ~/.netrc
 - **2026-10 v2.1.0** — MCP server (`d3ltool-mcp`: 9 tools over stdio for Claude
   Desktop / Cursor / ZCode, credential-reuse design) and a built-in AI Assistant
   chat page (any OpenAI-compatible provider, agent tool calls, download

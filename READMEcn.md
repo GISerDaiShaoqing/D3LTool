@@ -100,6 +100,9 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 
 ## 更新日志
 
+- **2026-10 v2.1.1** — 修复：AI 助手下载确认（点 Yes 却报"用户拒绝"——PySide6
+  `Signal(dict)` 跨线程排队连接会拷贝载荷，改用 `Signal(object)`）；MCP 服务器
+  从 ~/.netrc 懒恢复已保存的 Earthdata 登录态
 - **2026-10 v2.1.0** — MCP 服务器（`d3ltool-mcp`：stdio 上 9 个工具，供 Claude Desktop /
   Cursor / ZCode 调用，复用本机登录凭据）与软件内 AI 助手对话页（任意 OpenAI 兼容服务商、
   agent 工具调用、下载弹窗确认、共享下载任务表）

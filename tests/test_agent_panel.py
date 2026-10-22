@@ -160,6 +160,49 @@ def test_agent_panel_confirm_decline(monkeypatch, tmp_path):
     assert "已按你的要求取消" in text
 
 
+def test_agent_panel_confirm_accept_runs_download(monkeypatch, tmp_path):
+    """Yes on the real dialog must reach the worker and run the tool.
+
+    Regression: Signal(dict) got copied across the queued connection, so the
+    worker read answer=False even after the user clicked Yes and reported
+    "user declined this download".
+    """
+    app, panel, _saved = _make_panel(monkeypatch, tmp_path)
+
+    def transport(messages, tool_specs):
+        if not any(m.get("role") == "tool" for m in messages):
+            return [{"type": "tool_calls", "calls": [
+                {"id": "t1", "name": "start_download",
+                 "arguments": {"urls": ["https://x/1.h5"]}}]},
+                {"type": "done", "finish_reason": "tool_calls"}]
+        return [{"type": "text", "text": "已提交下载"},
+                {"type": "done", "finish_reason": "stop"}]
+
+    monkeypatch.setattr(panel, "_make_transport", lambda: transport)
+
+    from PySide6.QtWidgets import QMessageBox
+    monkeypatch.setattr(QMessageBox, "exec",
+                        lambda self: int(QMessageBox.StandardButton.Yes))
+
+    import d3ltool.tools as tools
+    from types import SimpleNamespace
+    ran = []
+    fake = SimpleNamespace(
+        fn=lambda urls, dest="": (ran.append(urls), {"queued": urls})[1])
+    monkeypatch.setattr(tools, "get_spec",
+                        lambda name: fake if name == "start_download" else None)
+
+    _apply_valid_settings(panel)
+    panel.input.setPlainText("下载 x")
+    panel._send()
+    assert _pump(app, panel)
+
+    text = panel.chat.toPlainText()
+    assert ran == [["https://x/1.h5"]]          # the tool executed after Yes
+    assert "已提交下载" in text                   # final answer after the tool
+    assert "user declined this download" not in text
+
+
 def test_agent_panel_clear_resets_history(monkeypatch, tmp_path):
     app, panel, _saved = _make_panel(monkeypatch, tmp_path)
     monkeypatch.setattr(panel, "_make_transport", lambda: _scripted_transport("done"))
