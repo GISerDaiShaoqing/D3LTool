@@ -112,3 +112,66 @@ def test_no_overlap_on_short_window(tmp_path, monkeypatch):
         btn = rects["search_btn"]
         assert 0 <= btn.top() <= btn.bottom() <= window.height()
     window.close()
+
+
+def _make_window(tmp_path, monkeypatch):
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+
+    import d3ltool.config as config
+
+    cfg = dict(config.DEFAULTS)
+    cfg["download_dir"] = str(tmp_path / "downloads")
+    monkeypatch.setattr(config, "load_config", lambda: cfg)
+
+    from PySide6.QtWidgets import QApplication
+
+    from d3ltool.gui.main_window import MainWindow
+
+    app = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    app.processEvents()
+    app.processEvents()
+    return app, window
+
+
+def test_agent_drawer_overlay_leaves_data_layout_alone(tmp_path, monkeypatch):
+    """The drawer floats over the data page: opening/closing must not
+    reflow the search panel, and it must sit flush at the right edge."""
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        cw = window.centralWidget()
+        before = window.search_panel.geometry()
+        assert not window.agent_drawer.isVisible()
+        assert window.agent_tab_btn.isVisible()
+
+        window._toggle_agent_drawer(animate=False)
+        app.processEvents()
+        assert window.agent_drawer.isVisible()
+        assert not window.agent_tab_btn.isVisible()
+        assert window.agent_drawer.geometry().right() == cw.rect().right()
+        assert window.agent_drawer.geometry().bottom() == cw.rect().bottom()
+        assert window.search_panel.geometry() == before
+
+        window._toggle_agent_drawer(animate=False)
+        app.processEvents()
+        assert not window.agent_drawer.isVisible()
+        assert window.agent_tab_btn.isVisible()
+        assert window.search_panel.geometry() == before
+    finally:
+        window.close()
+
+
+def test_agent_drawer_repins_on_resize(tmp_path, monkeypatch):
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        window._toggle_agent_drawer(animate=False)
+        app.processEvents()
+        window.resize(1300, 720)
+        app.processEvents()
+        cw = window.centralWidget()
+        assert window.agent_drawer.geometry().right() == cw.rect().right()
+        assert window.agent_drawer.geometry().bottom() == cw.rect().bottom()
+    finally:
+        window.close()

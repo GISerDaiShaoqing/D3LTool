@@ -254,6 +254,47 @@ QToolTip {
     border-radius: 5px;
     padding: 5px 8px;
 }
+
+/* ---------- AI assistant drawer ---------- */
+QFrame#agentDrawer {
+    background: #ffffff;
+    border-left: 1px solid #d0d7de;
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+QLabel#agentTitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+QPushButton#agentHeaderBtn {
+    border: none;
+    background: transparent;
+    color: #57606a;
+    font-size: 13px;
+    padding: 2px 7px;
+    border-radius: 5px;
+}
+QPushButton#agentHeaderBtn:hover {
+    background: #f3f4f6;
+    color: #d6372a;
+}
+QTextBrowser#agentChat {
+    background: transparent;
+}
+QToolButton#agentTabButton {
+    background: #24292e;
+    color: #ffffff;
+    border: none;
+    border-top-left-radius: 7px;
+    border-bottom-left-radius: 7px;
+    padding: 14px 5px;
+    font-size: 13px;
+    font-weight: 600;
+}
+QToolButton#agentTabButton:hover {
+    background: #d6372a;
+}
 """
 
 

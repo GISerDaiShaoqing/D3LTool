@@ -22,6 +22,16 @@ def test_roundtrip(tmp_path, monkeypatch):
     assert reloaded["proxy_url"] == ""
 
 
+def test_ai_chat_bg_persists(tmp_path, monkeypatch):
+    """New-in-2.2 chat background key round-trips through the DEFAULTS filter."""
+    monkeypatch.setattr(config, "CONFIG_DIR", tmp_path / ".d3ltool")
+    monkeypatch.setattr(config, "CONFIG_FILE", tmp_path / ".d3ltool" / "config.json")
+
+    cfg = config.update_config(ai_chat_bg=str(tmp_path / "bg.png"))
+    assert cfg["ai_chat_bg"] == str(tmp_path / "bg.png")
+    assert config.load_config()["ai_chat_bg"] == str(tmp_path / "bg.png")
+
+
 def test_corrupt_file_falls_back_to_defaults(tmp_path, monkeypatch):
     cfg_dir = tmp_path / ".d3ltool"
     cfg_dir.mkdir(parents=True)

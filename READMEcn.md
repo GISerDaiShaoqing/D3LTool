@@ -19,8 +19,10 @@ D3L Tool v2 是一个免费开源的 NASA 卫星数据**检索与下载**工具�
 - **健壮下载**：多线程队列、分块进度、HTTP 断点续传、失败自动重试、文件大小校验
 - **MCP 服务器**（v2.1 新增）：`d3ltool-mcp` 把检索/瓦片换算/下载暴露为
   [MCP 工具](docs/mcp.md)，Claude Desktop、Cursor、ZCode 等 AI 客户端可直接调用
-- **AI 助手**（v2.1 新增）：软件内接入任意 OpenAI 兼容 API Key（DeepSeek / Qwen /
-  Kimi / 智谱 / OpenAI / Ollama…），自然语言直接完成检索与下载；下载会先弹窗确认
+- **AI 助手**（v2.1 新增，v2.2 改版）：主窗口右缘滑出的悬浮抽屉，数据界面完全
+  不受影响；⚙ 弹出式设置接入任意 OpenAI 兼容 API Key（DeepSeek / Qwen / Kimi /
+  智谱 / OpenAI / Ollama…），自然语言直接完成检索与下载；聊天区可自定义背景图；
+  下载会先弹窗确认
 - **中英双语**：菜单一键切换中文 / English（PySide6 界面）
 - **跨平台**：Windows exe / macOS .app / Linux 二进制（CI 自动构建），或 `pip install d3ltool`
 - **代理支持**：适应复杂网络环境
@@ -100,6 +102,8 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 
 ## 更新日志
 
+- **2026-10 v2.2.0** — AI 助手改版为右缘悬浮抽屉：数据界面不再受影响，API 设置
+  挪进弹出对话框，聊天区支持自定义背景图
 - **2026-10 v2.1.1** — 修复：AI 助手下载确认（点 Yes 却报"用户拒绝"——PySide6
   `Signal(dict)` 跨线程排队连接会拷贝载荷，改用 `Signal(object)`）；MCP 服务器
   从 ~/.netrc 懒恢复已保存的 Earthdata 登录态

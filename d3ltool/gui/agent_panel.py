@@ -1,20 +1,23 @@
 # -*- coding: utf-8 -*-
-"""AI Assistant page: chat with any OpenAI-compatible provider.
+"""AI Assistant drawer panel: chat with any OpenAI-compatible provider.
 
-The agent loop runs in a worker thread; the model can call the same tool
-registry the MCP server exposes (search, tiles, downloads). Downloads are
-confirmed with a dialog and surface in the shared task table.
+The panel is the content of a right-edge drawer owned by the main window
+(see main_window._build_agent_drawer). API settings live in a popup dialog
+(AgentSettingsDialog) and the whole panel can paint a user-chosen
+background image under chat and input. The agent logic itself stays in
+d3ltool.agent (pure Python); this module is Qt only.
 """
 
 import json
 import threading
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QKeySequence, QTextCursor
-from PySide6.QtWidgets import (QComboBox, QFormLayout, QGroupBox, QHBoxLayout,
+from PySide6.QtGui import QKeySequence, QPainter, QPixmap, QTextCursor
+from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox,
+                               QFileDialog, QFormLayout, QHBoxLayout,
                                QLabel, QLineEdit, QMessageBox, QPushButton,
-                               QSplitter, QTextBrowser, QTextEdit,
-                               QVBoxLayout, QWidget)
+                               QTextBrowser, QTextEdit, QVBoxLayout, QWidget)
 
 from .. import config, i18n
 from ..agent import llm, loop
@@ -27,6 +30,8 @@ class AgentThread(QThread):
     tool_result = Signal(str, str)        # name, payload-json (truncated)
     failed = Signal(str)
     finished_turn = Signal()
+    # object (NOT dict): PySide6 copies dict payloads across queued
+    # connections, and the confirm answer must round-trip to the worker
     confirm_needed = Signal(object)       # {name, arguments, holder, event}
 
     def __init__(self, messages, settings, transport=None, parent=None):
@@ -103,30 +108,152 @@ class _InputEdit(QTextEdit):
         super().keyPressEvent(event)
 
 
+class AgentSettingsDialog(QDialog):
+    """Popup holding provider/API settings + the chat background choice.
+
+    Owns all settings widgets; AgentPanel forwards the widget attributes so
+    callers/tests keep the original names.
+    """
+
+    def __init__(self, panel, parent=None):
+        super().__init__(parent or panel)
+        self.panel = panel
+        self.setWindowTitle(i18n.tr("agent_settings"))
+        self.setMinimumWidth(460)
+
+        form = QFormLayout(self)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+
+        self.provider_combo = QComboBox(self)
+        self._presets = llm.PROVIDER_PRESETS
+        for label, _url, _model in self._presets:
+            self.provider_combo.addItem(label)
+        self.provider_combo.currentIndexChanged.connect(self._on_preset)
+
+        self.base_url_edit = QLineEdit(self)
+        self.base_url_edit.setPlaceholderText("https://api.deepseek.com/v1")
+        self.model_edit = QLineEdit(self)
+        self.model_edit.setPlaceholderText("deepseek-chat / gpt-4o-mini / ...")
+        self.api_key_edit = QLineEdit(self)
+        self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self.api_key_edit.setPlaceholderText(i18n.tr("agent_key_placeholder"))
+
+        self.test_btn = QPushButton(i18n.tr("agent_test"), self)
+        self.test_btn.clicked.connect(self.panel._test_connection)
+        self.test_result = QLabel("", self)
+        self.test_result.setWordWrap(True)
+
+        # chat background image (optional; empty = default surface)
+        self.bg_edit = QLineEdit(self)
+        self.bg_pick = QPushButton(i18n.tr("agent_bg_pick"), self)
+        self.bg_pick.clicked.connect(self._pick_bg)
+        self.bg_clear = QPushButton(i18n.tr("agent_bg_clear"), self)
+        self.bg_clear.clicked.connect(lambda: self.bg_edit.clear())
+        bg_row = QHBoxLayout()
+        bg_row.addWidget(self.bg_edit, 1)
+        bg_row.addWidget(self.bg_pick)
+        bg_row.addWidget(self.bg_clear)
+
+        note = QLabel(i18n.tr("agent_key_note"), self)
+        note.setWordWrap(True)
+
+        form.addRow(self.provider_combo)
+        form.addRow(i18n.tr("agent_base_url"), self.base_url_edit)
+        form.addRow(i18n.tr("agent_model"), self.model_edit)
+        form.addRow(i18n.tr("agent_api_key"), self.api_key_edit)
+        form.addRow(self.test_btn, self.test_result)
+        form.addRow(i18n.tr("agent_bg"), bg_row)
+        form.addRow(note)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok
+            | QDialogButtonBox.StandardButton.Cancel, self)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        form.addRow(buttons)
+
+        self._load_current()
+
+    def _load_current(self):
+        """Seed the fields from persisted config (Cancel keeps them intact)."""
+        cfg = config.load_config()
+        self.base_url_edit.setText(cfg.get("ai_base_url", ""))
+        self.model_edit.setText(cfg.get("ai_model", ""))
+        self.api_key_edit.setText(cfg.get("ai_api_key", ""))
+        self.bg_edit.setText(cfg.get("ai_chat_bg", ""))
+
+    def _on_preset(self, index):
+        label, url, model = self._presets[index]
+        if url:                      # keep the user's Custom values untouched
+            self.base_url_edit.setText(url)
+            if model:
+                self.model_edit.setText(model)
+
+    def _pick_bg(self):
+        start = self.bg_edit.text() or str(Path.home())
+        path, _filter = QFileDialog.getOpenFileName(
+            self, i18n.tr("agent_bg_pick"), start,
+            "Images (*.png *.jpg *.jpeg *.bmp *.webp *.gif)")
+        if path:
+            self.bg_edit.setText(path)
+
+    def apply(self):
+        """Called after Accept: persist and reflect onto the panel."""
+        base_url = self.base_url_edit.text().strip()
+        model = self.model_edit.text().strip()
+        api_key = self.api_key_edit.text().strip()
+        bg = self.bg_edit.text().strip()
+        config.update_config(ai_base_url=base_url, ai_model=model,
+                             ai_api_key=api_key, ai_chat_bg=bg)
+        self.panel._apply_settings(base_url=base_url, model=model,
+                                   api_key=api_key)
+        self.panel.apply_background(bg)
+
+
 class AgentPanel(QWidget):
-    """Right-hand 'AI 助手' page of the main window."""
+    """Content of the right-edge 'AI 助手' drawer."""
+
+    hide_requested = Signal()         # the ✕ button; the drawer decides
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("agentPanel")
         self.messages = [{"role": "system", "content": self._system_prompt()}]
         self._agent_thread = None
         self._streaming_assistant = False
+        self._bg = None               # QPixmap or None
+        self._bg_path = ""
 
-        root = QHBoxLayout(self)
-        root.setContentsMargins(9, 9, 9, 9)
-        splitter = QSplitter(Qt.Orientation.Horizontal, self)
-        root.addWidget(splitter)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(10, 8, 10, 10)
+        root.setSpacing(6)
 
-        # ---------------- chat side
-        chat_side = QWidget()
-        chat_layout = QVBoxLayout(chat_side)
-        chat_layout.setContentsMargins(0, 0, 0, 0)
+        # ---------------- header row
+        header = QHBoxLayout()
+        title = QLabel(i18n.tr("tab_agent"))
+        title.setObjectName("agentTitle")
+        self.gear_btn = QPushButton("⚙")
+        self.gear_btn.setObjectName("agentHeaderBtn")
+        self.gear_btn.setToolTip(i18n.tr("agent_settings"))
+        self.gear_btn.clicked.connect(self._open_settings)
+        self.hide_btn = QPushButton("✕")
+        self.hide_btn.setObjectName("agentHeaderBtn")
+        self.hide_btn.setToolTip(i18n.tr("agent_hide"))
+        self.hide_btn.clicked.connect(self.hide_requested.emit)
+        header.addWidget(title)
+        header.addStretch(1)
+        header.addWidget(self.gear_btn)
+        header.addWidget(self.hide_btn)
+        root.addLayout(header)
 
+        # ---------------- chat area (transparent over the panel background)
         self.chat = QTextBrowser()
         self.chat.setObjectName("agentChat")
         self.chat.setOpenExternalLinks(True)
-        chat_layout.addWidget(self.chat, 1)
+        self.chat.setStyleSheet("QTextBrowser { background: transparent; }")
+        root.addWidget(self.chat, 1)
 
+        # ---------------- input row
         input_row = QHBoxLayout()
         self.input = _InputEdit()
         self.input.setObjectName("agentInput")
@@ -149,70 +276,52 @@ class AgentPanel(QWidget):
         btn_col.addWidget(self.stop_btn)
         btn_col.addWidget(self.clear_btn)
         input_row.addLayout(btn_col)
-        chat_layout.addLayout(input_row)
-        splitter.addWidget(chat_side)
+        root.addLayout(input_row)
 
-        # ---------------- settings side
-        self.settings_box = QGroupBox(i18n.tr("agent_settings"))
-        form = QFormLayout(self.settings_box)
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-
-        self.provider_combo = QComboBox()
-        self._presets = llm.PROVIDER_PRESETS
-        for label, _url, _model in self._presets:
-            self.provider_combo.addItem(label)
-        self.provider_combo.currentIndexChanged.connect(self._on_preset)
-
-        self.base_url_edit = QLineEdit()
-        self.base_url_edit.setPlaceholderText("https://api.deepseek.com/v1")
-        self.model_edit = QLineEdit()
-        self.model_edit.setPlaceholderText("deepseek-chat / gpt-4o-mini / ...")
-        self.api_key_edit = QLineEdit()
-        self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        self.api_key_edit.setPlaceholderText(i18n.tr("agent_key_placeholder"))
-
-        test_btn = QPushButton(i18n.tr("agent_test"))
-        test_btn.clicked.connect(self._test_connection)
-        self.test_result = QLabel("")
-        self.test_result.setWordWrap(True)
-
-        form.addRow(self.provider_combo)
-        form.addRow(i18n.tr("agent_base_url"), self.base_url_edit)
-        form.addRow(i18n.tr("agent_model"), self.model_edit)
-        form.addRow(i18n.tr("agent_api_key"), self.api_key_edit)
-        form.addRow(test_btn)
-        form.addRow(self.test_result)
-
-        note = QLabel(i18n.tr("agent_key_note"))
-        note.setWordWrap(True)
-        form.addRow(note)
-        splitter.addWidget(self.settings_box)
-        splitter.setSizes([700, 300])
-
-        self._load_settings()
+        self._settings_dialog = AgentSettingsDialog(self)
+        self.apply_background(config.load_config().get("ai_chat_bg", ""))
         self._append_html(self._welcome_html())
 
-    # ------------------------------------------------------------- settings
+    # ------------------------------------------------- settings (popup dlg)
 
-    def _system_prompt(self) -> str:
-        return i18n.tr("agent_system_prompt")
+    # The settings widgets live in the popup dialog; forwarding the names
+    # keeps the pre-2.2 attribute API for tests and external callers.
+    @property
+    def provider_combo(self):
+        return self._settings_dialog.provider_combo
 
-    def _load_settings(self):
-        cfg = config.load_config()
-        self._apply_settings(base_url=cfg.get("ai_base_url", ""),
-                             model=cfg.get("ai_model", ""),
-                             api_key=cfg.get("ai_api_key", ""))
+    @property
+    def base_url_edit(self):
+        return self._settings_dialog.base_url_edit
+
+    @property
+    def model_edit(self):
+        return self._settings_dialog.model_edit
+
+    @property
+    def api_key_edit(self):
+        return self._settings_dialog.api_key_edit
+
+    @property
+    def test_result(self):
+        return self._settings_dialog.test_result
+
+    def _open_settings(self):
+        if self._settings_dialog.exec() == QDialog.DialogCode.Accepted:
+            self._settings_dialog.apply()
 
     def _apply_settings(self, base_url: str, model: str, api_key: str):
-        self.base_url_edit.setText(base_url)
-        self.model_edit.setText(model)
-        self.api_key_edit.setText(api_key)
+        dlg = self._settings_dialog
+        dlg.base_url_edit.setText(base_url)
+        dlg.model_edit.setText(model)
+        dlg.api_key_edit.setText(api_key)
 
     def current_settings(self) -> dict:
+        dlg = self._settings_dialog
         return {
-            "base_url": self.base_url_edit.text().strip(),
-            "model": self.model_edit.text().strip(),
-            "api_key": self.api_key_edit.text().strip(),
+            "base_url": dlg.base_url_edit.text().strip(),
+            "model": dlg.model_edit.text().strip(),
+            "api_key": dlg.api_key_edit.text().strip(),
         }
 
     def _save_settings(self):
@@ -220,13 +329,6 @@ class AgentPanel(QWidget):
         config.update_config(ai_base_url=s["base_url"],
                              ai_model=s["model"],
                              ai_api_key=s["api_key"])
-
-    def _on_preset(self, index):
-        label, url, model = self._presets[index]
-        if url:                      # keep the user's Custom values untouched
-            self.base_url_edit.setText(url)
-            if model:
-                self.model_edit.setText(model)
 
     def _test_connection(self):
         s = self.current_settings()
@@ -258,7 +360,40 @@ class AgentPanel(QWidget):
         """Dialog seam (tests replace this)."""
         QMessageBox.warning(self, i18n.tr("err_title"), message)
 
-    # ----------------------------------------------------------------- chat
+    # ------------------------------------------------- background painting
+
+    def apply_background(self, path: str):
+        """Set (or clear with "") the image painted under the whole panel."""
+        path = (path or "").strip()
+        self._bg = QPixmap(path) if path else None
+        self._bg_path = path if (path and self._bg is not None
+                                 and not self._bg.isNull()) else ""
+        # translucent input plate keeps text readable over a busy image
+        self.input.setStyleSheet(
+            "QTextEdit#agentInput { background: rgba(255, 255, 255, 205); }"
+            if self._bg_path else "")
+        self.update()
+
+    def background_path(self) -> str:
+        return self._bg_path
+
+    def paintEvent(self, event):
+        if self._bg is not None:
+            painter = QPainter(self)
+            r = self.rect()
+            pm = self._bg.scaled(
+                r.width(), r.height(),
+                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                Qt.TransformationMode.SmoothTransformation)
+            painter.drawPixmap((r.width() - pm.width()) // 2,
+                               (r.height() - pm.height()) // 2, pm)
+            painter.end()
+        super().paintEvent(event)
+
+    # ------------------------------------------------------------- chat
+
+    def _system_prompt(self) -> str:
+        return i18n.tr("agent_system_prompt")
 
     def _welcome_html(self) -> str:
         return f"<p style='color:#666'>{i18n.tr('agent_welcome')}</p>"

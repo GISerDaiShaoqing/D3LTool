@@ -3,10 +3,12 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, QUrl, Signal
+from PySide6.QtCore import (QEasingCurve, QPoint, QPropertyAnimation, Qt,
+                            QThread, QUrl, Signal)
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QIcon
-from PySide6.QtWidgets import (QDialog, QLabel, QMainWindow, QMessageBox,
-                               QSplitter, QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QDialog, QFrame, QLabel, QMainWindow,
+                               QMessageBox, QSplitter, QToolButton,
+                               QVBoxLayout, QWidget)
 
 from .. import __version__, auth, config, engine, i18n, search, tools
 from .. import APP_NAME
@@ -110,19 +112,20 @@ class MainWindow(QMainWindow):
         data_layout.addWidget(right)
 
         # agent downloads flow through the same engine so the task table
-        # and progress bridge show them like manual ones
+        # and progress bridge show them like manual ones; the panel shows
+        # in a right-edge drawer instead of a tab so the data page keeps
+        # its own layout untouched
         tools.attach_engine(self.engine)
         from .agent_panel import AgentPanel
         self.agent_panel = AgentPanel()
-        self.main_tabs = QTabWidget()
-        self.main_tabs.addTab(data_page, i18n.tr("tab_data"))
-        self.main_tabs.addTab(self.agent_panel, i18n.tr("tab_agent"))
 
         splitter.addWidget(self.search_panel)
-        splitter.addWidget(self.main_tabs)
+        splitter.addWidget(data_page)
         splitter.setSizes([340, 760])
         layout.addWidget(splitter)
         self.setCentralWidget(central)
+
+        self._build_agent_drawer()
 
         self.statusBar().showMessage(i18n.tr("status_logged_out"))
 
@@ -131,6 +134,87 @@ class MainWindow(QMainWindow):
         self.bridge.status.connect(self.task_table.on_status)
         self.bridge.progress.connect(self.task_table.on_progress)
         self.bridge.cleared.connect(self.task_table.on_cleared)
+
+    # ------------------------------------------------------- agent drawer
+
+    AGENT_DRAWER_WIDTH = 430
+
+    def _build_agent_drawer(self):
+        """Floating right-edge drawer hosting the AI assistant panel."""
+        cw = self.centralWidget()
+        self.agent_drawer = QFrame(cw)
+        self.agent_drawer.setObjectName("agentDrawer")
+        drawer_layout = QVBoxLayout(self.agent_drawer)
+        drawer_layout.setContentsMargins(0, 0, 0, 0)
+        drawer_layout.addWidget(self.agent_panel)
+        self.agent_panel.hide_requested.connect(
+            lambda: self._toggle_agent_drawer())
+        self.agent_drawer.hide()
+
+        self.agent_tab_btn = QToolButton(cw)
+        self.agent_tab_btn.setObjectName("agentTabButton")
+        self.agent_tab_btn.setText("AI")
+        self.agent_tab_btn.setToolTip(i18n.tr("agent_drawer_tip"))
+        self.agent_tab_btn.clicked.connect(self._focus_agent)
+
+        self._agent_anim = QPropertyAnimation(self.agent_drawer, b"pos", self)
+        self._agent_anim.setDuration(200)
+        self._agent_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._agent_anim.finished.connect(self._on_drawer_anim_done)
+        self._agent_drawer_open = False
+        self._place_agent_overlays()
+
+    def _toggle_agent_drawer(self, animate=True):
+        opening = not self._agent_drawer_open
+        self._agent_drawer_open = opening
+        self.agent_tab_btn.setVisible(not opening)
+        cw = self.centralWidget()
+        width = max(320, min(self.AGENT_DRAWER_WIDTH, cw.width() - 80))
+        self.agent_drawer.resize(width, cw.height())
+        open_pos = QPoint(cw.width() - width, 0)
+        closed_pos = QPoint(cw.width(), 0)
+        drawer = self.agent_drawer
+        self._agent_anim.stop()
+        if opening:
+            drawer.move(closed_pos)
+            drawer.show()
+            drawer.raise_()
+            self._start_drawer_anim(closed_pos, open_pos, animate)
+            self.agent_panel.input.setFocus()
+        else:
+            self._start_drawer_anim(drawer.pos(), closed_pos, animate)
+
+    def _start_drawer_anim(self, start, end, animate):
+        if animate:
+            self._agent_anim.setStartValue(start)
+            self._agent_anim.setEndValue(end)
+            self._agent_anim.start()
+        else:
+            self.agent_drawer.move(end)
+            self._on_drawer_anim_done()
+
+    def _on_drawer_anim_done(self):
+        if not self._agent_drawer_open:
+            self.agent_drawer.hide()
+
+    def _place_agent_overlays(self):
+        """Pin drawer and edge tab to the current central rect (no slide)."""
+        cw = self.centralWidget()
+        width = max(320, min(self.AGENT_DRAWER_WIDTH, cw.width() - 80))
+        self.agent_drawer.resize(width, cw.height())
+        self._agent_anim.stop()
+        target_x = cw.width() - width if self._agent_drawer_open else cw.width()
+        self.agent_drawer.move(target_x, 0)
+        self.agent_drawer.raise_()
+        self.agent_tab_btn.adjustSize()
+        self.agent_tab_btn.move(cw.width() - self.agent_tab_btn.width() - 2,
+                                (cw.height() - self.agent_tab_btn.height()) // 2)
+        self.agent_tab_btn.raise_()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if getattr(self, "agent_drawer", None) is not None:
+            self._place_agent_overlays()
 
     def _build_menus(self):
         # ---- websites: personal + NASA
@@ -284,7 +368,8 @@ class MainWindow(QMainWindow):
         SettingsDialog(self, config=self.config, on_save=apply).exec()
 
     def _focus_agent(self):
-        self.main_tabs.setCurrentWidget(self.agent_panel)
+        if not self._agent_drawer_open:
+            self._toggle_agent_drawer()
         self.agent_panel.input.setFocus()
 
     def _switch_language(self, code):

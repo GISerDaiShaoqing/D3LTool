@@ -17,6 +17,7 @@ DEFAULTS = {
     "ai_base_url": "",
     "ai_model": "",
     "ai_api_key": "",
+    "ai_chat_bg": "",       # optional chat-drawer background image path
 }
 
 

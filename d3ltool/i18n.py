@@ -124,7 +124,13 @@ STRINGS = {
         "agent_test_fail": "连接失败：{reason}",
         "agent_need_setup": "请先填写：{fields}",
         "agent_key_note": "API Key 仅保存在本机 ~/.d3ltool/config.json，只发送给你填写的服务商；Earthdata 密码永远不会经过对话。",
-        "agent_welcome": "这是内置 AI 助手。填好右侧 API 地址与 Key 后，可直接用自然语言检索和下载数据，例如：“2020 年 1 月北京的夜光数据帮我下载”。工具与 MCP 服务器共用；下载会先弹窗确认。",
+        "agent_gear": "设置",
+        "agent_hide": "收起",
+        "agent_bg": "聊天背景（留空恢复默认）",
+        "agent_bg_pick": "浏览...",
+        "agent_bg_clear": "清除",
+        "agent_drawer_tip": "打开 AI 助手",
+        "agent_welcome": "这是内置 AI 助手。点右上角 ⚙ 填好 API 地址与 Key 后，可直接用自然语言检索和下载数据，例如：“2020 年 1 月北京的夜光数据帮我下载”。工具与 MCP 服务器共用；下载会先弹窗确认。",
         "agent_tool_run": "调用工具 {name}",
         "agent_confirm_title": "确认下载",
         "agent_confirm_text": "AI 请求执行 {name}，允许吗？",
@@ -282,8 +288,14 @@ STRINGS = {
         "agent_key_note": "The API key is stored only in ~/.d3ltool/config.json on this "
                           "machine and sent only to the provider you chose; your Earthdata "
                           "password never passes through the chat.",
-        "agent_welcome": "This is the built-in AI assistant. Fill in the provider and "
-                         "API key on the right, then just ask, e.g. “download the January "
+        "agent_gear": "Settings",
+        "agent_hide": "Hide",
+        "agent_bg": "Chat background (empty = default)",
+        "agent_bg_pick": "Browse...",
+        "agent_bg_clear": "Clear",
+        "agent_drawer_tip": "Open AI assistant",
+        "agent_welcome": "This is the built-in AI assistant. Open ⚙ (top right) to fill in "
+                         "the provider and API key, then just ask, e.g. “download the January "
                          "2020 nighttime lights around Beijing”. It shares the tool set "
                          "with the MCP server; downloads ask for confirmation first.",
         "agent_tool_run": "calling tool {name}",

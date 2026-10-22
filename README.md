@@ -21,9 +21,11 @@ No more manual order creation, no more browser automation.
   automatic retry, size validation
 - **MCP server** (new in v2.1): `d3ltool-mcp` exposes search / tile math / downloads
   as [MCP tools](docs/mcp.md) for Claude Desktop, Cursor, ZCode and other AI clients
-- **AI Assistant page** (new in v2.1): plug any OpenAI-compatible API key into the GUI
-  and drive search & download with plain language (DeepSeek / Qwen / Kimi / GLM /
-  OpenAI / Ollama…); downloads ask for confirmation first — see [docs/mcp.md](docs/mcp.md)
+- **AI Assistant drawer** (new in v2.1, redesigned in v2.2): a right-edge
+  slide-out panel over the main window — plug any OpenAI-compatible API key
+  into the ⚙ popup settings and drive search & download with plain language
+  (DeepSeek / Qwen / Kimi / GLM / OpenAI / Ollama…); user background image
+  supported; downloads ask for confirmation first — see [docs/mcp.md](docs/mcp.md)
 - **Bilingual UI**: one-click 中文 / English switch (PySide6)
 - **Cross-platform**: Windows exe / macOS .app / Linux binary (CI builds), or `pip install d3ltool`
 - **Proxy support** for complex network environments
@@ -104,7 +106,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   author  = {Dai, Shaoqing},
   orcid   = {0000-0003-0858-4728},
   title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
-  version = {2.1.1},
+  version = {2.2.0},
   year    = {2026},
   url     = {https://github.com/GISerDaiShaoqing/D3LTool},
 }
@@ -112,6 +114,9 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-10 v2.2.0** — AI Assistant redesigned as a floating right-edge
+  drawer: the data page keeps its own layout, API settings moved into a
+  popup dialog, user background image supported
 - **2026-10 v2.1.1** — fix: AI-assistant download confirmation (a Yes click
   was reported as declined — PySide6 `Signal(dict)` copies payloads across
   the queued connection, now `Signal(object)`); MCP server lazily restores

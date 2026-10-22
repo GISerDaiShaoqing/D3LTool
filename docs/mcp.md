@@ -3,10 +3,11 @@
 自 v2.1.0 起，D3LTool 有两条 AI 通道，共用同一套工具：
 
 1. **MCP 服务器**（`d3ltool-mcp`）—— 供 Claude Desktop、Cursor、ZCode 等外部 AI 客户端调用；
-2. **软件内 AI 助手**（GUI 的“AI 助手”页）—— 自带 API Key 的 OpenAI 兼容 agent，不出软件即可对话完成任务。
+2. **软件内 AI 助手**（GUI 右缘滑出的“AI 助手”抽屉）—— 自带 API Key 的 OpenAI 兼容 agent，不出软件即可对话完成任务。
 
 Since v2.1.0, D3LTool exposes one shared tool set over **two channels**:
-an **MCP server** for external AI clients, and a built-in **AI Assistant** page in the GUI.
+an **MCP server** for external AI clients, and a built-in **AI Assistant**
+drawer that slides out from the right edge of the GUI.
 
 ## 工具清单 / Tool set
 
@@ -99,7 +100,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 
 ## 方式二：软件内 AI 助手
 
-主窗口右侧选择 **AI 助手** 标签页（菜单 **设置 → AI 助手** 可跳转）：
+点主窗口右缘的 **AI** 按钮（或菜单 **设置 → AI 助手**）滑出助手抽屉：
 
 1. **API 地址** —— 下拉预填了主流服务商模板，包括：
    - OpenAI：`https://api.openai.com/v1`

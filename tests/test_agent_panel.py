@@ -203,6 +203,27 @@ def test_agent_panel_confirm_accept_runs_download(monkeypatch, tmp_path):
     assert "user declined this download" not in text
 
 
+def test_agent_panel_background_image(monkeypatch, tmp_path):
+    """A chosen image paints under the panel; clearing restores default."""
+    app, panel, _saved = _make_panel(monkeypatch, tmp_path)
+
+    from PySide6.QtGui import QColor, QImage
+
+    bg = tmp_path / "bg.png"
+    img = QImage(10, 10, QImage.Format.Format_RGB32)
+    img.fill(QColor(0x33, 0x66, 0xCC))
+    assert img.save(str(bg), "PNG")
+
+    panel.apply_background(str(bg))
+    assert panel.background_path() == str(bg)
+    color = panel.grab().toImage().pixelColor(5, 5)   # top-left margin pixel
+    assert (color.red(), color.green(), color.blue()) == (0x33, 0x66, 0xCC)
+
+    panel.apply_background("")
+    assert panel.background_path() == ""
+    assert panel._bg is None
+
+
 def test_agent_panel_clear_resets_history(monkeypatch, tmp_path):
     app, panel, _saved = _make_panel(monkeypatch, tmp_path)
     monkeypatch.setattr(panel, "_make_transport", lambda: _scripted_transport("done"))
