@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]" pyinstaller
+          python -m pip install -e ".[dev,mcp]" pyinstaller
 
       - name: Run tests
         run: python -m pytest tests/ -q --ignore=tests/test_gui_smoke.py
@@ -58,6 +58,18 @@ jobs:
           if [ "$RUNNER_OS" = "Windows" ]; then BIN="dist/D3LToolNASA.exe"; else BIN="dist/D3LToolNASA"; fi
           QT_QPA_PLATFORM=offscreen "$BIN" --smoke || echo "::warning::smoke exit=$?"
 
+      - name: MCP smoke test (stdio round trip)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then MCP_BIN="dist/D3LToolMCP.exe"; else MCP_BIN="dist/D3LToolMCP"; fi
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+            | "$MCP_BIN" > mcp_smoke.out || echo "::warning::mcp smoke exit=$?"
+          grep -q '"d3ltool"' mcp_smoke.out || echo "::warning::mcp smoke: no serverInfo"
+          grep -q 'search_granules' mcp_smoke.out || echo "::warning::mcp smoke: no tools listed"
+
       - name: Package (macOS zip the .app)
         if: runner.os == 'macOS'
         run: |
@@ -71,10 +83,13 @@ jobs:
           mkdir -p release
           if [ "$RUNNER_OS" = "Windows" ]; then
             cp dist/D3LToolNASA.exe release/D3LToolNASA-windows-x64.exe
+            cp dist/D3LToolMCP.exe release/D3LToolMCP-windows-x64.exe
           elif [ "$RUNNER_OS" = "macOS" ]; then
             cp dist/D3LToolNASA-*.zip release/
+            cp dist/D3LToolMCP release/D3LToolMCP-macos-${{ runner.arch }}
           else
             cp dist/D3LToolNASA release/D3LToolNASA-linux-x64
+            cp dist/D3LToolMCP release/D3LToolMCP-linux-x64
           fi
 
       - uses: actions/upload-artifact@v4

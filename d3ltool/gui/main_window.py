@@ -6,9 +6,9 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QThread, QUrl, Signal
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QIcon
 from PySide6.QtWidgets import (QDialog, QLabel, QMainWindow, QMessageBox,
-                               QSplitter, QVBoxLayout, QWidget)
+                               QSplitter, QTabWidget, QVBoxLayout, QWidget)
 
-from .. import __version__, auth, config, engine, i18n, search
+from .. import __version__, auth, config, engine, i18n, search, tools
 from .. import APP_NAME
 from .bridge import EngineBridge
 from .login_dialog import LoginDialog
@@ -104,8 +104,22 @@ class MainWindow(QMainWindow):
         right.addWidget(self.task_table)
         right.setSizes([380, 300])
 
+        data_page = QWidget()
+        data_layout = QVBoxLayout(data_page)
+        data_layout.setContentsMargins(0, 0, 0, 0)
+        data_layout.addWidget(right)
+
+        # agent downloads flow through the same engine so the task table
+        # and progress bridge show them like manual ones
+        tools.attach_engine(self.engine)
+        from .agent_panel import AgentPanel
+        self.agent_panel = AgentPanel()
+        self.main_tabs = QTabWidget()
+        self.main_tabs.addTab(data_page, i18n.tr("tab_data"))
+        self.main_tabs.addTab(self.agent_panel, i18n.tr("tab_agent"))
+
         splitter.addWidget(self.search_panel)
-        splitter.addWidget(right)
+        splitter.addWidget(self.main_tabs)
         splitter.setSizes([340, 760])
         layout.addWidget(splitter)
         self.setCentralWidget(central)
@@ -156,8 +170,12 @@ class MainWindow(QMainWindow):
         self.act_logout.triggered.connect(self._on_logout)
         self.act_settings = QAction(i18n.tr("act_settings"), self)
         self.act_settings.triggered.connect(self._on_settings)
+        self.act_agent = QAction(i18n.tr("act_agent"), self)
+        self.act_agent.triggered.connect(self._focus_agent)
         menu_settings.addAction(self.act_login)
         menu_settings.addAction(self.act_logout)
+        menu_settings.addSeparator()
+        menu_settings.addAction(self.act_agent)
         menu_settings.addSeparator()
         menu_settings.addAction(self.act_settings)
 
@@ -264,6 +282,10 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(i18n.tr("settings_saved"))
 
         SettingsDialog(self, config=self.config, on_save=apply).exec()
+
+    def _focus_agent(self):
+        self.main_tabs.setCurrentWidget(self.agent_panel)
+        self.agent_panel.input.setFocus()
 
     def _switch_language(self, code):
         self.config = config.update_config(language=code)

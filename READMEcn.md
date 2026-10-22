@@ -17,6 +17,10 @@ D3L Tool v2 是一个免费开源的 NASA 卫星数据**检索与下载**工具�
   检索不需要登录
 - **产品覆盖**：MODIS、VIIRS（LAADS DAAC）、MERRA-2（GES DISC），也可输入任意 CMR short_name
 - **健壮下载**：多线程队列、分块进度、HTTP 断点续传、失败自动重试、文件大小校验
+- **MCP 服务器**（v2.1 新增）：`d3ltool-mcp` 把检索/瓦片换算/下载暴露为
+  [MCP 工具](docs/mcp.md)，Claude Desktop、Cursor、ZCode 等 AI 客户端可直接调用
+- **AI 助手**（v2.1 新增）：软件内接入任意 OpenAI 兼容 API Key（DeepSeek / Qwen /
+  Kimi / 智谱 / OpenAI / Ollama…），自然语言直接完成检索与下载；下载会先弹窗确认
 - **中英双语**：菜单一键切换中文 / English（PySide6 界面）
 - **跨平台**：Windows exe / macOS .app / Linux 二进制（CI 自动构建），或 `pip install d3ltool`
 - **代理支持**：适应复杂网络环境
@@ -54,6 +58,19 @@ d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --des
 d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40
 ```
 
+### MCP / AI 助手
+
+两条通道共用同一套工具：`check_auth` / `list_products` / `point_to_tile` /
+`tile_bounds` / `search_granules` / `start_download` / `download_status` /
+`cancel_download` / `retry_download`。密码永远不会作为工具参数——下载复用本机
+已登录的 Earthdata 凭据。
+
+```bash
+python -m pip install "d3ltool[mcp]"   # 然后把 MCP 客户端指向 d3ltool-mcp
+```
+
+Claude Desktop / Cursor / ZCode 配置与软件内 AI 助手的用法见 [docs/mcp.md](docs/mcp.md)。
+
 ## 独立安装包 / Release
 
 预编译包在 [GitHub Releases](https://github.com/GISerDaiShaoqing/D3LTool/releases/latest) 下载：
@@ -83,6 +100,9 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 
 ## 更新日志
 
+- **2026-10 v2.1.0** — MCP 服务器（`d3ltool-mcp`：stdio 上 9 个工具，供 Claude Desktop /
+  Cursor / ZCode 调用，复用本机登录凭据）与软件内 AI 助手对话页（任意 OpenAI 兼容服务商、
+  agent 工具调用、下载弹窗确认、共享下载任务表）
 - **2026-09 v2.0.3** — 产品目录窗口（按卫星浏览产品/版本/说明、可筛选、双击选用）；CI 因 GitHub 退役 macos-13 Intel runner 改为仅 Apple Silicon 构建（Intel Mac 用户用 `pip install d3ltool`）
 - **2026-09 v2.0.2** — Earthdata 登录彻底修复：适配 earthaccess 0.19 认证单例、启动时自动从本机 netrc 恢复会话、登录失败提示精准化（401/网络/账号受限）
 - **2026-09 v2.0.0** — 全新重构：earthaccess/CMR 检索、瓦片地图、断点续传、PySide6 双语界面、跨平台

@@ -234,20 +234,36 @@ def new_download_session():
     """An authenticated requests.Session for the download engine.
 
     Falls back to an anonymous session; downloads will then fail with 401
-    and the UI prompts for login.
+    and the UI prompts for login. The configured proxy (settings dialog)
+    is applied to every session created here.
     """
     import requests
 
+    session = None
     if earthaccess is not None:
         try:
-            return earthaccess.get_requests_https_session()
+            session = earthaccess.get_requests_https_session()
         except AttributeError:
             singleton = _auth_singleton()
             if singleton is not None:
                 try:
-                    return singleton.get_session()
+                    session = singleton.get_session()
                 except Exception:
-                    pass
+                    session = None
         except Exception:
-            pass
-    return requests.Session()
+            session = None
+    if session is None:
+        session = requests.Session()
+    _apply_configured_proxy(session)
+    return session
+
+
+def _apply_configured_proxy(session) -> None:
+    try:
+        from . import config
+
+        proxy = (config.load_config() or {}).get("proxy_url") or ""
+        if proxy:
+            session.proxies.update({"http": proxy, "https": proxy})
+    except Exception:
+        pass

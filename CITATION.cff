@@ -8,8 +8,8 @@ authors:
     given-names: Shaoqing
     orcid: "https://orcid.org/0000-0003-0858-4728"
     email: dsq1993qingge@163.com
-version: 2.0.2
-date-released: "2026-09-16"
+version: 2.1.0
+date-released: "2026-10-22"
 license: MIT
 repository-code: "https://github.com/GISerDaiShaoqing/D3LTool"
 url: "https://gisersqdai.top/D3LTool/"
@@ -22,8 +22,11 @@ abstract: >-
   date range, sinusoidal tile map, or bounding box), and a robust,
   resumable multi-threaded download queue in a bilingual (Chinese/English)
   PySide6 graphical interface, with a command-line interface sharing the
-  same core library. It is designed for remote-sensing practitioners who
-  do not write code and for users in network-constrained environments.
+  same core library. Since v2.1 its capabilities are also exposed as
+  Model Context Protocol (MCP) tools for AI clients and as a built-in
+  conversational agent page, enabling natural-language data retrieval and
+  download. It is designed for remote-sensing practitioners who do not
+  write code and for users in network-constrained environments.
 keywords:
   - NASA
   - MODIS
@@ -33,3 +36,5 @@ keywords:
   - Earthdata
   - LAADS
   - data download
+  - MCP
+  - AI agent

@@ -23,6 +23,18 @@ if sys.platform == 'win32':
 elif sys.platform == 'darwin':
     icon = str(RES / 'D3L.icns')
 
+hidden = [
+    'boto3',
+    'botocore',
+    's3fs',
+    'fsspec',
+]
+try:
+    from PyInstaller.utils.hooks import collect_submodules
+    hidden += collect_submodules('mcp')      # 1.x fastmcp / 2.x mcpserver
+except Exception:
+    hidden += ['mcp']
+
 a = Analysis(
     [str(ROOT / 'D3LToolNASA.py')],
     pathex=[str(ROOT)],
@@ -30,12 +42,7 @@ a = Analysis(
     datas=[
         (str(RES), 'd3ltool/resources'),
     ],
-    hiddenimports=[
-        'boto3',
-        'botocore',
-        's3fs',
-        'fsspec',
-    ],
+    hiddenimports=hidden,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -65,6 +72,46 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=icon,
+    version=None,
+)
+
+# ---- MCP server: separate console build (stdio protocol needs real stdout)
+a_mcp = Analysis(
+    [str(ROOT / 'D3LToolMCP.py')],
+    pathex=[str(ROOT)],
+    binaries=[],
+    datas=[
+        (str(RES), 'd3ltool/resources'),
+    ],
+    hiddenimports=hidden,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    cipher=block_cipher,
+    noarchive=False,
+)
+pyz_mcp = PYZ(a_mcp.pure, a_mcp.zipped_data, cipher=block_cipher)
+exe_mcp = EXE(
+    pyz_mcp,
+    a_mcp.scripts,
+    a_mcp.binaries,
+    a_mcp.datas,
+    [],
+    name='D3LToolMCP',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,           # stdio MCP protocol requires stdout
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=icon if sys.platform == 'win32' else None,
     version=None,
 )
 

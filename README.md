@@ -19,6 +19,11 @@ No more manual order creation, no more browser automation.
 - **Coverage**: MODIS, VIIRS (LAADS DAAC), MERRA-2 (GES DISC); any CMR short_name works too
 - **Robust downloads**: multi-threaded queue, chunked progress, HTTP Range resume,
   automatic retry, size validation
+- **MCP server** (new in v2.1): `d3ltool-mcp` exposes search / tile math / downloads
+  as [MCP tools](docs/mcp.md) for Claude Desktop, Cursor, ZCode and other AI clients
+- **AI Assistant page** (new in v2.1): plug any OpenAI-compatible API key into the GUI
+  and drive search & download with plain language (DeepSeek / Qwen / Kimi / GLM /
+  OpenAI / Ollama…); downloads ask for confirmation first — see [docs/mcp.md](docs/mcp.md)
 - **Bilingual UI**: one-click 中文 / English switch (PySide6)
 - **Cross-platform**: Windows exe / macOS .app / Linux binary (CI builds), or `pip install d3ltool`
 - **Proxy support** for complex network environments
@@ -56,6 +61,20 @@ d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --des
 d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40
 ```
 
+### MCP / AI Assistant
+
+Both channels share one tool set — `check_auth`, `list_products`, `point_to_tile`,
+`tile_bounds`, `search_granules`, `start_download`, `download_status`,
+`cancel_download`, `retry_download`. Passwords are never tool parameters:
+downloads reuse the Earthdata sign-in persisted on this machine.
+
+```bash
+python -m pip install "d3ltool[mcp]"   # then point your MCP client at `d3ltool-mcp`
+```
+
+Client wiring (Claude Desktop / Cursor / ZCode) and the in-app AI Assistant
+guide live in [docs/mcp.md](docs/mcp.md).
+
 ## Standalone builds / Release
 
 Download prebuilt packages from
@@ -85,7 +104,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   author  = {Dai, Shaoqing},
   orcid   = {0000-0003-0858-4728},
   title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
-  version = {2.0.2},
+  version = {2.1.0},
   year    = {2026},
   url     = {https://github.com/GISerDaiShaoqing/D3LTool},
 }
@@ -93,6 +112,10 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-10 v2.1.0** — MCP server (`d3ltool-mcp`: 9 tools over stdio for Claude
+  Desktop / Cursor / ZCode, credential-reuse design) and a built-in AI Assistant
+  chat page (any OpenAI-compatible provider, agent tool calls, download
+  confirmation, shared task table)
 - **2026-09 v2.0.3** — product catalog dialog (browse per satellite, bilingual
   descriptions, filter, double-click to apply); CI switched to Apple Silicon
   only (GitHub retired the macos-13 Intel runner)

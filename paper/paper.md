@@ -25,7 +25,7 @@ authors:
     orcid: 0000-0003-0858-4728
     affiliations:
       - "Independent researcher; https://gisersqdai.top/"
-date: 16 September 2026
+date: 22 October 2026
 DOI: 10.5281/zenodo.XXXXXXX   <!-- paste the Zenodo DOI of the archived release -->
 ---
 
@@ -66,7 +66,14 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
 - **local credential persistence** in the conventional `~/.netrc` file, silent
   session restore at startup, and configurable proxy support;
 - **a CLI** (`d3ltool search/download/login`) sharing the same core library as
-  the GUI, so scripted pipelines and the GUI stay in feature parity.
+  the GUI, so scripted pipelines and the GUI stay in feature parity;
+- **AI-native access**: since v2.1 the same core capabilities are exposed
+  through a Model Context Protocol (MCP) server (`d3ltool-mcp`, nine tools over
+  stdio) so AI assistants such as Claude Desktop, Cursor or ZCode can search and
+  download data on the user's behalf, and through a built-in conversational
+  assistant page in the GUI that accepts any OpenAI-compatible provider key;
+  tool-driven downloads reuse the persisted credentials and require explicit
+  user confirmation before queuing.
 
 # Software description
 
@@ -88,13 +95,21 @@ callbacks that a thin Qt bridge forwards to the UI; `auth.py` wraps
 versions), persists credentials to the platform netrc file, and restores
 sessions at startup; `tiles.py` implements the MODIS sinusoidal tile grid
 arithmetic; `products.py` holds a curated, bilingual product catalogue.
+`tools.py` registers the nine shared agent tools (sign-in status, catalogue,
+tile conversions, granule search, download queue control) with JSON schemas
+derived from static signatures; `mcp_server.py` publishes the registry over
+MCP stdio (supporting both the v1 and v2 tool-APIs of the official SDK), and
+`agent/` provides a provider-agnostic streaming client for OpenAI-compatible
+endpoints plus a small tool-calling loop used by the built-in assistant.
 The GUI (`d3ltool.gui`) is a PySide6 application: a search panel with the
-tile map, results and task tables, settings (download directory, worker
-count, proxy) and a language switcher; all strings live in a single i18n
-module. The test suite (41 pytest tests at submission time) covers the tile
-math, configuration handling, search query construction and version
-fallbacks, the resume/retry engine against a local Range-capable HTTP
-server, GUI smoke tests and login diagnostics.
+tile map, results and task tables, a conversational assistant page sharing
+the main engine, settings (download directory, worker count, proxy) and a
+language switcher; all strings live in a single i18n module. The test suite
+(78 pytest tests at submission time) covers the tile math, configuration
+handling, search query construction and version fallbacks, the
+resume/retry engine against a local Range-capable HTTP server, the tool
+registry and agent loop with a local streaming-HTTP fake, an end-to-end
+stdio MCP round trip, and UI smoke/layout tests running offscreen.
 
 # Acknowledgements
 

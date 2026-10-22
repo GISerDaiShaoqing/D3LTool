@@ -13,6 +13,10 @@ DEFAULTS = {
     "max_workers": 3,
     "proxy_url": "",
     "username": "",
+    # AI Assistant (any OpenAI-compatible provider); key stays on this machine
+    "ai_base_url": "",
+    "ai_model": "",
+    "ai_api_key": "",
 }
 
 

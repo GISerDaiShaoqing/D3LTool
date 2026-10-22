@@ -104,6 +104,31 @@ STRINGS = {
         "msg_enqueue_none": "请先在结果表中勾选要下载的文件",
         "msg_need_login": "下载需要先登录 Earthdata 账号",
         "msg_lang_restart": "语言已切换为 {lang}，重启程序后界面语言生效。",
+        "tab_data": "数据",
+        "tab_agent": "AI 助手",
+        "act_agent": "AI 助手",
+        "agent_input_hint": "输入问题，Enter 发送（Shift+Enter 换行）",
+        "agent_send": "发送",
+        "agent_stop": "停止",
+        "agent_clear": "清空对话",
+        "agent_you_label": "你：",
+        "agent_ai_label": "AI：",
+        "agent_settings": "AI 服务设置（OpenAI 兼容）",
+        "agent_base_url": "API 地址",
+        "agent_model": "模型",
+        "agent_api_key": "API Key",
+        "agent_key_placeholder": "sk-...",
+        "agent_test": "测试连接",
+        "agent_testing": "正在测试...",
+        "agent_test_ok": "连接成功 ✓",
+        "agent_test_fail": "连接失败：{reason}",
+        "agent_need_setup": "请先填写：{fields}",
+        "agent_key_note": "API Key 仅保存在本机 ~/.d3ltool/config.json，只发送给你填写的服务商；Earthdata 密码永远不会经过对话。",
+        "agent_welcome": "这是内置 AI 助手。填好右侧 API 地址与 Key 后，可直接用自然语言检索和下载数据，例如：“2020 年 1 月北京的夜光数据帮我下载”。工具与 MCP 服务器共用；下载会先弹窗确认。",
+        "agent_tool_run": "调用工具 {name}",
+        "agent_confirm_title": "确认下载",
+        "agent_confirm_text": "AI 请求执行 {name}，允许吗？",
+        "agent_system_prompt": "你是 NASA 数据下载工具 D3LTool 的内置 AI 助手。可用工具：check_auth 查登录状态、list_products 查产品目录、point_to_tile/tile_bounds 做经纬度与瓦片换算、search_granules 检索 granule、start_download 提交下载队列、download_status 查询进度、cancel_download/retry_download 控制任务。规则：1) 涉及产品名/文件名/瓦片号时必须用工具查询，不要编造；2) 帮用户下载前先检索并列出将下载的文件；3) start_download 会弹窗请用户确认，被拒绝时不要反复重试；4) 未登录时检索仍可用，下载会返回 not_authenticated，请引导用户在主界面登录 Earthdata（密码不经过对话）；5) 用用户的语言简洁回答。",
         "settings_title": "设置",
         "settings_download_dir": "下载目录",
         "settings_browse": "浏览...",
@@ -235,6 +260,48 @@ STRINGS = {
         "msg_enqueue_none": "Select files in the results table first",
         "msg_need_login": "Please sign in to Earthdata before downloading",
         "msg_lang_restart": "Language switched to {lang}. Restart the app to apply.",
+        "tab_data": "Data",
+        "tab_agent": "AI Assistant",
+        "act_agent": "AI Assistant",
+        "agent_input_hint": "Type a question; Enter sends (Shift+Enter for a newline)",
+        "agent_send": "Send",
+        "agent_stop": "Stop",
+        "agent_clear": "Clear chat",
+        "agent_you_label": "You:",
+        "agent_ai_label": "AI:",
+        "agent_settings": "AI provider (OpenAI-compatible)",
+        "agent_base_url": "Base URL",
+        "agent_model": "Model",
+        "agent_api_key": "API Key",
+        "agent_key_placeholder": "sk-...",
+        "agent_test": "Test connection",
+        "agent_testing": "Testing...",
+        "agent_test_ok": "Connection OK ✓",
+        "agent_test_fail": "Connection failed: {reason}",
+        "agent_need_setup": "Please fill in: {fields}",
+        "agent_key_note": "The API key is stored only in ~/.d3ltool/config.json on this "
+                          "machine and sent only to the provider you chose; your Earthdata "
+                          "password never passes through the chat.",
+        "agent_welcome": "This is the built-in AI assistant. Fill in the provider and "
+                         "API key on the right, then just ask, e.g. “download the January "
+                         "2020 nighttime lights around Beijing”. It shares the tool set "
+                         "with the MCP server; downloads ask for confirmation first.",
+        "agent_tool_run": "calling tool {name}",
+        "agent_confirm_title": "Confirm download",
+        "agent_confirm_text": "The AI wants to run {name}. Allow it?",
+        "agent_system_prompt": "You are the built-in AI assistant of D3LTool, a NASA data "
+                               "downloader. Available tools: check_auth (sign-in state), "
+                               "list_products (catalog), point_to_tile / tile_bounds (tile "
+                               "math), search_granules (CMR search), start_download (queue "
+                               "downloads), download_status (progress), cancel_download / "
+                               "retry_download. Rules: 1) look up product names, files and "
+                               "tiles with tools, never invent them; 2) before downloading, "
+                               "search and list the files you are about to download; 3) "
+                               "start_download pops a user confirmation dialog — if declined, "
+                               "do not retry repeatedly; 4) without sign-in, search still "
+                               "works but downloads return not_authenticated — guide the "
+                               "user to sign in on the main window (the password never passes "
+                               "through chat); 5) answer in the user's language, concisely.",
         "settings_title": "Settings",
         "settings_download_dir": "Download folder",
         "settings_browse": "Browse...",

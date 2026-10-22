@@ -1,4 +1,4 @@
-# D3L Tool of NASA Satellite v2.0
+# D3L Tool of NASA Satellite v2.1
 
 D3L Tool v2 是一个免费开源的 NASA 卫星数据下载工具：在软件内完成 **登录 → 检索 → 下载** 全流程，
 不再需要去 NASA 网站创建订单，也**不再依赖浏览器模拟**。
@@ -14,6 +14,12 @@ D3L Tool v2 is a free & open-source downloader for NASA Earth science data:
   [CMR](https://cmr.earthdata.nasa.gov/search/site/docs/search/api.html) 与 [earthaccess](https://earthaccess.readthedocs.io/)
 - **健壮下载 / Robust download**：多线程队列、分块进度、断点续传（Range）、失败自动重试、文件大小校验
   Multi-threaded queue, chunked progress, HTTP Range resume, auto-retry, size validation
+- **MCP 服务器 / MCP server (v2.1 新增)**：`d3ltool-mcp` 把检索/瓦片换算/下载暴露为
+  [MCP 工具](docs/mcp.md)，Claude Desktop、Cursor、ZCode 等 AI 客户端可直接调用
+  Exposes search / tile math / downloads as MCP tools for AI clients
+- **AI 对话页 / AI Assistant (v2.1 新增)**：软件内右侧“AI 助手”页填入任意 OpenAI 兼容 API Key
+  （DeepSeek / Qwen / Kimi / 智谱 / OpenAI / Ollama…），用自然语言驱动 agent 检索和下载；
+  下载前弹窗确认，任务直接进下载表。详见 [docs/mcp.md](docs/mcp.md)
 - **中英双语 / Bilingual**：菜单一键切换中文 / English
 - **GUI + CLI**：PySide6 图形界面，同时提供命令行（`d3ltool search` / `d3ltool download`）
 - **代理支持 / Proxy**：适应复杂网络环境
@@ -25,9 +31,11 @@ D3L Tool v2 is a free & open-source downloader for NASA Earth science data:
 ```bash
 cd D3LTool
 python -m pip install -e .
+# 需要 MCP 服务器（d3ltool-mcp）时：
+python -m pip install -e ".[mcp]"
 ```
 
-可选安装开发依赖（含 pytest）：`python -m pip install -e ".[dev]"`
+可选安装开发依赖（含 pytest 与 mcp）：`python -m pip install -e ".[dev]"`
 
 ## 使用 / Usage
 
@@ -41,6 +49,8 @@ d3ltool-gui     # 或 python -m d3ltool
    （检索不需要登录；凭据只保存在本机 `~/.netrc`）
 2. 左侧 **检索面板** —— 选产品（或填自定义 short_name）、时间范围、点瓦片图选区域（MERRA-2 可填经纬度范围）
 3. 结果表勾选文件 → **加入下载队列**，右下角任务表实时显示进度，支持暂停/续传/重试
+4. **AI 助手** 标签页 —— 填 API 地址和 Key，然后用一句话下载数据，例如
+   “2020 年 1 月北京的夜光数据帮我下载”
 
 ### 命令行 / CLI
 
@@ -57,6 +67,15 @@ d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --des
 # MERRA-2（按经纬度范围）
 d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40
 ```
+
+### MCP / AI Agent
+
+工具集（MCP 与软件内 AI 助手共用）：`check_auth` / `list_products` /
+`point_to_tile` / `tile_bounds` / `search_granules` / `start_download` /
+`download_status` / `cancel_download` / `retry_download`。
+密码永远不会作为工具参数 —— 下载复用本机已登录的 Earthdata 凭据。
+
+各客户端的接入配置见 [docs/mcp.md](docs/mcp.md)。
 
 ## 设置 / Settings
 
@@ -78,8 +97,8 @@ d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 4
 `D3LToolNASA.spec` 平台感知：Windows 用 `.ico`、macOS 用 `.icns` 并产出 `.app`、Linux 直接出二进制。
 
 - **自动化（推荐）**：推送 `v*` 标签或在 Actions 页手动触发 `build` 工作流，
-  会自动在 windows / macos-14(Apple Silicon) / macos-13(Intel) / ubuntu 四个环境构建，
-  产物上传到 Actions Artifacts，标签构建同时挂到 GitHub Release。
+  会在 windows / macos-14(Apple Silicon) / ubuntu 三个环境构建 GUI 与 MCP 两个可执行文件
+  （`D3LToolNASA` + `D3LToolMCP`），产物上传到 Actions Artifacts，标签构建同时挂到 GitHub Release。
 - **注意**：PyInstaller 不能交叉编译，mac 版必须在 macOS 上构建 —— 这正是用 CI 的原因。
 - **macOS Gatekeeper**：无签名（未加入 Apple 开发者计划）的 .app 首次打开会被拦截，
   可右键 → 打开，或执行 `xattr -cr D3LToolNASA.app`；若需正式分发，加入
