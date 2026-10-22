@@ -40,6 +40,26 @@ class _RangeHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def quiesce_qt_before_exit():
+    """Shut Qt down before the pytest process exits.
+
+    PySide6 6.10+ on macOS segfaults (shell exit code 139) during interpreter
+    shutdown when a QApplication with live widgets is still referenced, killing
+    the whole test step after every test already passed. quit() + shutdown()
+    destroys the instance deterministically; a no-op when Qt was never imported.
+    """
+    yield
+    try:
+        from PySide6.QtWidgets import QApplication
+    except ImportError:
+        return
+    app = QApplication.instance()
+    if app is not None:
+        app.quit()
+        app.shutdown()
+
+
 @pytest.fixture
 def range_server():
     """Start a local server serving `payload`; yields the base URL."""

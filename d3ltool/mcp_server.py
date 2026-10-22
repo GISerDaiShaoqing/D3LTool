@@ -26,7 +26,8 @@ def _build_server():
 
     # mcp 1.x keeps the high-level server in fastmcp; 2.x renamed it MCPServer.
     # Signatures of (name, instructions), add_tool(fn, name, description) and
-    # run("stdio") are the same, so one alias covers both.
+    # run("stdio") are the same, so one alias covers both. The [mcp] extra is
+    # capped below 3 in pyproject to block a future breaking major release.
     try:
         from mcp.server.fastmcp import FastMCP
     except ImportError:

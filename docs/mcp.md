@@ -38,7 +38,8 @@ python -m pip install "d3ltool[mcp]"
 cd D3LTool && python -m pip install -e ".[mcp]"
 ```
 
-SDK 需要 `mcp>=1.2`（v1 的 `fastmcp` 与 v2 的 `mcpserver` API 均已适配）。
+SDK 要求 `mcp>=1.2,<3`（v1 的 `fastmcp` 与 v2 的 `mcpserver` API 均已适配；上限挡住
+未来 3.x 的大版本破坏）。
 
 入口二选一：`d3ltool-mcp`（pip 安装注册的命令）或 `python -m d3ltool.mcp_server`；
 使用官方发行包时也可以直接指向 `D3LToolMCP(.exe)`。
@@ -127,6 +128,6 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 - **`d3ltool-mcp` 报 "MCP SDK is not installed"**：`python -m pip install "d3ltool[mcp]"`
 - **AI 助手说下载未登录（not_authenticated）**：先在 GUI 登录一次（凭据随后自动持久化），或命令行 `d3ltool login`
 - **客户端列表里搜不到 d3ltool 服务器**：检查 `command` 的路径，Windows 下 pip 脚本在
-  `Python\Scripts\d3ltool-mcp.exe`；确认 mcp>=1.2 已安装
+  `Python\Scripts\d3ltool-mcp.exe`；确认 `pip show mcp` 显示版本在 1.2~2.x 区间
 - **流式输出中途断开**：多数服务商对长连接有限时，任务建议拆小；下载本身由
   D3LTool 引擎完成并支持断点续传，与对话无关
