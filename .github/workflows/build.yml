@@ -41,16 +41,39 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev,mcp]" pyinstaller
+          # PySide6 pinned ~=6.11.2: PySide6 6.12.0 (released 2026-10-08) crashes
+          # our offscreen Qt test process on CI (SIGSEGV at teardown on linux/mac);
+          # 6.11.2 is the version validated locally. Bump deliberately.
+          python -m pip install -e ".[dev,mcp]" pyinstaller "PySide6~=6.11.2"
 
       # Qt tests run in their OWN process: PySide6 state left behind in a mixed
       # pytest process corrupted later threading-heavy engine tests on macOS
       # (a mid-run SIGSEGV with exit code 139, Windows/Linux unaffected).
+      # Both test steps echo failures as ::warning:: annotations so the failing
+      # tests are visible via the public checks API without repo-authorized logs.
       - name: Run tests (core)
-        run: python -m pytest tests -q --ignore=tests/test_gui_smoke.py --ignore=tests/test_agent_panel.py --ignore=tests/test_layout.py --ignore=tests/test_product_catalog.py --ignore=tests/test_resources.py
+        shell: bash
+        run: |
+          set +e
+          python -m pytest tests -q --ignore=tests/test_gui_smoke.py --ignore=tests/test_agent_panel.py --ignore=tests/test_layout.py --ignore=tests/test_product_catalog.py --ignore=tests/test_resources.py > core_tests.log 2>&1
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            grep -E "^(FAILED|ERROR)|Fatal|Segmentation" core_tests.log | head -8 | sed 's/^/::warning::CORE /'
+            tail -5 core_tests.log | sed 's/^/::warning::CORE-tail /'
+          fi
+          exit $code
 
       - name: Run tests (Qt, offscreen)
-        run: python -m pytest tests/test_agent_panel.py tests/test_layout.py tests/test_product_catalog.py tests/test_resources.py -q
+        shell: bash
+        run: |
+          set +e
+          python -m pytest tests/test_agent_panel.py tests/test_layout.py tests/test_product_catalog.py tests/test_resources.py -q > qt_tests.log 2>&1
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            grep -E "^(FAILED|ERROR)|Fatal|Segmentation" qt_tests.log | head -8 | sed 's/^/::warning::QT /'
+            tail -5 qt_tests.log | sed 's/^/::warning::QT-tail /'
+          fi
+          exit $code
 
       - name: Regenerate icon artifacts (icns for macOS)
         run: python make_icon.py

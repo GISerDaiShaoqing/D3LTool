@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 """Shared fixtures: a local HTTP server that supports HEAD/GET + Range."""
 
+import os
+
+# Headless insurance: must be set before any test imports PySide6. Tests also
+# set it per-test, but the default here keeps module-level imports safe on
+# display-less CI runners even before fixtures run.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -40,25 +47,10 @@ class _RangeHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def quiesce_qt_before_exit():
-    """Shut Qt down before the pytest process exits.
-
-    PySide6 6.10+ on macOS segfaults (shell exit code 139) during interpreter
-    shutdown when a QApplication with live widgets is still referenced, killing
-    the whole test step after every test already passed. quit() + shutdown()
-    destroys the instance deterministically; a no-op when Qt was never imported.
-    """
-    yield
-    try:
-        from PySide6.QtWidgets import QApplication
-    except ImportError:
-        return
-    app = QApplication.instance()
-    if app is not None:
-        app.quit()
-        app.shutdown()
-
+# NOTE (Qt teardown): deliberately NOT calling QApplication.quit()/shutdown()
+# here. Under PySide6 6.12.0 on CI that teardown crashed the Qt test process
+# (SIGSEGV on linux/mac, errors on windows) while 6.11.x is unaffected, and
+# the original macOS suite crash was fixed by process isolation instead.
 
 @pytest.fixture
 def range_server():
