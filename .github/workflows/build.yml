@@ -43,8 +43,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev,mcp]" pyinstaller
 
-      - name: Run tests
-        run: python -m pytest tests/ -q --ignore=tests/test_gui_smoke.py
+      # Qt tests run in their OWN process: PySide6 state left behind in a mixed
+      # pytest process corrupted later threading-heavy engine tests on macOS
+      # (a mid-run SIGSEGV with exit code 139, Windows/Linux unaffected).
+      - name: Run tests (core)
+        run: python -m pytest tests -q --ignore=tests/test_gui_smoke.py --ignore=tests/test_agent_panel.py --ignore=tests/test_layout.py --ignore=tests/test_product_catalog.py --ignore=tests/test_resources.py
+
+      - name: Run tests (Qt, offscreen)
+        run: python -m pytest tests/test_agent_panel.py tests/test_layout.py tests/test_product_catalog.py tests/test_resources.py -q
 
       - name: Regenerate icon artifacts (icns for macOS)
         run: python make_icon.py
