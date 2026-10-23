@@ -1,0 +1,257 @@
+/* D3LTool site (v2.2 redesign) — NASA deep-space landing style.
+   Used by index.html / index-cn.html only; the documentation and
+   download pages keep the classic Cayman stylesheets. */
+
+:root {
+  --nasa-blue: #0b3d91;
+  --nasa-deep: #071629;
+  --nasa-red: #fc3d21;
+  --ink: #1f2937;
+  --muted: #57606a;
+  --line: #e4e9f0;
+  --bg-soft: #f6f8fb;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC",
+               Arial, sans-serif;
+  color: var(--ink);
+  background: #fff;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--nasa-blue); text-decoration: none; }
+a:hover { color: var(--nasa-red); }
+
+code, pre { font-family: "Cascadia Code", Consolas, Menlo, monospace; }
+
+.wrap { max-width: 1020px; margin: 0 auto; padding: 0 20px; }
+section { padding: 44px 0 6px; }
+
+.kicker {
+  color: var(--nasa-red);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+}
+h2 { font-size: 26px; margin: 6px 0 18px; }
+.section-lede { color: var(--muted); max-width: 660px; margin-bottom: 20px; }
+
+/* ------------------------------------------------ hero */
+.hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  text-align: center;
+  padding: 88px 20px 80px;
+  background: radial-gradient(1100px 480px at 50% -160px, #1d4fa7 0%, transparent 62%),
+              linear-gradient(165deg, var(--nasa-deep) 0%, #0b2a5b 55%, var(--nasa-blue) 100%);
+}
+.hero::before {
+  content: "";
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 8% 24%,  rgba(255,255,255,.85) 50%, transparent 51%),
+    radial-gradient(1px 1px    at 17% 66%,  rgba(255,255,255,.45) 50%, transparent 51%),
+    radial-gradient(2px 2px    at 26% 18%,  rgba(255,255,255,.75) 50%, transparent 51%),
+    radial-gradient(1px 1px    at 35% 78%,  rgba(255,255,255,.5) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 44% 34%, rgba(255,255,255,.8) 50%, transparent 51%),
+    radial-gradient(1px 1px    at 55% 12%,  rgba(255,255,255,.55) 50%, transparent 51%),
+    radial-gradient(2px 2px    at 63% 58%,  rgba(255,255,255,.7) 50%, transparent 51%),
+    radial-gradient(1px 1px    at 72% 30%,  rgba(255,255,255,.5) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 81% 72%, rgba(255,255,255,.8) 50%, transparent 51%),
+    radial-gradient(1px 1px    at 90% 40%,  rgba(255,255,255,.6) 50%, transparent 51%),
+    radial-gradient(2px 2px    at 96% 14%,  rgba(255,255,255,.7) 50%, transparent 51%);
+}
+.hero .orbit {
+  position: absolute;
+  width: 920px; height: 920px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 50%;
+  top: -430px; right: -280px;
+  transform: rotate(-16deg);
+  pointer-events: none;
+}
+.hero .orbit::after {
+  content: "";
+  position: absolute;
+  width: 9px; height: 9px;
+  background: var(--nasa-red);
+  border-radius: 50%;
+  top: 30px; left: 132px;
+  box-shadow: 0 0 14px 3px rgba(252,61,33,.85);
+}
+.hero > .inner { position: relative; }
+
+.hero h1 {
+  font-size: 54px;
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+}
+.hero .tagline {
+  font-size: 20px;
+  color: rgba(255,255,255,.88);
+  margin-bottom: 16px;
+}
+.hero .lede {
+  max-width: 640px;
+  margin: 0 auto 22px;
+  color: rgba(255,255,255,.82);
+  font-size: 15.5px;
+}
+.badges { margin-bottom: 26px; }
+.badge {
+  display: inline-block;
+  margin: 3px 4px;
+  padding: 3px 12px;
+  font-size: 12.5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.13);
+  border: 1px solid rgba(255,255,255,.25);
+  color: rgba(255,255,255,.92);
+}
+.cta .btn-hero {
+  display: inline-block;
+  margin: 4px 6px;
+  padding: 11px 26px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  background: #fff;
+  color: var(--nasa-blue);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.cta .btn-hero:hover {
+  color: var(--nasa-red);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0,0,0,.35);
+}
+.cta .btn-ghost {
+  display: inline-block;
+  margin: 4px 6px;
+  padding: 11px 26px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.55);
+  transition: background .15s ease;
+}
+.cta .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+.nav {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 48px;
+  font-size: 14px;
+}
+.nav a { color: rgba(255,255,255,.8); }
+.nav a:hover { color: #fff; }
+.nav .brand { font-weight: 700; color: #fff; letter-spacing: .5px; }
+
+/* ------------------------------------------------ cards */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 16px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px rgba(11,29,58,.10);
+}
+.card .ico { font-size: 22px; }
+.card h3 { font-size: 15px; margin: 8px 0 4px; }
+.card p { font-size: 13.5px; color: var(--muted); }
+
+/* wide highlight cards (MCP / AI drawer) */
+.card.wide { grid-column: span 2; }
+@media (max-width: 620px) { .card.wide { grid-column: span 1; } }
+.card.wide code { background: var(--bg-soft); padding: 1px 6px; border-radius: 5px; }
+
+/* ------------------------------------------------ screenshot */
+.shot {
+  display: block;
+  margin: 8px auto 4px;
+  max-width: 880px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(11,29,58,.18);
+}
+figcaption { text-align: center; color: var(--muted); font-size: 13px; margin-top: 10px; }
+
+/* ------------------------------------------------ steps */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+.step {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 16px;
+}
+.step .n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px; height: 27px;
+  border-radius: 50%;
+  background: var(--nasa-blue);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+.step h3 { display: inline; font-size: 15px; margin-left: 8px; }
+.step p { font-size: 13.5px; color: var(--muted); margin-top: 8px; }
+
+pre.term {
+  background: #0d1117;
+  color: #e6edf3;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  overflow-x: auto;
+  margin-top: 16px;
+  line-height: 1.8;
+}
+pre.term .c { color: #8b949e; }
+pre.term .k { color: #7ee787; }
+
+/* ------------------------------------------------ text sections */
+.small { font-size: 12.5px; color: var(--muted); }
+.small p { margin: 6px 0; }
+.small a { text-decoration: underline; }
+
+ul.plain { list-style: none; }
+ul.plain li { margin: 6px 0; }
+
+/* guide subsections */
+h3.sub {
+  font-size: 17px;
+  margin: 26px 0 6px;
+}
+#guide .steps { margin-bottom: 10px; }
+
+/* ------------------------------------------------ footer */
+.site-footer {
+  border-top: 1px solid var(--line);
+  margin-top: 40px;
+  padding: 26px 20px 40px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.site-footer a { text-decoration: underline; }

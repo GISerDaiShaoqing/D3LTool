@@ -4,184 +4,220 @@
     <meta charset="UTF-8">
     <title>D3L Tool of NASA Satellite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-    	*{margin:0;padding:0;}
-	.shadowfilter {
-	-webkit-filter: drop-shadow(12px 12px 7px rgba(0,0,0,0.5));
-	filter: url(shadow.svg#drop-shadow);
-	}
-	.intro1 { margin-left: -45px;}
-    </style>
-    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
-    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
-    <link rel="stylesheet" href="stylesheets/simple-slideshow-styles.css">
-    <style>
-	figcaption {
-	  top: .70em;
-   	  left: .35em;
- 	  bottom: auto!important;
-	  right: auto!important;
-	}
-    </style>
+    <meta name="description" content="D3LTool — a free bilingual desktop app to search and download NASA MODIS / VIIRS / MERRA-2 data, with a clickable tile map, resumable downloads, an MCP server and a built-in AI assistant.">
+    <link rel="stylesheet" type="text/css" href="stylesheets/site.css" media="screen">
   </head>
   <body>
-<!-- Google Analytics -->
-<script>
-window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
-ga('create', 'UA-72724100-1', 'auto');
-ga('send', 'pageview');
-</script>
-<script async src='https://www.google-analytics.com/analytics.js'></script>
-<!-- End Google Analytics -->
-<!-- Google Tag Manager -->
-<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-53RVF8"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-53RVF8');</script>
-<!-- End Google Tag Manager -->
 
-    <section class="page-header">
-      <h1 class="project-name">D3LTool</h1>
-      <h2 class="project-tagline">D3L Tool of NASA Satellite</h2>
-      <a href="//gisersqdai.top/D3LTool/download.html" class="btn">Download</a>
-      <a href="https://github.com/GISerDaiShaoqing/D3LTool" class="btn">View on GitHub</a>
-       <a href="documentation.html" class="btn">Documentation</a>
-       <a href="//gisersqdai.top/D3LTool/index-cn.html" class="btn">中文</a>
-    </section>
+    <header class="hero">
+      <div class="orbit"></div>
+      <div class="inner">
+        <nav class="nav">
+          <span class="brand">D3LTool</span>
+          <a href="https://github.com/GISerDaiShaoqing/D3LTool">GitHub</a>
+          <a href="index-cn.html">中文</a>
+        </nav>
+        <h1>D3LTool</h1>
+        <p class="tagline">D3L Tool of NASA Satellite</p>
+        <p class="lede">A free, bilingual desktop app to <b>search and download</b>
+        NASA MODIS / VIIRS / MERRA-2 data — product, date, tiles and download
+        queue, the whole workflow in one window.</p>
+        <div class="badges">
+          <span class="badge">v2.2.0</span>
+          <span class="badge">MIT License</span>
+          <span class="badge">Windows · macOS · Linux</span>
+          <span class="badge">pip install d3ltool</span>
+        </div>
+        <div class="cta">
+          <a href="https://github.com/GISerDaiShaoqing/D3LTool/releases/latest" class="btn-hero">Download</a>
+          <a href="https://github.com/GISerDaiShaoqing/D3LTool" class="btn-ghost">View on GitHub</a>
+          <a href="#guide" class="btn-ghost">User guide</a>
+        </div>
+      </div>
+    </header>
 
+    <main class="wrap">
 
+      <section>
+        <span class="kicker">Features</span>
+        <h2>Everything in one app</h2>
+        <div class="grid">
+          <div class="card">
+            <div class="ico">🔍</div>
+            <h3>Built-in search</h3>
+            <p>Pick a product and dates, then click tiles on the 36×18 sinusoidal
+            map (or type coordinates / a bounding box) — no manual order creation
+            on the NASA website.</p>
+          </div>
+          <div class="card">
+            <div class="ico">🛰️</div>
+            <h3>Full coverage</h3>
+            <p>MODIS, VIIRS (LAADS DAAC) and MERRA-2 (GES DISC) with a curated
+            catalog — and any CMR <code>short_name</code> works too.</p>
+          </div>
+          <div class="card">
+            <div class="ico">⬇️</div>
+            <h3>Robust downloads</h3>
+            <p>Parallel queue, chunked progress, HTTP Range resume, automatic
+            retries and file-size validation — safe on slow or unstable links.</p>
+          </div>
+          <div class="card wide">
+            <div class="ico">🤖</div>
+            <h3>MCP server + AI Assistant</h3>
+            <p>Since v2.1, <code>d3ltool-mcp</code> exposes 9 tools (search, tile
+            math, downloads) to Claude Desktop, Cursor, ZCode and any MCP client,
+            reusing the sign-in saved on your machine; the GUI gains a floating
+            right-edge <b>AI Assistant</b> drawer that drives the same tools with
+            plain language (OpenAI-compatible providers). <a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">How to wire it up →</a></p>
+          </div>
+          <div class="card">
+            <div class="ico">🌐</div>
+            <h3>Bilingual UI</h3>
+            <p>One-click 中文 / English switch in the menu.</p>
+          </div>
+          <div class="card">
+            <div class="ico">💻</div>
+            <h3>Cross-platform &amp; proxy</h3>
+            <p>Windows exe, macOS .app, Linux binary (CI builds) — or
+            <code>pip install d3ltool</code>. Proxy support for complex
+            network environments.</p>
+          </div>
+        </div>
+      </section>
 
-    <section class="main-content">
-      <h3>
-<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introducing D3L Tool of NASA Satellite 2.0</h3>
+      <section>
+        <span class="kicker">Interface</span>
+        <h2>Main window</h2>
+        <figure>
+          <img src="images/Main2.png" alt="D3LTool main window" class="shot">
+          <figcaption>Search panel on the left (product / time / clickable tile
+          map), search results and the live download queue on the right; the AI
+          assistant slides out from the right edge.</figcaption>
+        </figure>
+      </section>
 
-<p>D3L Tool of NASA Satellite is a free software tool to <b>search and download</b> NASA satellite data — the whole workflow inside one app.</p>
+      <section id="guide">
+        <span class="kicker">User guide</span>
+        <h2>Three steps</h2>
+        <div class="steps">
+          <div class="step">
+            <span class="n">1</span><h3>Get the app</h3>
+            <p>Double-click <code>D3LToolNASA.exe</code> — a single file, no
+            Python needed. Sign in with your free
+            <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata</a> account
+            under “Settings” (search works without login; downloads need it).</p>
+          </div>
+          <div class="step">
+            <span class="n">2</span><h3>Search</h3>
+            <p>Choose a product and a date range, click the tiles you need on the
+            map, and hit <b>Search</b>.</p>
+          </div>
+          <div class="step">
+            <span class="n">3</span><h3>Download</h3>
+            <p>Tick the files you want, add them to the queue and let the
+            resumable downloader finish the job.</p>
+          </div>
+        </div>
 
-<p><b>v2.0 is a complete rewrite on top of NASA's official <a href="https://earthaccess.readthedocs.io/">earthaccess</a> library and the CMR search service</b>:
-no more manual order creation on the NASA website, and no more browser automation. Pick a product (MODIS / VIIRS / MERRA-2),
-a date range and click tiles on the built-in sinusoidal tile map (or type coordinates) — then search, tick and download.
-Resumable chunked downloads, parallel queue, automatic retries, size validation, bilingual UI (中文/English),
-and it runs on Windows, macOS and Linux.</p>
+        <h3 class="sub">Install &amp; sign in</h3>
+        <p>Double-click <code>D3LToolNASA.exe</code> — a single file, no Python
+        needed; the macOS .app and Linux binaries are on
+        <a href="https://github.com/GISerDaiShaoqing/D3LTool/releases/latest">GitHub
+        Releases</a>, and CLI users can simply <code>pip install d3ltool</code>.
+        Sign in under <b>“Settings → Sign in to Earthdata”</b> with your free
+        <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata</a> account —
+        search works without login, downloads need it. Credentials stay on this
+        machine only (<code>~/.netrc</code>).</p>
 
-<p>History: D3L Tool was created by <a href="https://gisersqdai.top/mycv/">Mr. Dai</a> in 2018 (v1.0), when the LAADS FTP
-servers were shut down and the official Python scripts were hard for non-programmers — v1 automated order downloads
-through browser automation. Eight years later, v2.0 rebuilds it on a modern stack.</p>
+        <h3 class="sub">Search</h3>
+        <p>Pick a product group and product (or “custom” for any CMR
+        <code>short_name</code>), optional version (blank = latest) and start/end
+        dates. For the area, click tiles on the sinusoidal map (multi-select, or
+        type <code>h04v03</code>, or use the lat/lon locator) — or enter a
+        bounding box for MERRA-2 style data. Hit the red <b>Search</b> button and
+        results appear in the top-right table.</p>
 
-<br/>
-<h3>
-<a id="intro-toolbar" class="anchor" href="#intro-toolbar" aria-hidden="true"><span class="octicon octicon-link"></span></a>Main Interface (v2.0)</h3>
-<p><img src="images/Main2.png" class="shadowfilter"></p>
-<p>Search panel on the left (product / time / clickable 36×18 tile map), search results and the live download queue on the right.</p>
+        <h3 class="sub">Download</h3>
+        <p>Tick files in the results table and click <b>“Add to download
+        queue”</b>. The task table shows live per-file progress and speed with
+        pause/resume/retry; finished files are skipped on re-download and
+        interrupted ones resume automatically. Download folder, concurrency and
+        proxy live in “Settings”.</p>
 
-<br/>
-<h3>
-<a id="intro-features" class="anchor" href="#intro-features" aria-hidden="true"><span class="octicon octicon-link"></span></a>What's new in v2.0</h3>
-<p>
-<ul>
-<li><b>Built-in search</b>: by product, date, tile (h##v##) or bounding box — no manual orders on the NASA site</li>
-<li><b>Coverage</b>: MODIS, VIIRS (LAADS DAAC) and MERRA-2 (GES DISC); any CMR short_name works too</li>
-<li><b>Robust downloads</b>: multi-threaded queue, chunked progress, HTTP resume, auto-retry, size validation</li>
-<li><b>Bilingual</b>: one-click 中文 / English switch</li>
-<li><b>Cross-platform</b>: Windows exe, macOS .app, Linux binary (CI builds), or simply <code>pip install d3ltool</code></li>
-<li><b>Proxy support</b> for complex network environments</li>
-</ul>
-</p>
+        <pre class="term"><span class="c"># command line</span>
+pip install d3ltool
+d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
+d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data
+d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40</pre>
 
-<br/>
-<h3>
-<a id="intro-data-formats" class="anchor" href="#intro-data-formats" aria-hidden="true"><span class="octicon octicon-link"></span></a>Getting Started</h3>
-<p>On Windows just double-click <code>D3LToolNASA.exe</code> (single file, no Python needed):
-sign in with your free <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata</a> account under "Settings"
-(search works without login; downloads need it), pick a product and area, hit Search, tick files and add them
-to the download queue.</p>
-<p>CLI users: <code>pip install d3ltool</code>, then
-<code>d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03</code>.
-See the <a href="documentation.html">documentation</a>.</p>
+        <h3 class="sub">MCP server &amp; AI assistant</h3>
+        <p><code>d3ltool-mcp</code> exposes 9 tools (search, tile math, download
+        control) over stdio for Claude Desktop, Cursor, ZCode and any MCP client;
+        the right-edge <b>AI Assistant</b> drawer in the GUI drives the same tools
+        with plain language. Wiring examples live in the
+        <a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">integration
+        guide</a>.</p>
 
-<h3>
-<a id="dependencies" class="anchor" href="#dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>Dependencies</h3>
+        <h3 class="sub">Menus</h3>
+        <p>The “Websites” menu links the project site, the author's blog and NASA
+        portals; “RS resources” is a curated remote-sensing list; “Help” holds
+        Donate and About. The UI language switches under “Language”.</p>
+      </section>
 
-<p>D3L Tool of NASA Satellite is released under a MIT license. It builds on several open source libraries and source-code files. Below is the list of the key projects that we would like to acknowledge.</p>
+      <section>
+        <span class="kicker">History</span>
+        <h2>From 2018 to today</h2>
+        <p>D3L Tool was created by <a href="https://gisersqdai.top/mycv/">Dr. Dai</a>
+        in 2018 (v1.0), when the LAADS FTP servers were shut down and the official
+        Python scripts were hard for non-programmers — v1 automated order downloads
+        through browser automation. Eight years later, v2 is a complete rewrite on
+        top of NASA's official <a href="https://earthaccess.readthedocs.io/">earthaccess</a>
+        library and the CMR search service.</p>
+      </section>
 
-<font style="font-size:small">
-<p>PySide6 (Qt for Python) Cross-Platform GUI Library, version 6.
-License: LGPL-3.0 License.
-Authors: Qt Company and many.
-Links: <a href="https://doc.qt.io/qtforpython/">https://doc.qt.io/qtforpython/</a></p>
+      <section>
+        <span class="kicker">Credits</span>
+        <h2>Dependencies &amp; acknowledgments</h2>
+        <div class="small">
+          <p>D3L Tool of NASA Satellite is released under a MIT license and builds
+          on several open source projects:</p>
+          <p>PySide6 (Qt for Python) — cross-platform GUI library, LGPL-3.0 ·
+          <a href="https://doc.qt.io/qtforpython/">doc.qt.io/qtforpython</a></p>
+          <p>earthaccess — NASA Earthdata access library, MIT ·
+          <a href="https://earthaccess.readthedocs.io/">earthaccess.readthedocs.io</a></p>
+          <p>requests — Apache 2.0 ·
+          <a href="https://requests.readthedocs.io/">requests.readthedocs.io</a></p>
+          <p>PyInstaller — GPL ·
+          <a href="http://www.pyinstaller.org/">www.pyinstaller.org</a></p>
+          <p>v1.0 (2018, browser automation) was built on tkinter, selenium and
+          Tristan Quaife's laads-data-download.py; it is no longer maintained and
+          stays in the repository history.</p>
+          <p>The development of D3L Tool has been supported by Tristan Quaife,
+          MorvanZhou and NASA. Special thanks for GeoDa.</p>
+        </div>
+      </section>
 
-<p>earthaccess — NASA Earthdata access library, version 0.19.
-Authors: NASA openscaping community etc.
-License: MIT License.
-Links: <a href="https://earthaccess.readthedocs.io/">https://earthaccess.readthedocs.io/</a></p>
+      <section>
+        <span class="kicker">Support</span>
+        <h2>Questions &amp; feedback</h2>
+        <ul class="plain">
+          <li>Usage problems → the <a href="#guide">user guide above</a></li>
+          <li>Bugs and ideas → <a href="https://github.com/GISerDaiShaoqing/D3LTool/issues">GitHub Issues</a></li>
+          <li>Anything else → <a href="mailto:dsq1993qingge@163.com">dsq1993qingge@163.com</a></li>
+        </ul>
+        <p>D3L Tool of NASA Satellite uses an
+        <a href="https://mit-license.org/">MIT License</a>.</p>
+      </section>
 
-<p>requests Library.
-Authors: Many.
-License: Apache 2.0 License.
-Links: <a href="https://requests.readthedocs.io/">https://requests.readthedocs.io/</a></p>
+    </main>
 
-<p>Pyinstaller Library.
-Authors: Many.
-License: GPL license.
-Links: <a href="http://www.pyinstaller.org/">http://www.pyinstaller.org/</a></p>
-</font>
+    <footer class="site-footer">
+      <p><a href="https://github.com/GISerDaiShaoqing/D3LTool">D3L Tool of NASA Satellite</a>
+      is maintained by <a href="https://github.com/GISerDaiShaoqing">giserdaishaoqing</a>
+      · MIT License</p>
+      <p>Visitors:
+      <script type="text/javascript" id="clstr_globe" src="//cdn.clustrmaps.com/globe.js?d=_COP58FivFWvVObZpMObrU9_ku1UNyuYuEcgx6XYSWU&amp;w=150"></script></p>
+    </footer>
 
-<p style="font-size:small">v1.0 (2018, browser automation) was built on tkinter, selenium and Tristan Quaife's
-laads-data-download.py; it is no longer maintained and stays in the repository history.</p>
-
-<br/>
-<h3>
-<a id="intro-ackn" class="anchor" href="#intro-ackn" aria-hidden="true"><span class="octicon octicon-link"></span></a>Acknowledgments</h3>
-<p>The development of D3L Tool of NASA Satellite has been supported by Tristan Quaife, MorvanZhou and NASA. Special thanks for GeoDa.</p>
-
-<h3>
-<a id="intro-support" class="anchor" href="#intro-support" aria-hidden="true"><span class="octicon octicon-link"></span></a>Support</h3>
-<p>See the <a href="documentation.html">documentation</a> for v2.0 usage; issues are welcome on
-<a href="https://github.com/GISerDaiShaoqing/D3LTool/issues">GitHub Issues</a>.</p>
-
-<h3>
-<a id="intro-license" class="anchor" href="#intro-license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h3>
-<p>D3L Tool of NASA Satellite uses a <a href="https://mit-license.org/">MIT License</a>.</p>
-
-
-<h3>
-<a id="intro-contact" class="anchor" href="#intro-contact" aria-hidden="true"><span class="octicon octicon-link"></span></a>Contact</h3>
-<p>Questions? Contact <a href="dsq1993qingge@163.com">us</a>.</p>
-
-<!-- 来必力City版安装代码 -->
-<div id="lv-container" data-id="city" data-uid="MTAyMC81MDE0MS8yNjYzMQ==">
-  <script type="text/javascript">
-     (function(d, s) {
-         var j, e = d.getElementsByTagName(s)[0];
-  
-         if (typeof LivereTower === 'function') { return; }
-  
-         j = d.createElement(s);
-         j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
-         j.async = true;
-  
-         e.parentNode.insertBefore(j, e);
-     })(document, 'script');
-  </script>
-  <noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
-  </div>
-  <!-- City版安装代码已完成 -->
-
-<h3>
-<a id="intro-contact" class="anchor" href="#intro-contact" aria-hidden="true"><span class="octicon octicon-link"></span></a>Visits</h3>
-<p><script type="text/javascript" id="clstr_globe" src="//cdn.clustrmaps.com/globe.js?d=_COP58FivFWvVObZpMObrU9_ku1UNyuYuEcgx6XYSWU&w=150"></script></p>
-  
-
-      <footer class="site-footer">
-        <span class="site-footer-owner"><a href="https://github.com/GISerDaiShaoqing/D3LTool">D3L Tool of NASA Satellite</a> is maintained by <a href="https://github.com/GISerDaiShaoqing">giserdaishaoqing</a>.</span>
-
-        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
-      </footer>
-
-    </section>
   </body>
 </html>

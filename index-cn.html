@@ -4,184 +4,202 @@
     <meta charset="UTF-8">
     <title>D3L Tool of NASA Satellite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-    	*{margin:0;padding:0;}
-	.shadowfilter {
-	-webkit-filter: drop-shadow(12px 12px 7px rgba(0,0,0,0.5));
-	filter: url(shadow.svg#drop-shadow);
-	}
-	.intro1 { margin-left: -45px;}
-    </style>
-    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
-    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
-    <link rel="stylesheet" href="stylesheets/simple-slideshow-styles.css">
-    <style>
-	figcaption {
-	  top: .70em;
-   	  left: .35em;
- 	  bottom: auto!important;
-	  right: auto!important;
-	}
-    </style>
+    <meta name="description" content="D3LTool —— 免费、双语的 NASA MODIS / VIIRS / MERRA-2 数据检索与下载桌面软件：可点击瓦片地图、断点续传、MCP 服务器与内置 AI 助手。">
+    <link rel="stylesheet" type="text/css" href="stylesheets/site.css" media="screen">
   </head>
   <body>
 
-<!-- Google Analytics -->
-<script>
-window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
-ga('create', 'UA-72724100-1', 'auto');
-ga('send', 'pageview');
-</script>
-<script async src='https://www.google-analytics.com/analytics.js'></script>
-<!-- End Google Analytics -->
-<!-- Google Tag Manager -->
-<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-53RVF8"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-53RVF8');</script>
-<!-- End Google Tag Manager -->
+    <header class="hero">
+      <div class="orbit"></div>
+      <div class="inner">
+        <nav class="nav">
+          <span class="brand">D3LTool</span>
+          <a href="https://github.com/GISerDaiShaoqing/D3LTool">GitHub</a>
+          <a href="index.html">English</a>
+        </nav>
+        <h1>D3LTool</h1>
+        <p class="tagline">NASA 卫星的 D3L 工具</p>
+        <p class="lede">一款免费的桌面软件，一站式<b>检索与下载</b> NASA MODIS / VIIRS /
+        MERRA-2 数据——选产品、选时间、点瓦片、排队下载，全流程不出一个窗口。</p>
+        <div class="badges">
+          <span class="badge">v2.2.0</span>
+          <span class="badge">MIT 协议</span>
+          <span class="badge">Windows · macOS · Linux</span>
+          <span class="badge">pip install d3ltool</span>
+        </div>
+        <div class="cta">
+          <a href="https://github.com/GISerDaiShaoqing/D3LTool/releases/latest" class="btn-hero">下载软件</a>
+          <a href="https://github.com/GISerDaiShaoqing/D3LTool/" class="btn-ghost">GitHub 仓库</a>
+          <a href="#guide" class="btn-ghost">使用文档</a>
+        </div>
+      </div>
+    </header>
 
+    <main class="wrap">
 
-    <section class="page-header">
-      <h1 class="project-name">D3LTool</h1>
-      <h2 class="project-tagline">NASA卫星的D3L工具</h2>
-      <a href="//gisersqdai.top/D3LTool/download_cn.html" class="btn">下载</a>
-      <a href="https://github.com/GISerDaiShaoqing/D3LTool/" class="btn">在GitHub上查看该项目</a>
-      <a href="//gisersqdai.top/D3LTool/documentationcn.html" class="btn">文档</a>
-      <a href="//gisersqdai.top/D3LTool/index.html" class="btn">English Version</a>
-    </section>
-
-    <section class="main-content">
-      <h3>
-<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true">
-  <span class="octicon octicon-link"></span></a>D3L Tool of NASA Satellite 2.0 介绍</h3>
-
-<p>NASA卫星的D3L工具是一款免费的软件工具，在软件内即可完成 NASA 卫星数据的<b>检索与下载</b>全流程。</p>
-
-<p><b>v2.0 基于 NASA 官方 <a href="https://earthaccess.readthedocs.io/">earthaccess</a> 与 CMR 检索服务全面重构</b>：
-不再需要去 NASA 网站创建订单，也彻底告别浏览器模拟登录。左侧选择产品（MODIS / VIIRS / MERRA-2）、
-时间范围，直接点击正弦瓦片地图选择区域（或输入经纬度），即可检索并勾选下载——内置断点续传、
-多线程并发、失败自动重试与文件校验，中英双语界面，支持 Windows / macOS / Linux。</p>
-
-<p>项目历史：NASA卫星的D3L工具由<a href="https://gisersqdai.top/mycv/">戴先生</a>开发。2018 年
-v1.0 因 LAADS FTP 服务器关闭、官方脚本对非程序员不友好而生，通过浏览器模拟批量下载订单数据。
-八年后技术栈全面更新，v2.0 让它重新成为最好用的 NASA 数据下载工具之一。</p>
-
-<br/>
-<h3>
-<a id="intro-toolbar" class="anchor" href="#intro-toolbar" aria-hidden="true"><span class="octicon octicon-link"></span></a>v2.0 主界面</h3>
-<p><img src="images/Main2.png" class="shadowfilter"></p>
-<p>左侧检索（产品 / 时间 / 可点击的 36×18 瓦片地图），右侧检索结果与下载队列实时进度。</p>
-
-<br/>
-<h3>
-<a id="intro-features" class="anchor" href="#intro-features" aria-hidden="true"><span class="octicon octicon-link"></span></a>v2.0 新特性</h3>
-<p>
-<ul>
-<li><b>内置检索</b>：按产品、时间、瓦片（h##v##）或经纬度范围检索，无需去 NASA 网站下单</li>
-<li><b>产品覆盖</b>：MODIS、VIIRS（LAADS DAAC）与 MERRA-2（GES DISC），也可输入任意 CMR short_name</li>
-<li><b>健壮下载</b>：多线程队列、分块进度、HTTP 断点续传、失败自动重试、文件大小校验</li>
-<li><b>中英双语</b>：菜单一键切换中文 / English</li>
-<li><b>跨平台</b>：Windows exe、macOS .app、Linux 二进制（CI 自动构建），也支持 <code>pip install d3ltool</code></li>
-<li><b>代理支持</b>：适应复杂网络环境</li>
-</ul>
-</p>
-
-<br/>
-<h3>
-<a id="intro-data-formats" class="anchor" href="#intro-data-formats" aria-hidden="true"><span class="octicon octicon-link"></span></a>开始使用</h3>
-<p>Windows 用户直接双击 <code>D3LToolNASA.exe</code>（单文件，无需安装 Python）：
-在"设置"中登录 <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata</a> 账号（免费注册，检索不需要登录、下载需要），
-选择产品与区域后点"检索"，勾选文件加入下载队列即可。</p>
-<p>命令行用户：<code>pip install d3ltool</code> 后即可 <code>d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03</code>。
-详见<a href="documentationcn.html">文档</a>。</p>
-
-<h3>
-<a id="dependencies" class="anchor" href="#dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>D3L Tool of NASA Satellite引用的相关的软件</h3>
-
-  <p>D3L Tool of NASA Satellite是根据MIT许可发布的。 它建立在几个开源库和源代码文件上。 以下是关键项目清单。</p>
-
-  <font style="font-size:small">
-  <p>PySide6 (Qt for Python) Cross-Platform GUI Library, version 6.
-  License: LGPL-3.0 License.
-  Authors: Qt Company and many.
-  Links: <a href="https://doc.qt.io/qtforpython/">https://doc.qt.io/qtforpython/</a></p>
-
-  <p>earthaccess — NASA Earthdata access library, version 0.19.
-  Authors: NASA openscaping community etc.
-  License: MIT License.
-  Links: <a href="https://earthaccess.readthedocs.io/">https://earthaccess.readthedocs.io/</a></p>
-
-  <p>requests Library.
-  Authors: Many.
-  License: Apache 2.0 License.
-  Links: <a href="https://requests.readthedocs.io/">https://requests.readthedocs.io/</a></p>
-
-  <p>Pyinstaller Library.
-  Authors: Many.
-  License: GPL license.
-  Links: <a href="http://www.pyinstaller.org/">http://www.pyinstaller.org/</a></p>
-  </font>
-
-  <p style="font-size:small">v1.0（2018，浏览器模拟方案）基于 tkinter、selenium 与
-  Tristan Quaife 的 laads-data-download.py 构建，已停止维护并归档于仓库历史。</p>
-  
-  <br/>
-  <h3>
-  <a id="intro-ackn" class="anchor" href="#intro-ackn" aria-hidden="true"><span class="octicon octicon-link"></span></a>致谢</h3>
-  <p>D3L Tool of NASA Satellite的开发得到了Tristan Quaife, MorvanZhou与NASA的帮助。特别感谢GeoDa。</p>
-  
-  <h3>
-  <a id="intro-support" class="anchor" href="#intro-support" aria-hidden="true"><span class="octicon octicon-link"></span></a>技术支持</h3>
-  <p>v2.0 的使用方法见<a href="documentationcn.html">文档</a>；遇到问题欢迎在
-  <a href="https://github.com/GISerDaiShaoqing/D3LTool/issues">GitHub Issues</a> 提交。</p>
-  
-  <h3>
-  <a id="intro-license" class="anchor" href="#intro-license" aria-hidden="true"><span class="octicon octicon-link"></span></a>许可</h3>
-  <p>D3L Tool of NASA Satellite使用<a href="https://mit-license.org/">MIT许可</a>。</p>
-  
-  
-  <h3>
-  <a id="intro-contact" class="anchor" href="#intro-contact" aria-hidden="true"><span class="octicon octicon-link"></span></a>联系方式</h3>
-  <p>有问题？请联系<a href="dsq1993qingge@163.com">我们</a>.</p>
-  
- <!-- 来必力City版安装代码 -->
- <div id="lv-container" data-id="city" data-uid="MTAyMC81MDE0MS8yNjYzMQ==">
-  <script type="text/javascript">
-     (function(d, s) {
-         var j, e = d.getElementsByTagName(s)[0];
-  
-         if (typeof LivereTower === 'function') { return; }
-  
-         j = d.createElement(s);
-         j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
-         j.async = true;
-  
-         e.parentNode.insertBefore(j, e);
-     })(document, 'script');
-  </script>
-  <noscript>为正常使用来必力评论功能请激活JavaScript</noscript>
-  </div>
-  <!-- City版安装代码已完成 -->
-
-  <h3>
-  <a id="intro-contact" class="anchor" href="#intro-contact" aria-hidden="true"><span class="octicon octicon-link"></span></a>访问人数</h3>
-  <p><script type="text/javascript" id="clstr_globe" src="//cdn.clustrmaps.com/globe.js?d=_COP58FivFWvVObZpMObrU9_ku1UNyuYuEcgx6XYSWU&w=150"></script></p>
-  
- 
-  
-        <footer class="site-footer">
-          <span class="site-footer-owner"><a href="https://github.com/GISerDaiShaoqing/D3LTool">D3L Tool of NASA Satellite</a> is maintained by <a href="https://github.com/GISerDaiShaoqing">giserdaishaoqing</a>.</span>
-  
-          <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
-        </footer>
-  
+      <section>
+        <span class="kicker">功能特性</span>
+        <h2>一个软件全搞定</h2>
+        <div class="grid">
+          <div class="card">
+            <div class="ico">🔍</div>
+            <h3>内置检索</h3>
+            <p>选好产品与时间，在 36×18 正弦瓦片地图上直接点选（也可输入经纬度 /
+            范围框）——不用再去 NASA 网站手工下单。</p>
+          </div>
+          <div class="card">
+            <div class="ico">🛰️</div>
+            <h3>产品全覆盖</h3>
+            <p>内置 MODIS、VIIRS（LAADS DAAC）、MERRA-2（GES DISC）产品目录，
+            任意 CMR <code>short_name</code> 也支持。</p>
+          </div>
+          <div class="card">
+            <div class="ico">⬇️</div>
+            <h3>稳定下载</h3>
+            <p>多线程队列、分块进度、HTTP 断点续传、失败自动重试、文件大小校验，
+            弱网环境也可靠。</p>
+          </div>
+          <div class="card wide">
+            <div class="ico">🤖</div>
+            <h3>MCP 服务器 + AI 助手</h3>
+            <p>自 v2.1 起，<code>d3ltool-mcp</code> 把 9 个工具（检索、瓦片换算、
+            下载控制）暴露给 Claude Desktop、Cursor、ZCode 等 MCP 客户端，复用本机
+            已登录的凭据；软件内也有右缘滑出的 <b>AI 助手</b>抽屉，用自然语言驱动同一套
+            工具（任意 OpenAI 兼容服务商）。<a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">接入指南 →</a></p>
+          </div>
+          <div class="card">
+            <div class="ico">🌐</div>
+            <h3>中英双语</h3>
+            <p>菜单一键切换中文 / English。</p>
+          </div>
+          <div class="card">
+            <div class="ico">💻</div>
+            <h3>跨平台 &amp; 代理</h3>
+            <p>Windows exe、macOS .app、Linux 二进制（CI 自动构建），或
+            <code>pip install d3ltool</code>；支持代理，适应复杂网络环境。</p>
+          </div>
+        </div>
       </section>
-    </body>
-  </html>
-  
+
+      <section>
+        <span class="kicker">软件界面</span>
+        <h2>主界面一览</h2>
+        <figure>
+          <img src="images/Main2.png" alt="D3LTool 主界面" class="shot">
+          <figcaption>左侧为检索面板（产品 / 时间 / 可点击瓦片地图），右侧为检索结果
+          与实时下载队列；AI 助手从右缘滑出，不影响数据界面。</figcaption>
+        </figure>
+      </section>
+
+      <section id="guide">
+        <span class="kicker">使用指南</span>
+        <h2>三步开始</h2>
+        <div class="steps">
+          <div class="step">
+            <span class="n">1</span><h3>拿到软件</h3>
+            <p>Windows 双击 <code>D3LToolNASA.exe</code> 即可（单文件，无需安装
+            Python）；在“设置”里用免费的
+            <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata</a> 账号登录
+            （检索无需登录，下载需要）。</p>
+          </div>
+          <div class="step">
+            <span class="n">2</span><h3>检索</h3>
+            <p>选产品、选时间，在地图上点出需要的瓦片，点 <b>Search</b>。</p>
+          </div>
+          <div class="step">
+            <span class="n">3</span><h3>下载</h3>
+            <p>勾选需要的文件加入队列，断点续传下载器会自动完成，失败还会重试。</p>
+          </div>
+        </div>
+
+        <h3 class="sub">安装与登录</h3>
+        <p>Windows 双击 <code>D3LToolNASA.exe</code> 即可（单文件，无需安装
+        Python）；macOS .app 与 Linux 二进制在
+        <a href="https://github.com/GISerDaiShaoqing/D3LTool/releases/latest">GitHub
+        Releases</a>，命令行用户直接 <code>pip install d3ltool</code>。在
+        <b>“设置 → 登录 Earthdata”</b>里用免费的
+        <a href="https://urs.earthdata.nasa.gov/">NASA Earthdata</a> 账号登录——
+        检索无需登录，下载需要；凭据只保存在本机（<code>~/.netrc</code>）。</p>
+
+        <h3 class="sub">检索</h3>
+        <p>左侧选产品组与产品（或“custom”输入任意 CMR <code>short_name</code>），
+        可选版本（留空取最新）与起止日期；区域可以直接在正弦瓦片地图上点选（可多选，
+        或输入 <code>h04v03</code>，或用经纬度定位），MERRA-2 这类数据也可输入范围框。
+        点红色 <b>Search</b> 按钮，结果出现在右上表格。</p>
+
+        <h3 class="sub">下载</h3>
+        <p>在结果表勾选文件，点<b>“加入下载队列”</b>。任务表实时显示每个文件的进度
+        与速度，可暂停/续传/重试；已完成文件重新下载时自动跳过，中断的自动续传。
+        下载目录、并发数与代理都在“设置”里。</p>
+
+        <pre class="term"><span class="c"># 命令行</span>
+pip install d3ltool
+d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
+d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data
+d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40</pre>
+
+        <h3 class="sub">MCP 服务器与 AI 助手</h3>
+        <p><code>d3ltool-mcp</code> 通过 stdio 暴露 9 个工具（检索、瓦片换算、下载
+        控制），接入 Claude Desktop、Cursor、ZCode 等 MCP 客户端；软件内右缘滑出的
+        <b>AI 助手</b>抽屉用自然语言驱动同一套工具。配置示例见
+        <a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">接入指南</a>。</p>
+
+        <h3 class="sub">菜单</h3>
+        <p>“网站”菜单收录项目官网、作者博客与 NASA 门户；“遥感资源”是精选的遥感
+        资源列表；“帮助”含打赏与关于；界面语言在“语言”菜单一键切换。</p>
+      </section>
+
+      <section>
+        <span class="kicker">历史</span>
+        <h2>从 2018 到今天</h2>
+        <p>D3L Tool 由<a href="https://gisersqdai.top/mycv/">戴博士</a>创建于
+        2018 年（v1.0）——当时 LAADS FTP 服务器关停、官方 Python 脚本对非程序员
+        太不友好，v1 用浏览器模拟替用户自动下单。八年后技术栈全面更新，v2 基于
+        NASA 官方 <a href="https://earthaccess.readthedocs.io/">earthaccess</a>
+        库与 CMR 检索服务彻底重写。</p>
+      </section>
+
+      <section>
+        <span class="kicker">致谢</span>
+        <h2>依赖与致谢</h2>
+        <div class="small">
+          <p>D3L Tool of NASA Satellite 以 MIT 协议发布，构建在几个开源项目之上：</p>
+          <p>PySide6（Qt for Python）—— 跨平台 GUI 库，LGPL-3.0 ·
+          <a href="https://doc.qt.io/qtforpython/">doc.qt.io/qtforpython</a></p>
+          <p>earthaccess —— NASA Earthdata 访问库，MIT ·
+          <a href="https://earthaccess.readthedocs.io/">earthaccess.readthedocs.io</a></p>
+          <p>requests —— Apache 2.0 ·
+          <a href="https://requests.readthedocs.io/">requests.readthedocs.io</a></p>
+          <p>PyInstaller —— GPL ·
+          <a href="http://www.pyinstaller.org/">www.pyinstaller.org</a></p>
+          <p>v1.0（2018，浏览器模拟方案）基于 tkinter、selenium 与 Tristan Quaife
+          的 laads-data-download.py 构建，已停止维护并归档于仓库历史。</p>
+          <p>开发过程得到 Tristan Quaife、MorvanZhou 与 NASA 的帮助，特别感谢
+          GeoDa。</p>
+        </div>
+      </section>
+
+      <section>
+        <span class="kicker">支持</span>
+        <h2>问题与反馈</h2>
+        <ul class="plain">
+          <li>使用问题 → <a href="#guide">上方使用指南</a></li>
+          <li>缺陷与建议 → <a href="https://github.com/GISerDaiShaoqing/D3LTool/issues">GitHub Issues</a></li>
+          <li>其它联系 → <a href="mailto:dsq1993qingge@163.com">dsq1993qingge@163.com</a></li>
+        </ul>
+        <p>D3L Tool of NASA Satellite 采用
+        <a href="https://mit-license.org/">MIT 协议</a>发布。</p>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <p><a href="https://github.com/GISerDaiShaoqing/D3LTool">D3L Tool of NASA Satellite</a>
+      由 <a href="https://github.com/GISerDaiShaoqing">giserdaishaoqing</a> 维护
+      · MIT 协议</p>
+      <p>访问统计：
+      <script type="text/javascript" id="clstr_globe" src="//cdn.clustrmaps.com/globe.js?d=_COP58FivFWvVObZpMObrU9_ku1UNyuYuEcgx6XYSWU&amp;w=150"></script></p>
+    </footer>
+
+  </body>
+</html>
