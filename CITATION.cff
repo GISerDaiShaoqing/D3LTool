@@ -8,8 +8,8 @@ authors:
     given-names: Shaoqing
     orcid: "https://orcid.org/0000-0003-0858-4728"
     email: dsq1993qingge@163.com
-version: 2.2.0
-date-released: "2026-10-22"
+version: 2.3.0
+date-released: "2026-10-24"
 license: MIT
 repository-code: "https://github.com/GISerDaiShaoqing/D3LTool"
 url: "https://gisersqdai.top/D3LTool/"

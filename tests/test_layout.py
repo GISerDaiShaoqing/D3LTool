@@ -2,6 +2,8 @@
 """Regression test: on short windows the search panel must scroll, never
 overlap (the tile map used to collide with the locate row / search button)."""
 
+import time
+
 import pytest
 
 
@@ -136,12 +138,19 @@ def _make_window(tmp_path, monkeypatch):
     return app, window
 
 
+def _drawer_span(window):
+    """The drawer hangs below the menu bar and stops above the status bar."""
+    top = window.menuBar().height()
+    bottom = window.height() - window.statusBar().height()
+    return top, bottom
+
+
 def test_agent_drawer_overlay_leaves_data_layout_alone(tmp_path, monkeypatch):
     """The drawer floats over the data page: opening/closing must not
-    reflow the search panel, and it must sit flush at the right edge."""
+    reflow the search panel, and it must sit flush at the right edge,
+    hanging below the menu bar."""
     app, window = _make_window(tmp_path, monkeypatch)
     try:
-        cw = window.centralWidget()
         before = window.search_panel.geometry()
         assert not window.agent_drawer.isVisible()
         assert window.agent_tab_btn.isVisible()
@@ -150,8 +159,11 @@ def test_agent_drawer_overlay_leaves_data_layout_alone(tmp_path, monkeypatch):
         app.processEvents()
         assert window.agent_drawer.isVisible()
         assert not window.agent_tab_btn.isVisible()
-        assert window.agent_drawer.geometry().right() == cw.rect().right()
-        assert window.agent_drawer.geometry().bottom() == cw.rect().bottom()
+        top, bottom = _drawer_span(window)
+        assert window.agent_drawer.geometry().top() == top
+        assert window.agent_drawer.geometry().bottom() == bottom - 1
+        assert window.agent_drawer.x() + window.agent_drawer.width() \
+            == window.width()
         assert window.search_panel.geometry() == before
 
         window._toggle_agent_drawer(animate=False)
@@ -170,8 +182,147 @@ def test_agent_drawer_repins_on_resize(tmp_path, monkeypatch):
         app.processEvents()
         window.resize(1300, 720)
         app.processEvents()
-        cw = window.centralWidget()
-        assert window.agent_drawer.geometry().right() == cw.rect().right()
-        assert window.agent_drawer.geometry().bottom() == cw.rect().bottom()
+        top, bottom = _drawer_span(window)
+        assert window.agent_drawer.geometry().top() == top
+        assert window.agent_drawer.geometry().bottom() == bottom - 1
+        assert window.agent_drawer.x() + window.agent_drawer.width() \
+            == window.width()
     finally:
         window.close()
+
+
+def test_two_drawers_are_mutually_exclusive(tmp_path, monkeypatch):
+    """AI and time series live in separate right-edge drawers with their
+    own edge tabs; opening one closes the other, both keep the data page
+    untouched, and both sit flush at the right edge."""
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        window._agent_ctl.anim.setDuration(0)
+        window._ts_ctl.anim.setDuration(0)
+        cw = window.centralWidget()
+        before = window.search_panel.geometry()
+        assert not window.agent_drawer.isVisible()
+        assert not window.ts_drawer.isVisible()
+        assert window.agent_tab_btn.isVisible()
+        assert window.ts_tab_btn.isVisible()
+
+        window._toggle_agent_drawer(animate=False)
+        app.processEvents()
+        assert window.agent_drawer.isVisible()
+        assert not window.ts_drawer.isVisible()
+        assert not window.agent_tab_btn.isVisible()
+        assert window.ts_tab_btn.isVisible()
+        assert window.agent_drawer.geometry().right() == cw.rect().right()
+        assert window.search_panel.geometry() == before
+
+        # opening the time-series drawer closes the AI drawer
+        window._focus_timeseries()
+        app.processEvents()
+        assert window.ts_drawer.isVisible()
+        assert not window.agent_drawer.isVisible()
+        assert not window.ts_tab_btn.isVisible()
+        assert window.agent_tab_btn.isVisible()
+        assert window.ts_drawer.geometry().right() == cw.rect().right()
+        assert window.search_panel.geometry() == before
+
+        # the ✕ of the time-series panel closes its own drawer only
+        window.ts_panel.hide_requested.emit()
+        app.processEvents()
+        assert not window.ts_drawer.isVisible()
+        assert window.ts_tab_btn.isVisible()
+        assert not window.agent_drawer.isVisible()
+
+        window._focus_agent()
+        app.processEvents()
+        assert window.agent_drawer.isVisible()
+        assert not window.ts_drawer.isVisible()
+    finally:
+        window.close()
+
+
+def test_time_series_csv_export(tmp_path, monkeypatch):
+    """The export writes a utf-8-sig CSV with a commented metadata header
+    and date,value rows; exporting with no series never opens a dialog."""
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+
+    from PySide6.QtWidgets import QApplication
+
+    from d3ltool.gui.timeseries_panel import TimeSeriesPanel
+
+    app = QApplication.instance() or QApplication([])
+    panel = TimeSeriesPanel()
+    panel.render_points([])
+    monkeypatch.setattr(panel, "_ask_save_path",
+                        lambda: pytest.fail("dialog opened with no series"))
+    panel._export()                       # -> inline error, no dialog
+    assert "error" == panel.status_label.property("state")
+
+    panel.render_points([("2009-01-01", 0.7), ("2009-01-17", 1.3)])
+    panel._meta = {"product": "MOD13Q1", "layer": "_250m_16_days_NDVI",
+                   "lat": "36.833", "lon": "116.567",
+                   "start": "2009-01-01", "end": "2009-12-31",
+                   "source": "MOD13Q1 (LAADS OPeNDAP)"}
+    out = tmp_path / "series.csv"
+    monkeypatch.setattr(panel, "_ask_save_path", lambda: str(out))
+    panel._export()
+    text = out.read_text(encoding="utf-8-sig")
+    lines = text.splitlines()
+    assert lines[0] == "# product: MOD13Q1"
+    assert "# layer: _250m_16_days_NDVI" in lines
+    assert "# lat: 36.833" in lines
+    assert "date,value" in lines
+    assert "2009-01-17,1.3" in lines
+    assert "已导出" in panel.status_label.text() \
+        or "Exported" in panel.status_label.text()
+
+
+def test_time_series_panel_renders_points(tmp_path, monkeypatch):
+    """QtCharts line series gets the points; nulls already filtered upstream."""
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+
+    from PySide6.QtCharts import QLineSeries
+    from PySide6.QtWidgets import QApplication
+
+    from d3ltool.gui.timeseries_panel import TimeSeriesPanel
+
+    app = QApplication.instance() or QApplication([])
+    panel = TimeSeriesPanel()
+    points = [("2009-01-01", 0.7), ("2009-01-17", 1.3),
+              ("2009-01-25", 0.9)]
+    panel.render_points(points)
+    series = panel.chart.series()
+    assert len(series) == 1
+    assert series[0].count() == 3
+    assert panel.last_points == [list(p) for p in points]
+
+    panel.render_points([])
+    assert panel.chart.series() == []
+    assert panel.last_points == []
+
+
+def test_time_series_panel_validation(tmp_path, monkeypatch):
+    """Bad coordinates are reported inline; no worker thread is started."""
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+
+    from PySide6.QtWidgets import QApplication
+
+    from d3ltool.gui.timeseries_panel import TimeSeriesPanel
+
+    app = QApplication.instance() or QApplication([])
+    panel = TimeSeriesPanel()
+    panel.lat_edit.setText("120")          # out of range
+    panel.lon_edit.setText("116.5")
+    panel.product_combo.setCurrentText("MOD13Q1")
+    panel._plot()
+    assert panel._thread is None
+    assert panel.plot_btn.isEnabled()
+    assert "error" == panel.status_label.property("state")
+
+    panel.lat_edit.setText("36.833")
+    panel.product_combo.setCurrentText("   ")
+    panel._plot()                          # missing product
+    assert panel._thread is None
+    assert "error" == panel.status_label.property("state")

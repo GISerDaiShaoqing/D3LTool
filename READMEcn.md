@@ -23,6 +23,10 @@ D3L Tool v2 是一个免费开源的 NASA 卫星数据**检索与下载**工具�
   不受影响；⚙ 弹出式设置接入任意 OpenAI 兼容 API Key（DeepSeek / Qwen / Kimi /
   智谱 / OpenAI / Ollama…），自然语言直接完成检索与下载；聊天区可自定义背景图；
   下载会先弹窗确认
+- **时间序列**（v2.3 新增）：独立右缘抽屉，MODIS/VIIRS 与 MERRA-2 产品任选，
+  输入经纬度与日期范围即可在软件内绘制该像元随时间变化的折线图，一键导出
+  CSV——数据由 NASA OPeNDAP 直采，不经任何第三方子集服务；2017 年
+  MODIS Web Service 实验的现代复活
 - **中英双语**：菜单一键切换中文 / English（PySide6 界面）
 - **跨平台**：Windows exe / macOS .app / Linux 二进制（CI 自动构建），或 `pip install d3ltool`
 - **代理支持**：适应复杂网络环境
@@ -102,6 +106,13 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 
 ## 更新日志
 
+- **2026-10 v2.3.0** — 新增**时间序列**抽屉（独立右缘抽屉，边缘 "TS" 按钮与 AI
+  抽屉并列，二者互斥展开）：任选 MODIS/VIIRS 产品与图层，填入经纬度与日期范围，
+  软件内直接绘制该像元的折线图（QtCharts）——2017 年 MODIS Web Service 单点
+  时间序列实验的现代复活。像元值**直接由 NASA OPeNDAP 采样**——MODIS/VIIRS 走
+  LAADS、MERRA-2 走 GES DISC 云网关（与下载同源同凭据：不需要 AppEEARS、不需要
+  代理、大陆直连），并支持一键**导出 CSV**。附带修正：经纬度→瓦片换算改用真实正弦投影网格（与实际文件逐像素
+  校准），修复了经纬度定位与 AI point_to_tile 旧版 10° 方盒近似的偏差
 - **2026-10 v2.2.0** — AI 助手改版为右缘悬浮抽屉：数据界面不再受影响，API 设置
   挪进弹出对话框，聊天区支持自定义背景图
 - **2026-10 v2.1.1** — 修复：AI 助手下载确认（点 Yes 却报"用户拒绝"——PySide6

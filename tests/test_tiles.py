@@ -12,22 +12,31 @@ def test_prime_meridian_equator():
     assert tiles.lonlat_to_tile(5, 5) == (18, 8)
 
 
-def test_beijing_h29v05():
-    # Beijing 116.4E 39.9N -> column 110E-120E (h29), row 30N-40N (v05)
-    assert tiles.lonlat_to_tile(116.4, 39.9) == (29, 5)
+def test_beijing_h26v05():
+    # Ground truth from the C6.1 files themselves (their Latitude/Longitude
+    # arrays): h26v05 covers ~104.4E-117.5E at 40N, so Beijing 116.4E/39.9N
+    # falls in h26v05 — NOT h29: C6 tiles are sinusoidal squares, not
+    # 10-degree lon/lat boxes.
+    assert tiles.lonlat_to_tile(116.4, 39.9) == (26, 5)
 
 
-def test_us_west_h04v03():
-    # 140W-130W / 50N-60N is h04v03 (as seen in VNP46A1 h04v03 files)
-    assert tiles.lonlat_to_tile(-135, 55) == (4, 3)
+def test_yucheng_h27v05():
+    # The 2017-blog Yucheng station point (36.833N, 116.567E)
+    assert tiles.lonlat_to_tile(116.567, 36.833) == (27, 5)
 
 
-def test_bounds_and_inverse():
+def test_us_west_h10v03():
+    # Gulf of Alaska 135W/55N belongs to the sinusoidal square h10v03
+    assert tiles.lonlat_to_tile(-135, 55) == (10, 3)
+
+
+def test_bounds_are_display_boxes_only():
+    # tile_bounds_lonlat stays the classic 10-degree box for display text;
+    # box centers far from the equator do NOT map back to the same tile.
     lon_min, lat_min, lon_max, lat_max = tiles.tile_bounds_lonlat(4, 3)
     assert (lon_min, lat_min, lon_max, lat_max) == (-140, 50, -130, 60)
-    # round trip through the box center
-    h, v = tiles.lonlat_to_tile((lon_min + lon_max) / 2, (lat_min + lat_max) / 2)
-    assert (h, v) == (4, 3)
+    h, v = tiles.lonlat_to_tile((lon_min + lon_max) / 2, 55)
+    assert (h, v) == (10, 3)
 
 
 def test_parse_and_name():
@@ -40,10 +49,12 @@ def test_parse_and_name():
 
 
 def test_edges_clamped():
+    # Longitude is mathematically ambiguous at the poles (every meridian
+    # meets); the sinusoidal x collapses, so any h is as good as another.
     h, v = tiles.lonlat_to_tile(180, -90)
-    assert (h, v) == (0, 17)
+    assert v == 17
     h, v = tiles.lonlat_to_tile(-180, 90)
-    assert (h, v) == (0, 0)
+    assert v == 0
 
 
 def test_row_width_fraction_symmetry():

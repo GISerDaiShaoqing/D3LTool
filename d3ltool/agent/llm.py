@@ -69,17 +69,32 @@ def _check_status(resp, url):
     raise LLMError(f"provider returned HTTP {resp.status_code}: {detail}")
 
 
-def _proxies():
-    """Proxy from the app settings ("" = none), applied to LLM requests too."""
+def _proxies(url=""):
+    """Proxy from the app settings ("" = none), applied to LLM requests.
+
+    Loopback targets (Ollama on 127.0.0.1, local test servers) never go
+    through the proxy: routing them to a remote node yields empty 502s."""
     try:
         from .. import config
 
+        if _is_loopback(url):
+            return None
         proxy = (config.load_config() or {}).get("proxy_url") or ""
         if proxy:
             return {"http": proxy, "https": proxy}
     except Exception:
         pass
     return None
+
+
+def _is_loopback(url: str) -> bool:
+    try:
+        host = (urlparse(url or "").hostname or "").lower()
+    except ValueError:
+        return False
+    return (host in ("localhost", "::1")
+            or host.startswith("127.")
+            or host.endswith(".localhost"))
 
 
 def stream_chat(base_url, api_key, model, messages, tools=None,
@@ -102,9 +117,11 @@ def stream_chat(base_url, api_key, model, messages, tools=None,
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
+    # explicit None: LLM requests follow only the app's own proxy setting
+    # (deliberately not env/system proxies — keeps local test servers safe)
     try:
         resp = requests.post(url, json=body, headers=headers, stream=True,
-                             timeout=timeout, proxies=_proxies())
+                             timeout=timeout, proxies=_proxies(url))
     except requests.RequestException as exc:
         raise LLMError(f"network error reaching {url}: {exc}") from exc
 
@@ -190,7 +207,7 @@ def test_connection(base_url, api_key, model):
             url,
             json={"model": model, "messages": [{"role": "user", "content": "ping"}],
                   "max_tokens": 1, "stream": False},
-            headers=headers, timeout=30, proxies=_proxies())
+            headers=headers, timeout=30, proxies=_proxies(url))
     except requests.RequestException as exc:
         return False, f"network error: {exc}"
     if resp.status_code == 200:

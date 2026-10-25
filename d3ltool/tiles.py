@@ -34,11 +34,19 @@ def parse_tile(text: str):
 
 
 def lonlat_to_tile(lon: float, lat: float):
-    """Return (h, v) for a longitude/latitude degree pair."""
+    """Return (h, v) for a longitude/latitude degree pair.
+
+    C6 MODIS/VIIRS tiles are squares of the true sinusoidal grid
+    (1111950.52 m edges), NOT 10° lon/lat boxes: validated against the
+    Latitude/Longitude arrays inside real granules (e.g. h26v05's top-left
+    pixel sits at ~104.4E/40N, its bottom-left at ~92.4E/30N)."""
     lon = ((float(lon) + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
     lat = max(-90.0, min(90.0, float(lat)))
-    h = int((lon + 180.0) // 10.0)
-    v = int((90.0 - lat) // 10.0)
+    phi = math.radians(lat)
+    x = R_SIN * math.radians(lon) * math.cos(phi)
+    y = R_SIN * phi
+    h = int(math.floor(x / TILE_SIZE)) + 18
+    v = 9 - int(math.ceil(y / TILE_SIZE))
     return min(N_COLS - 1, max(0, h)), min(N_ROWS - 1, max(0, v))
 
 

@@ -134,10 +134,11 @@ def test_list_products_all_and_filtered():
 
 
 def test_point_to_tile_beijing():
-    out = tools.point_to_tile(116.4, 39.9)          # Beijing -> h29v05
-    assert out["tile"] == "h29v05"
-    assert out["bounds"]["west"] == 290.0 - 180.0   # h29: 110E
-    assert out["bounds"]["north"] == 40.0           # v05: 40N
+    # Ground truth from C6.1 files (their own lat/lon arrays): Beijing is
+    # in the sinusoidal square h26v05; the old 10-degree box rule said h29.
+    out = tools.point_to_tile(116.4, 39.9)          # Beijing -> h26v05
+    assert out["tile"] == "h26v05"
+    assert out["bounds"]["north"] == 40.0           # v05 row: 30-40N
 
 
 def test_tile_bounds_and_range_check():

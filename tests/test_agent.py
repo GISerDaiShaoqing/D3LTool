@@ -329,3 +329,19 @@ def test_agent_loop_stop_requested_ends_cleanly():
     messages = [{"role": "user", "content": "hi"}]
     events = _events_of(transport, registry, messages)
     assert events[-1] == {"type": "done", "note": "stopped by user"}
+
+
+def test_proxy_skips_loopback(monkeypatch):
+    """With the app proxy set, loopback targets (Ollama, test servers)
+    must still be reached directly — a remote node would 502 them."""
+    import d3ltool.config as config
+
+    monkeypatch.setattr(config, "load_config",
+                        lambda: {"proxy_url": "http://127.0.0.1:7897"})
+    assert llm._proxies("http://127.0.0.1:11434/v1") is None
+    assert llm._proxies("http://localhost:8080/api") is None
+    assert llm._proxies("https://api.deepseek.com/v1") == {
+        "http": "http://127.0.0.1:7897", "https": "http://127.0.0.1:7897"}
+    assert llm._proxies("") == {
+        "http": "http://127.0.0.1:7897",
+        "https": "http://127.0.0.1:7897"}  # unknown host uses proxy

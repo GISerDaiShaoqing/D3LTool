@@ -255,8 +255,8 @@ QToolTip {
     padding: 5px 8px;
 }
 
-/* ---------- AI assistant drawer ---------- */
-QFrame#agentDrawer {
+/* ---------- edge drawers (AI assistant + time series) ---------- */
+QFrame#agentDrawer, QFrame#tsDrawer {
     background: #ffffff;
     border-left: 1px solid #d0d7de;
     border-top-left-radius: 8px;
@@ -282,18 +282,24 @@ QPushButton#agentHeaderBtn:hover {
 QTextBrowser#agentChat {
     background: transparent;
 }
-QToolButton#agentTabButton {
+QToolButton#agentTabButton, QToolButton#tsTabButton {
     background: #24292e;
     color: #ffffff;
     border: none;
-    border-top-left-radius: 7px;
-    border-bottom-left-radius: 7px;
-    padding: 14px 5px;
+    border-radius: 7px;
+    padding: 6px 16px;
     font-size: 13px;
     font-weight: 600;
 }
-QToolButton#agentTabButton:hover {
+QToolButton#agentTabButton:hover, QToolButton#tsTabButton:hover {
     background: #d6372a;
+}
+QLabel#tsStatus {
+    color: #64748b;
+    font-size: 12px;
+}
+QLabel#tsStatus[state="error"] {
+    color: #d6372a;
 }
 """
 

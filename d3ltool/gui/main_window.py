@@ -7,8 +7,8 @@ from PySide6.QtCore import (QEasingCurve, QPoint, QPropertyAnimation, Qt,
                             QThread, QUrl, Signal)
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QIcon
 from PySide6.QtWidgets import (QDialog, QFrame, QLabel, QMainWindow,
-                               QMessageBox, QSplitter, QToolButton,
-                               QVBoxLayout, QWidget)
+                               QMessageBox, QSizePolicy, QSplitter,
+                               QToolButton, QVBoxLayout, QWidget)
 
 from .. import __version__, auth, config, engine, i18n, search, tools
 from .. import APP_NAME
@@ -59,6 +59,97 @@ class _SearchThread(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
             return
         self.done.emit(granules, _time.time() - t0)
+
+
+class _EdgeDrawerCtl:
+    """One right-edge overlay drawer + its edge tab button.
+
+    The drawer hangs directly below the menu bar (covering the empty right
+    side of the toolbar strip) and stops above the status bar. The tab
+    button itself lives inside the main toolbar (right end, one row)."""
+
+    def __init__(self, window, drawer_name, content, label, tip, width,
+                 btn_name):
+        self.window = window
+        self.width = width
+        self.is_open = False
+        self.frame = QFrame(window)
+        self.frame.setObjectName(drawer_name)
+        layout = QVBoxLayout(self.frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(content)
+        self.frame.hide()
+
+        self.btn = QToolButton(window)
+        self.btn.setObjectName(btn_name)
+        self.btn.setText(label)
+        self.btn.setToolTip(tip)
+
+        self.anim = QPropertyAnimation(self.frame, b"pos", window)
+        self.anim.setDuration(200)
+        self.anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.anim.finished.connect(self._on_anim_done)
+        self.tab_action = None        # set once the button joins the toolbar
+
+    def _show_tab(self, visible):
+        """Toolbar-embedded widgets hide via their QAction, not directly."""
+        self.btn.setVisible(visible)
+        if self.tab_action is not None:
+            self.tab_action.setVisible(visible)
+
+    # window chrome geometry (menu bar above, status bar below)
+    def _top(self):
+        return self.window.menuBar().height()
+
+    def _bottom(self):
+        status = self.window.statusBar()
+        hidden = status.isHidden() or status.height() <= 0
+        return self.window.height() if hidden else \
+            self.window.height() - status.height()
+
+    def _on_anim_done(self):
+        if not self.is_open:
+            self.frame.hide()
+
+    def _edge_width(self):
+        return max(320, min(self.width, self.window.width() - 80))
+
+    def place(self):
+        width = self._edge_width()
+        self.frame.resize(width, self._bottom() - self._top())
+        self.anim.stop()
+        target_x = self.window.width() - width if self.is_open \
+            else self.window.width()
+        self.frame.move(target_x, self._top())
+        self.frame.raise_()
+
+    def open(self, animate=True):
+        self.is_open = True
+        self._show_tab(False)
+        width = self._edge_width()
+        self.frame.resize(width, self._bottom() - self._top())
+        closed = QPoint(self.window.width(), self._top())
+        opened = QPoint(self.window.width() - width, self._top())
+        self.anim.stop()
+        self.frame.move(closed)
+        self.frame.show()
+        self.frame.raise_()
+        self._slide(closed, opened, animate)
+
+    def close(self, animate=True):
+        self.is_open = False
+        self._show_tab(True)
+        self._slide(self.frame.pos(),
+                    QPoint(self.window.width(), self._top()), animate)
+
+    def _slide(self, start, end, animate):
+        if animate:
+            self.anim.setStartValue(start)
+            self.anim.setEndValue(end)
+            self.anim.start()
+        else:
+            self.frame.move(end)
+            self._on_anim_done()
 
 
 class MainWindow(QMainWindow):
@@ -116,9 +207,6 @@ class MainWindow(QMainWindow):
         # in a right-edge drawer instead of a tab so the data page keeps
         # its own layout untouched
         tools.attach_engine(self.engine)
-        from .agent_panel import AgentPanel
-        self.agent_panel = AgentPanel()
-
         splitter.addWidget(self.search_panel)
         splitter.addWidget(data_page)
         splitter.setSizes([340, 760])
@@ -135,81 +223,74 @@ class MainWindow(QMainWindow):
         self.bridge.progress.connect(self.task_table.on_progress)
         self.bridge.cleared.connect(self.task_table.on_cleared)
 
-    # ------------------------------------------------------- agent drawer
+    # ------------------------------------------------------ edge drawers
 
     AGENT_DRAWER_WIDTH = 430
+    TS_DRAWER_WIDTH = 470
 
     def _build_agent_drawer(self):
-        """Floating right-edge drawer hosting the AI assistant panel."""
-        cw = self.centralWidget()
-        self.agent_drawer = QFrame(cw)
-        self.agent_drawer.setObjectName("agentDrawer")
-        drawer_layout = QVBoxLayout(self.agent_drawer)
-        drawer_layout.setContentsMargins(0, 0, 0, 0)
-        drawer_layout.addWidget(self.agent_panel)
-        self.agent_panel.hide_requested.connect(
-            lambda: self._toggle_agent_drawer())
-        self.agent_drawer.hide()
+        """Two independent right-edge overlay drawers — AI assistant and
+        time series — each with its own edge tab; opening one closes the
+        other so they never overlap."""
+        from .agent_panel import AgentPanel
+        from .timeseries_panel import TimeSeriesPanel
 
-        self.agent_tab_btn = QToolButton(cw)
-        self.agent_tab_btn.setObjectName("agentTabButton")
-        self.agent_tab_btn.setText("AI")
-        self.agent_tab_btn.setToolTip(i18n.tr("agent_drawer_tip"))
+        self.agent_panel = AgentPanel()
+        self.ts_panel = TimeSeriesPanel()
+
+        self._agent_ctl = _EdgeDrawerCtl(
+            self, "agentDrawer", self.agent_panel, "AI",
+            i18n.tr("agent_drawer_tip"), self.AGENT_DRAWER_WIDTH,
+            btn_name="agentTabButton")
+        self._ts_ctl = _EdgeDrawerCtl(
+            self, "tsDrawer", self.ts_panel, "TS",
+            i18n.tr("ts_drawer_tip"), self.TS_DRAWER_WIDTH,
+            btn_name="tsTabButton")
+        # legacy attribute names kept for tests/callers
+        self.agent_drawer = self._agent_ctl.frame
+        self.agent_tab_btn = self._agent_ctl.btn
+        self.ts_drawer = self._ts_ctl.frame
+        self.ts_tab_btn = self._ts_ctl.btn
+
+        self.agent_panel.hide_requested.connect(self._hide_agent_drawer)
+        self.ts_panel.hide_requested.connect(self._hide_ts_drawer)
         self.agent_tab_btn.clicked.connect(self._focus_agent)
-
-        self._agent_anim = QPropertyAnimation(self.agent_drawer, b"pos", self)
-        self._agent_anim.setDuration(200)
-        self._agent_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self._agent_anim.finished.connect(self._on_drawer_anim_done)
-        self._agent_drawer_open = False
+        self.ts_tab_btn.clicked.connect(self._focus_timeseries)
         self._place_agent_overlays()
 
     def _toggle_agent_drawer(self, animate=True):
-        opening = not self._agent_drawer_open
-        self._agent_drawer_open = opening
-        self.agent_tab_btn.setVisible(not opening)
-        cw = self.centralWidget()
-        width = max(320, min(self.AGENT_DRAWER_WIDTH, cw.width() - 80))
-        self.agent_drawer.resize(width, cw.height())
-        open_pos = QPoint(cw.width() - width, 0)
-        closed_pos = QPoint(cw.width(), 0)
-        drawer = self.agent_drawer
-        self._agent_anim.stop()
-        if opening:
-            drawer.move(closed_pos)
-            drawer.show()
-            drawer.raise_()
-            self._start_drawer_anim(closed_pos, open_pos, animate)
+        if self._agent_ctl.is_open:
+            self._agent_ctl.close(animate)
+        else:
+            self._open_exclusive(self._agent_ctl, animate)
             self.agent_panel.input.setFocus()
-        else:
-            self._start_drawer_anim(drawer.pos(), closed_pos, animate)
 
-    def _start_drawer_anim(self, start, end, animate):
-        if animate:
-            self._agent_anim.setStartValue(start)
-            self._agent_anim.setEndValue(end)
-            self._agent_anim.start()
+    def _toggle_ts_drawer(self, animate=True):
+        if self._ts_ctl.is_open:
+            self._ts_ctl.close(animate)
         else:
-            self.agent_drawer.move(end)
-            self._on_drawer_anim_done()
+            self._open_exclusive(self._ts_ctl, animate)
+            self.ts_panel.product_combo.setFocus()
 
-    def _on_drawer_anim_done(self):
-        if not self._agent_drawer_open:
-            self.agent_drawer.hide()
+    def _hide_agent_drawer(self):
+        if self._agent_ctl.is_open:
+            self._agent_ctl.close(True)
+
+    def _hide_ts_drawer(self):
+        if self._ts_ctl.is_open:
+            self._ts_ctl.close(True)
+
+    def _open_exclusive(self, ctl, animate):
+        for other in (self._agent_ctl, self._ts_ctl):
+            if other is not ctl and other.is_open:
+                other.close(False)
+        ctl.open(animate)
 
     def _place_agent_overlays(self):
-        """Pin drawer and edge tab to the current central rect (no slide)."""
-        cw = self.centralWidget()
-        width = max(320, min(self.AGENT_DRAWER_WIDTH, cw.width() - 80))
-        self.agent_drawer.resize(width, cw.height())
-        self._agent_anim.stop()
-        target_x = cw.width() - width if self._agent_drawer_open else cw.width()
-        self.agent_drawer.move(target_x, 0)
-        self.agent_drawer.raise_()
-        self.agent_tab_btn.adjustSize()
-        self.agent_tab_btn.move(cw.width() - self.agent_tab_btn.width() - 2,
-                                (cw.height() - self.agent_tab_btn.height()) // 2)
-        self.agent_tab_btn.raise_()
+        """Pin both drawers and edge tabs to the current central rect."""
+        if getattr(self, "_agent_ctl", None) is not None:
+            self._agent_ctl.place()
+            self._ts_ctl.place()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -256,10 +337,13 @@ class MainWindow(QMainWindow):
         self.act_settings.triggered.connect(self._on_settings)
         self.act_agent = QAction(i18n.tr("act_agent"), self)
         self.act_agent.triggered.connect(self._focus_agent)
+        self.act_ts = QAction(i18n.tr("act_ts"), self)
+        self.act_ts.triggered.connect(self._focus_timeseries)
         menu_settings.addAction(self.act_login)
         menu_settings.addAction(self.act_logout)
         menu_settings.addSeparator()
         menu_settings.addAction(self.act_agent)
+        menu_settings.addAction(self.act_ts)
         menu_settings.addSeparator()
         menu_settings.addAction(self.act_settings)
 
@@ -278,6 +362,13 @@ class MainWindow(QMainWindow):
         toolbar = self.addToolBar("main")
         toolbar.addAction(self.act_login)
         toolbar.addAction(self.act_settings)
+        # the AI / time-series drawer tabs sit at the toolbar's right end
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding,
+                             QSizePolicy.Policy.Preferred)
+        toolbar.addWidget(spacer)
+        self._agent_ctl.tab_action = toolbar.addWidget(self.agent_tab_btn)
+        self._ts_ctl.tab_action = toolbar.addWidget(self.ts_tab_btn)
         self._menus_built = True
 
     # ----------------------------------------------------------------- login
@@ -368,9 +459,16 @@ class MainWindow(QMainWindow):
         SettingsDialog(self, config=self.config, on_save=apply).exec()
 
     def _focus_agent(self):
-        if not self._agent_drawer_open:
+        if not self._agent_ctl.is_open:
             self._toggle_agent_drawer()
-        self.agent_panel.input.setFocus()
+        else:
+            self.agent_panel.input.setFocus()
+
+    def _focus_timeseries(self):
+        if not self._ts_ctl.is_open:
+            self._toggle_ts_drawer()
+        else:
+            self.ts_panel.product_combo.setFocus()
 
     def _switch_language(self, code):
         self.config = config.update_config(language=code)

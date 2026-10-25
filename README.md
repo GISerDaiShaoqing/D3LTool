@@ -26,6 +26,11 @@ No more manual order creation, no more browser automation.
   into the ⚙ popup settings and drive search & download with plain language
   (DeepSeek / Qwen / Kimi / GLM / OpenAI / Ollama…); user background image
   supported; downloads ask for confirmation first — see [docs/mcp.md](docs/mcp.md)
+- **Time series** (new in v2.3): its own right-edge drawer plots a pixel's
+  changing values for MODIS/VIIRS and MERRA-2 products over a date range
+  (latitude/longitude in, line chart out, one-click CSV export) — sampled
+  directly via NASA OPeNDAP, no third-party subset service; the modern
+  revival of the 2017 MODIS Web Service experiment, in-app
 - **Bilingual UI**: one-click 中文 / English switch (PySide6)
 - **Cross-platform**: Windows exe / macOS .app / Linux binary (CI builds), or `pip install d3ltool`
 - **Proxy support** for complex network environments
@@ -106,7 +111,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   author  = {Dai, Shaoqing},
   orcid   = {0000-0003-0858-4728},
   title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
-  version = {2.2.0},
+  version = {2.3.0},
   year    = {2026},
   url     = {https://github.com/GISerDaiShaoqing/D3LTool},
 }
@@ -114,6 +119,18 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-10 v2.3.0** — new **Time Series** drawer (its own right-edge drawer
+  with an "TS" edge tab next to the AI one; opening one closes the other):
+  type any MODIS/VIIRS product + layer, a latitude/longitude point and a
+  date range, and the in-app line chart (QtCharts) shows how that pixel
+  changed — the modern, in-app revival of the 2017 MODIS Web Service
+  experiment. Pixel values are sampled **directly via NASA OPeNDAP** —
+  MODIS/VIIRS from LAADS, hourly **MERRA-2** from the GES DISC cloud
+  gateway (the same servers and credentials as the downloader: no
+  AppEEARS, no proxy, mainland-network friendly) — with one-click **CSV
+  export**. Bonus fix: point→tile math now uses the true sinusoidal grid (pixel-exact against
+  real files) instead of the old 10° box approximation, making the
+  lat/lon locator and the AI's point_to_tile accurate again
 - **2026-10 v2.2.0** — AI Assistant redesigned as a floating right-edge
   drawer: the data page keeps its own layout, API settings moved into a
   popup dialog, user background image supported
