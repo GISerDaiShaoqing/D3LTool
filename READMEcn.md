@@ -111,7 +111,8 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
   软件内直接绘制该像元的折线图（QtCharts）——2017 年 MODIS Web Service 单点
   时间序列实验的现代复活。像元值**直接由 NASA OPeNDAP 采样**——MODIS/VIIRS 走
   LAADS、MERRA-2 走 GES DISC 云网关（与下载同源同凭据：不需要 AppEEARS、不需要
-  代理、大陆直连），并支持一键**导出 CSV**。附带修正：经纬度→瓦片换算改用真实正弦投影网格（与实际文件逐像素
+  代理、大陆直连），并支持一键**导出 CSV**。同款采样也以 `point_timeseries`
+  工具暴露给 MCP 客户端与软件内 AI 助手。附带修正：经纬度→瓦片换算改用真实正弦投影网格（与实际文件逐像素
   校准），修复了经纬度定位与 AI point_to_tile 旧版 10° 方盒近似的偏差
 - **2026-10 v2.2.0** — AI 助手改版为右缘悬浮抽屉：数据界面不再受影响，API 设置
   挪进弹出对话框，聊天区支持自定义背景图

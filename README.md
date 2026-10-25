@@ -128,7 +128,8 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   MODIS/VIIRS from LAADS, hourly **MERRA-2** from the GES DISC cloud
   gateway (the same servers and credentials as the downloader: no
   AppEEARS, no proxy, mainland-network friendly) — with one-click **CSV
-  export**. Bonus fix: point→tile math now uses the true sinusoidal grid (pixel-exact against
+  export**. The same sampling is also exposed as the `point_timeseries`
+  tool to MCP clients and the in-app AI assistant. Bonus fix: point→tile math now uses the true sinusoidal grid (pixel-exact against
   real files) instead of the old 10° box approximation, making the
   lat/lon locator and the AI's point_to_tile accurate again
 - **2026-10 v2.2.0** — AI Assistant redesigned as a floating right-edge

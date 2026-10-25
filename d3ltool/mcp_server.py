@@ -13,11 +13,13 @@ import sys
 
 INSTRUCTIONS = (
     "D3L Tool of NASA Satellite: search & download NASA MODIS / VIIRS / "
-    "MERRA-2 data from LAADS DAAC and GES DISC via CMR. Search works "
-    "anonymously; downloads reuse the Earthdata sign-in persisted on this "
-    "machine (passwords are never accepted through tools). Typical flow: "
-    "check_auth -> list_products / point_to_tile -> search_granules -> "
-    "start_download -> download_status."
+    "MERRA-2 data from LAADS DAAC and GES DISC via CMR, plus point time "
+    "series sampled straight over NASA OPeNDAP. Search works anonymously; "
+    "downloads and point_timeseries reuse the Earthdata sign-in persisted "
+    "on this machine (passwords are never accepted through tools). Typical "
+    "flow: check_auth -> list_products / point_to_tile -> search_granules "
+    "-> start_download -> download_status; use point_timeseries for a "
+    "single pixel's series (e.g. NDVI, LST, 2-m temperature) at a lon/lat."
 )
 
 

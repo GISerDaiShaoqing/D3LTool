@@ -267,6 +267,52 @@ def search_granules(short_name: str, start: str, end: str, version: str = "",
 
 
 @tool(
+    "point_timeseries",
+    "Sample the point time series of a MODIS/VIIRS or MERRA-2 product at one "
+    "lon/lat over a date range (YYYY-MM-DD). Pixels are read directly over "
+    "NASA OPeNDAP (LAADS for MODIS/VIIRS, the cloud gateway for MERRA-2, "
+    "which yields hourly steps), no intermediate service. Requires the "
+    "Earthdata sign-in persisted on this machine. Returns source, layer, "
+    "points [[date, value], ...] capped at `limit` (default 200) plus "
+    "full-series stats; for long series narrow the date range or raise "
+    "`limit`.",
+    "经纬度 + 产品 + 时间段 -> 点位时间序列（LAADS/云 OPeNDAP 直采像素，MERRA-2 为逐小时；"
+    "需本机已登录 Earthdata，长序列截断到 limit 条并附统计）",
+)
+def point_timeseries(lon: float, lat: float, product: str, start: str,
+                     end: str, layer: str = "", limit: int = 200) -> dict:
+    from . import timeseries as timeseries_mod
+
+    try:
+        source, layer_used, points = timeseries_mod.run_point_series(
+            lat=float(lat), lon=float(lon), product=str(product).strip(),
+            start=start, end=end, layer_hint=layer or "",
+            searcher=_SEARCHER)
+    except timeseries_mod.TimeSeriesError as exc:
+        return {"error": "timeseries_failed", "hint": str(exc)}
+    values = [v for _d, v in points]
+    stats = {"count": len(values)}
+    if values:
+        stats.update(min=min(values), max=max(values),
+                     mean=round(sum(values) / len(values), 6))
+    limit = max(0, int(limit))
+    out = {
+        "source": source,
+        "layer": layer_used,
+        "point": {"lon": float(lon), "lat": float(lat)},
+        "start": start,
+        "end": end,
+        "stats": stats,
+        "truncated": len(points) > limit,
+        "points": [[d, v] for d, v in points[:limit]],
+    }
+    if out["truncated"]:
+        out["hint"] = (f"series has {len(points)} points, showing the first "
+                       f"{limit}; narrow start..end or raise `limit`")
+    return out
+
+
+@tool(
     "start_download",
     "Queue HTTPS file URLs (as returned by search_granules) for download with "
     "resume support. Requires a previous Earthdata sign-in on this machine. "

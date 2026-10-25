@@ -68,8 +68,8 @@ def _signed_out(monkeypatch):
 def test_registry_contains_all_tools():
     expected = {
         "check_auth", "list_products", "point_to_tile", "tile_bounds",
-        "search_granules", "start_download", "download_status",
-        "cancel_download", "retry_download",
+        "search_granules", "point_timeseries", "start_download",
+        "download_status", "cancel_download", "retry_download",
     }
     assert set(tools.REGISTRY) == expected
     for spec in tools.all_specs():
@@ -95,6 +95,11 @@ def test_schemas_match_signatures():
 
     pt = tools.get_spec("point_to_tile").parameters
     assert pt["properties"]["lon"]["type"] == "number"
+
+    ts = tools.get_spec("point_timeseries").parameters
+    assert set(ts["required"]) == {"lon", "lat", "product", "start", "end"}
+    assert ts["properties"]["limit"]["default"] == 200
+    assert ts["properties"]["layer"]["type"] == "string"
 
 
 def test_openai_tool_specs_format():
@@ -189,6 +194,75 @@ def test_search_granules_bbox_validation(monkeypatch):
     with pytest.raises(ValueError):
         tools.search_granules(short_name="x", start="2020-01-01",
                               end="2020-01-31", tiles=["h99v99"])
+
+
+# --------------------------------------------------------- point_timeseries
+
+def test_point_timeseries_tool_laads(monkeypatch):
+    """Full chain through the tool: CMR search -> LAADS OPeNDAP pixel."""
+    from d3ltool import auth
+    from test_timeseries import FakeSession, _fake_granule, _opendap_routes
+
+    monkeypatch.setattr(tools, "_SEARCHER",
+                        lambda **query: [_fake_granule("2009-01-17", "h27v05")])
+    session = FakeSession(_opendap_routes(["_250m_16_days_NDVI[0], 3470"]))
+    monkeypatch.setattr(auth, "new_download_session", lambda: session)
+
+    out = tools.point_timeseries(lon=116.567, lat=36.833, product="MOD13Q1",
+                                 start="2009-01-01", end="2009-12-31")
+    assert out["source"] == "MOD13Q1 (LAADS OPeNDAP)"
+    assert out["layer"] == "_250m_16_days_NDVI"
+    assert out["stats"] == {"count": 1, "min": 0.347, "max": 0.347,
+                            "mean": 0.347}
+    assert out["truncated"] is False
+    assert out["points"] == [["2009-01-17", 0.347]]
+
+
+def test_point_timeseries_tool_merra_truncates(monkeypatch):
+    """Hourly MERRA-2 series: stats cover all 24 points while `limit`
+    keeps the returned list small."""
+    from d3ltool import auth
+    from test_timeseries import (FakeSession, MERRA_DMR, TextResp,
+                                 _dap_body, _fake_merra_granule)
+
+    class _BytesSession(FakeSession):
+        def get(self, url, **kwargs):
+            if ".dap" in url and not url.endswith(".dmr.xml"):
+                self.calls.append(("GET", url, None))
+                body = _dap_body([270.0 + h for h in range(24)])
+                return TextResp(body.decode("latin-1"))
+            return super().get(url, **kwargs)
+
+    monkeypatch.setattr(tools, "_SEARCHER",
+                        lambda **query: [_fake_merra_granule("2020-01-01")])
+    session = _BytesSession(
+        [("GET", ".dmr.xml", lambda kw: TextResp(MERRA_DMR))])
+    monkeypatch.setattr(auth, "new_download_session", lambda: session)
+
+    out = tools.point_timeseries(lon=116.567, lat=36.833,
+                                 product="M2T1NXSLV",
+                                 start="2020-01-01", end="2020-01-01",
+                                 limit=5)
+    assert out["layer"] == "T2M"
+    assert out["truncated"] is True
+    assert len(out["points"]) == 5
+    assert out["stats"]["count"] == 24
+    assert out["stats"]["min"] == pytest.approx(270.0)
+    assert out["stats"]["max"] == pytest.approx(293.0)
+    assert "narrow start..end" in out["hint"]
+
+
+def test_point_timeseries_tool_error(monkeypatch):
+    from d3ltool import auth
+    from test_timeseries import FakeSession
+
+    monkeypatch.setattr(tools, "_SEARCHER", lambda **query: [])
+    monkeypatch.setattr(auth, "new_download_session",
+                        lambda: FakeSession([]))      # never reached
+    out = tools.point_timeseries(lon=116.567, lat=36.833, product="MOD13Q1",
+                                 start="2099-01-01", end="2099-01-31")
+    assert out["error"] == "timeseries_failed"
+    assert out["hint"]
 
 
 def test_start_download_requires_auth(monkeypatch):

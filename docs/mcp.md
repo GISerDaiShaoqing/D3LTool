@@ -18,16 +18,19 @@ drawer that slides out from the right edge of the GUI.
 | `point_to_tile` | 经纬度 → 正弦瓦片 (h, v) 及范围 |
 | `tile_bounds` | h/v → 瓦片地理范围 |
 | `search_granules` | CMR 检索：short_name + 时间 + 瓦片/范围，返回文件名/日期/大小/下载地址 |
+| `point_timeseries` | 点位时间序列：经纬度 + 产品 + 时间段 → LAADS/云 OPeNDAP 直采像素（MERRA-2 逐小时），返回点列与统计 |
 | `start_download` | 把 URL 加入下载队列（断点续传），返回任务 id |
 | `download_status` | 查询下载进度（状态/大小/速度/失败原因） |
 | `cancel_download` / `retry_download` | 按任务 id 取消 / 重试 |
 
-**凭证模型 / Credentials**: 检索匿名即可；下载工具复用本机已登录的 Earthdata 凭据
-（GUI 登录一次会持久化到 `~/.netrc`（Windows `_netrc`），CLI 用 `d3ltool login`）。
+**凭证模型 / Credentials**: 检索匿名即可；下载与 `point_timeseries` 复用本机已登录的
+Earthdata 凭据（GUI 登录一次会持久化到 `~/.netrc`（Windows `_netrc`），
+CLI 用 `d3ltool login`）。
 **用户名/密码永远不会作为工具参数**出现在对话或 MCP 消息里。
 
-Search is anonymous; download tools reuse the Earthdata sign-in persisted on
-this machine. Passwords are never tool parameters.
+Search is anonymous; download and `point_timeseries` tools reuse the
+Earthdata sign-in persisted on this machine. Passwords are never tool
+parameters.
 
 ## 方式一：MCP 服务器
 
@@ -95,8 +98,9 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 ```
 
 配置完成后在客户端里直接说需求即可，例如：
-“查一下 2020 年 1 月北京的夜光数据，把前三个文件下载到 D:/data”。
-客户端会依次调用 `point_to_tile → search_granules → start_download → download_status`。
+“查一下 2020 年 1 月北京的夜光数据，把前三个文件下载到 D:/data”（依次调用
+`point_to_tile → search_granules → start_download → download_status`），或
+“给我禹城站（36.83N, 116.57E）2009 年 MOD13Q1 的 NDVI 时间序列”（→ `point_timeseries`）。
 
 ## 方式二：软件内 AI 助手
 
