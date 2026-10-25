@@ -231,6 +231,18 @@ def parse_ascii_value(text: str, layer: str):
     return None
 
 
+def is_fill(raw, fill):
+    """Fill match with a relative tolerance. The DAP4 wire format carries
+    float32 while the DMR _FillValue is parsed as float64 — MERRA-2's
+    1e15-scale fill loses ~9e3 in the round trip, so exact equality misses
+    every filled hour (CLDPRS is filled whenever the sky is clear)."""
+    if fill is None or raw != raw:
+        return False
+    if raw == fill:
+        return True
+    return fill != 0 and abs(raw - fill) <= abs(fill) * 1e-6
+
+
 class LaadsOpendapSeries:
     """Point time series sampled straight from the LAADS OPeNDAP service."""
 
@@ -345,7 +357,7 @@ class LaadsOpendapSeries:
             raw = parse_ascii_value(text, layer)
             if raw is None:
                 continue
-            if meta["fill"] is not None and raw == meta["fill"]:
+            if is_fill(raw, meta["fill"]):
                 continue                      # cloud / nodata pixel
             if meta["valid"] is not None \
                     and not meta["valid"][0] <= raw <= meta["valid"][1]:
@@ -472,7 +484,7 @@ class MerraOpendapSeries:
             for hour, raw in enumerate(values):
                 if raw is None:
                     continue
-                if meta["fill"] is not None and raw == meta["fill"]:
+                if is_fill(raw, meta["fill"]):
                     continue
                 value = raw * (meta["scale"] if meta["scale"] is not None
                                else 1.0) \

@@ -371,3 +371,40 @@ def test_run_point_series_merra(monkeypatch):
     assert len(points) == 24
     assert points[0][0] == "2020-01-01T01:30"
     assert points[0][1] == 270.0
+
+
+def test_is_fill_float32_roundtrip():
+    """The gateway sends float32; MERRA-2's 1e15 fill loses ~9e3 in the
+    round trip, so exact equality misses every filled hour."""
+    fill = 9.9999987e14
+    wire = struct.unpack("<f", struct.pack("<f", fill))[0]
+    assert wire != fill                       # exact == provably fails
+    assert wire < fill                        # inside the (useless) valid range
+    assert tsl.is_fill(wire, fill)
+    assert tsl.is_fill(fill, fill)
+    assert not tsl.is_fill(270.0, fill)
+    assert not tsl.is_fill(98158.0, fill)
+    assert not tsl.is_fill(100.0, None)
+
+
+def test_merra_series_drops_float32_fill():
+    """End to end: the float32-rounded fill hours are dropped, the real
+    one kept (CLDPRS arrives filled for every clear-sky hour)."""
+    fill = 9.9999987e14
+    wire = struct.unpack("<f", struct.pack("<f", fill))[0]
+    values = [wire, 270.0] + [wire] * 22
+
+    class _BytesSession(FakeSession):
+        def get(self, url, **kwargs):
+            if ".dap" in url and not url.endswith(".dmr.xml"):
+                self.calls.append(("GET", url, None))
+                return TextResp(_dap_body(values).decode("latin-1"))
+            return super().get(url, **kwargs)
+
+    session = _BytesSession(
+        [("GET", ".dmr.xml", lambda kw: TextResp(MERRA_DMR))])
+    s = tsl.MerraOpendapSeries(session=session)
+    _source, _layer, points = s.series(
+        36.833, 116.567, "M2T1NXSLV", "2020-01-01", "2020-01-01",
+        granules=[("2020-01-01", "https://opendap.example/g")])
+    assert points == [("2020-01-01T02:30", 270.0)]

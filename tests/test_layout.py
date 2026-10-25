@@ -302,6 +302,31 @@ def test_time_series_panel_renders_points(tmp_path, monkeypatch):
     assert panel.last_points == []
 
 
+def test_time_series_panel_hourly_stamps_and_fresh_axes(monkeypatch):
+    """MERRA-2 hourly stamps parse, and re-plotting must not stack the
+    previous run's axes beside the new ones."""
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+
+    from PySide6.QtWidgets import QApplication
+
+    from d3ltool.gui.timeseries_panel import TimeSeriesPanel
+
+    app = QApplication.instance() or QApplication([])
+    panel = TimeSeriesPanel()
+    panel.render_points([("2025-10-25T01:30", 270.0),
+                         ("2025-10-25T02:30", 271.0),
+                         ("2025-10-25T03:30", 269.5)])
+    series = panel.chart.series()
+    assert len(series) == 1
+    assert series[0].count() == 3
+    assert len(panel.chart.axes()) == 2           # one x + one y
+
+    panel.render_points([("2009-01-01", 0.7), ("2009-01-17", 1.3)])
+    assert panel.chart.series()[0].count() == 2
+    assert len(panel.chart.axes()) == 2           # old axes gone, not piled up
+
+
 def test_time_series_panel_validation(tmp_path, monkeypatch):
     """Bad coordinates are reported inline; no worker thread is started."""
     pytest.importorskip("PySide6")

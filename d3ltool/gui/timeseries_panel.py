@@ -338,15 +338,25 @@ class TimeSeriesPanel(QWidget):
     def render_points(self, points):
         """Draw (or clear with []) the series; records self.last_points."""
         self.chart.removeAllSeries()
+        for axis in self.chart.axes():    # removeAllSeries keeps old axes,
+            self.chart.removeAxis(axis)   # so labels pile up on every re-plot
         self.last_points = [list(p) for p in (points or [])]
         if not points:
             return
         series = QLineSeries()
         times = []
         for iso, value in points:
-            moment = QDateTime.fromString(str(iso) + "T00:00:00", Qt.ISODate)
+            text = str(iso)
+            moment = QDateTime.fromString(text, Qt.ISODate)
+            if not moment.isValid():      # "2025-10-25T01:30" parses directly;
+                moment = QDateTime.fromString(   # pad date-only stamps
+                    text[:10] + "T00:00:00", Qt.ISODate)
+            if not moment.isValid():
+                continue
             times.append(moment)
             series.append(moment.toMSecsSinceEpoch(), float(value))
+        if not times:
+            return
         pen = QPen(QColor("#d6372a"))
         pen.setWidthF(1.8)
         series.setPen(pen)
