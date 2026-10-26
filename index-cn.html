@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>D3L Tool of NASA Satellite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="D3LTool —— 免费、双语的 NASA MODIS / VIIRS / MERRA-2 数据检索与下载桌面软件：可点击瓦片地图、断点续传、MCP 服务器与内置 AI 助手。">
+    <meta name="description" content="D3LTool —— 免费、双语的 NASA MODIS / VIIRS / MERRA-2 数据检索与下载桌面软件：可点击瓦片地图、断点续传、点位时间序列采样、MCP 服务器与内置 AI 助手。">
     <link rel="stylesheet" type="text/css" href="stylesheets/site.css" media="screen">
   </head>
   <body>
@@ -20,9 +20,10 @@
         <h1>D3LTool</h1>
         <p class="tagline">NASA 卫星的 D3L 工具</p>
         <p class="lede">一款免费的桌面软件，一站式<b>检索与下载</b> NASA MODIS / VIIRS /
-        MERRA-2 数据——选产品、选时间、点瓦片、排队下载，全流程不出一个窗口。</p>
+        MERRA-2 数据——选产品、选时间、点瓦片、排队下载，全流程不出一个窗口；
+        v2.3 起还支持单像元时间序列采样与软件内绘图。</p>
         <div class="badges">
-          <span class="badge">v2.2.0</span>
+          <span class="badge">v2.3.0</span>
           <span class="badge">MIT 协议</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -62,10 +63,18 @@
           <div class="card wide">
             <div class="ico">🤖</div>
             <h3>MCP 服务器 + AI 助手</h3>
-            <p>自 v2.1 起，<code>d3ltool-mcp</code> 把 9 个工具（检索、瓦片换算、
-            下载控制）暴露给 Claude Desktop、Cursor、ZCode 等 MCP 客户端，复用本机
+            <p>自 v2.1 起，<code>d3ltool-mcp</code> 把 11 个工具（检索、瓦片换算、
+            时序采样、软件内绘图、下载控制）暴露给 Claude Desktop、Cursor、ZCode
+            等 MCP 客户端，复用本机
             已登录的凭据；软件内也有右缘滑出的 <b>AI 助手</b>抽屉，用自然语言驱动同一套
-            工具（任意 OpenAI 兼容服务商）。<a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">接入指南 →</a></p>
+            工具，取到序列还能直接画进时间序列抽屉。<a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">接入指南 →</a></p>
+          </div>
+          <div class="card">
+            <div class="ico">📈</div>
+            <h3>点位时间序列</h3>
+            <p>v2.3 新增：任选 MODIS/VIIRS 或 MERRA-2 变量，输入经纬度与日期
+            范围，经 NASA OPeNDAP 直采该像元序列并绘制折线，一键导出 CSV——
+            不经任何第三方子集服务。</p>
           </div>
           <div class="card">
             <div class="ico">🌐</div>
@@ -138,9 +147,16 @@ d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
 d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data
 d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40</pre>
 
+        <h3 class="sub">时间序列</h3>
+        <p>点开右缘的<b>时间序列</b>抽屉，选产品与图层，输入经纬度与起止日期，
+        点<b>“绘制折线图”</b>——该像元的序列经 NASA OPeNDAP 直采（MODIS/VIIRS 走
+        LAADS，MERRA-2 走 GES DISC，复用本机登录），实时绘成折线，一键导出 CSV；
+        “清空图表”复位画面。大范围批量分析仍建议下载原始数据离线处理。</p>
+
         <h3 class="sub">MCP 服务器与 AI 助手</h3>
-        <p><code>d3ltool-mcp</code> 通过 stdio 暴露 9 个工具（检索、瓦片换算、下载
-        控制），接入 Claude Desktop、Cursor、ZCode 等 MCP 客户端；软件内右缘滑出的
+        <p><code>d3ltool-mcp</code> 通过 stdio 暴露 11 个工具（检索、瓦片换算、
+        时序采样、软件内绘图、下载控制），接入 Claude Desktop、Cursor、ZCode 等
+        MCP 客户端；软件内右缘滑出的
         <b>AI 助手</b>抽屉用自然语言驱动同一套工具。配置示例见
         <a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">接入指南</a>。</p>
 

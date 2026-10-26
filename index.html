@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>D3L Tool of NASA Satellite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="D3LTool — a free bilingual desktop app to search and download NASA MODIS / VIIRS / MERRA-2 data, with a clickable tile map, resumable downloads, an MCP server and a built-in AI assistant.">
+    <meta name="description" content="D3LTool — a free bilingual desktop app to search and download NASA MODIS / VIIRS / MERRA-2 data, with a clickable tile map, resumable downloads, point time-series sampling, an MCP server and a built-in AI assistant.">
     <link rel="stylesheet" type="text/css" href="stylesheets/site.css" media="screen">
   </head>
   <body>
@@ -21,9 +21,10 @@
         <p class="tagline">D3L Tool of NASA Satellite</p>
         <p class="lede">A free, bilingual desktop app to <b>search and download</b>
         NASA MODIS / VIIRS / MERRA-2 data — product, date, tiles and download
-        queue, the whole workflow in one window.</p>
+        queue, the whole workflow in one window. Since v2.3 it also samples and
+        plots a pixel's time series right in the app.</p>
         <div class="badges">
-          <span class="badge">v2.2.0</span>
+          <span class="badge">v2.3.0</span>
           <span class="badge">MIT License</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -64,11 +65,19 @@
           <div class="card wide">
             <div class="ico">🤖</div>
             <h3>MCP server + AI Assistant</h3>
-            <p>Since v2.1, <code>d3ltool-mcp</code> exposes 9 tools (search, tile
-            math, downloads) to Claude Desktop, Cursor, ZCode and any MCP client,
+            <p>Since v2.1, <code>d3ltool-mcp</code> exposes 11 tools (search, tile
+            math, time-series sampling, in-app plotting, downloads) to Claude
+            Desktop, Cursor, ZCode and any MCP client,
             reusing the sign-in saved on your machine; the GUI gains a floating
             right-edge <b>AI Assistant</b> drawer that drives the same tools with
-            plain language (OpenAI-compatible providers). <a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">How to wire it up →</a></p>
+            plain language and charts fetched series itself. <a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">How to wire it up →</a></p>
+          </div>
+          <div class="card">
+            <div class="ico">📈</div>
+            <h3>Point time series</h3>
+            <p>Since v2.3, plot a pixel's changing values for any MODIS/VIIRS or
+            MERRA-2 layer — sampled directly over NASA OPeNDAP with one-click
+            CSV export, no third-party subset service.</p>
           </div>
           <div class="card">
             <div class="ico">🌐</div>
@@ -150,9 +159,18 @@ d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
 d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data
 d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40</pre>
 
+        <h3 class="sub">Time series</h3>
+        <p>Open the right-edge <b>time-series</b> drawer, pick a product and
+        layer, enter latitude/longitude and a date range, and hit <b>“Plot
+        series”</b> — the pixel's values are sampled over NASA OPeNDAP (LAADS
+        for MODIS/VIIRS, GES DISC for MERRA-2, reusing your sign-in) and drawn
+        as a line chart, exportable to CSV with one click; “Clear chart” resets
+        the plot. For large-scale analysis, download the raw files instead.</p>
+
         <h3 class="sub">MCP server &amp; AI assistant</h3>
-        <p><code>d3ltool-mcp</code> exposes 9 tools (search, tile math, download
-        control) over stdio for Claude Desktop, Cursor, ZCode and any MCP client;
+        <p><code>d3ltool-mcp</code> exposes 11 tools (search, tile math, time-
+        series sampling, in-app plotting, download control) over stdio for
+        Claude Desktop, Cursor, ZCode and any MCP client;
         the right-edge <b>AI Assistant</b> drawer in the GUI drives the same tools
         with plain language. Wiring examples live in the
         <a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">integration
