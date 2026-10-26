@@ -45,6 +45,7 @@ def isolated_tools(monkeypatch):
     monkeypatch.setattr(config, "load_config", lambda: cfg)
     monkeypatch.setattr(tools, "_SESSION_FACTORY", requests.Session)
     monkeypatch.setattr(tools, "_SEARCHER", None)
+    monkeypatch.setattr(tools, "_PLOT_SINK", None)
     tools._reset_engine()
     yield
     tools._reset_engine()
@@ -68,8 +69,9 @@ def _signed_out(monkeypatch):
 def test_registry_contains_all_tools():
     expected = {
         "check_auth", "list_products", "point_to_tile", "tile_bounds",
-        "search_granules", "point_timeseries", "start_download",
-        "download_status", "cancel_download", "retry_download",
+        "search_granules", "point_timeseries", "plot_timeseries",
+        "start_download", "download_status", "cancel_download",
+        "retry_download",
     }
     assert set(tools.REGISTRY) == expected
     for spec in tools.all_specs():
@@ -216,6 +218,38 @@ def test_point_timeseries_tool_laads(monkeypatch):
                             "mean": 0.347}
     assert out["truncated"] is False
     assert out["points"] == [["2009-01-17", 0.347]]
+    assert out["series_id"]
+
+
+def test_plot_timeseries_tool(monkeypatch):
+    """point_timeseries caches the full series under a series_id;
+    plot_timeseries hands it to the GUI sink, and reports honestly
+    when there is no GUI to draw in."""
+    from d3ltool import auth
+    from test_timeseries import FakeSession, _fake_granule, _opendap_routes
+
+    monkeypatch.setattr(tools, "_SEARCHER",
+                        lambda **query: [_fake_granule("2009-01-17", "h27v05")])
+    session = FakeSession(_opendap_routes(["_250m_16_days_NDVI[0], 3470"]))
+    monkeypatch.setattr(auth, "new_download_session", lambda: session)
+
+    out = tools.point_timeseries(lon=116.567, lat=36.833, product="MOD13Q1",
+                                 start="2009-01-01", end="2009-12-31")
+
+    seen = {}
+    monkeypatch.setattr(tools, "_PLOT_SINK",
+                        lambda points, meta: seen.update(points=points,
+                                                         meta=meta))
+    plotted = tools.plot_timeseries(out["series_id"])
+    assert plotted["plotted"] is True
+    assert plotted["count"] == 1
+    assert seen["points"] == [("2009-01-17", 0.347)]
+    assert seen["meta"]["product"] == "MOD13Q1"
+    assert seen["meta"]["layer"] == "_250m_16_days_NDVI"
+
+    monkeypatch.setattr(tools, "_PLOT_SINK", None)   # e.g. plain MCP server
+    assert tools.plot_timeseries(out["series_id"])["error"] == "not_in_gui"
+    assert tools.plot_timeseries("ts999")["error"] == "unknown series_id"
 
 
 def test_point_timeseries_tool_merra_truncates(monkeypatch):

@@ -8,7 +8,8 @@
 [English](README.md)
 
 D3L Tool v2 是一个免费开源的 NASA 卫星数据**检索与下载**工具：登录 → 检索 → 下载全流程在软件内完成，
-基于 NASA 官方 [earthaccess](https://earthaccess.readthedocs.io/) 与 CMR 检索服务重构——
+基于 NASA 官方 [earthaccess](https://earthaccess.readthedocs.io/) 与 CMR 检索服务重构，
+v2.3 起还支持单像元时间序列采样与软件内绘图（OPeNDAP 直采）——
 不再需要去 NASA 网站创建订单，也彻底告别浏览器模拟。
 
 ## 特性
@@ -111,8 +112,9 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
   软件内直接绘制该像元的折线图（QtCharts）——2017 年 MODIS Web Service 单点
   时间序列实验的现代复活。像元值**直接由 NASA OPeNDAP 采样**——MODIS/VIIRS 走
   LAADS、MERRA-2 走 GES DISC 云网关（与下载同源同凭据：不需要 AppEEARS、不需要
-  代理、大陆直连），并支持一键**导出 CSV**。同款采样也以 `point_timeseries`
-  工具暴露给 MCP 客户端与软件内 AI 助手。附带修正：经纬度→瓦片换算改用真实正弦投影网格（与实际文件逐像素
+  代理、大陆直连），并支持一键**导出 CSV**。同款采样也以 `point_timeseries` +
+  `plot_timeseries` 工具暴露给 MCP 客户端与软件内 AI 助手——助手取完序列可直接
+  画进软件的时间序列抽屉。附带修正：经纬度→瓦片换算改用真实正弦投影网格（与实际文件逐像素
   校准），修复了经纬度定位与 AI point_to_tile 旧版 10° 方盒近似的偏差
 - **2026-10 v2.2.0** — AI 助手改版为右缘悬浮抽屉：数据界面不再受影响，API 设置
   挪进弹出对话框，聊天区支持自定义背景图

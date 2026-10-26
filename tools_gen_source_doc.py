@@ -5,11 +5,18 @@
 Run:  python tools_gen_source_doc.py
 """
 
+import re
 from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "docs" / "copyright" / "source_code_document.txt"
+
+# 软著登记全称（必须与申请表一致，改这里即可）；版本号自动读取 d3ltool/__init__.py
+APP_NAME = "D3L Tool of NASA Satellite"
+_init = (ROOT / "d3ltool" / "__init__.py").read_text(encoding="utf-8")
+_match = re.search(r'__version__\s*=\s*["\']([^"\']+)', _init)
+VERSION = "V" + (_match.group(1) if _match else "0.0.0")
 
 FILES = []
 for pattern in ("d3ltool/*.py", "d3ltool/agent/*.py", "d3ltool/gui/*.py",
@@ -22,7 +29,7 @@ BACK_PAGES = 30
 
 banner = [
     "====================================================================================================",
-    "D3L Tool of NASA Satellite V2.1.0  软件著作权登记  源程序文档",
+    "D3L Tool of NASA Satellite %s  软件著作权登记  源程序文档" % VERSION,
     "开发语言: Python 3.10+    生成日期: %s    代码总行数: %d" % (
         date.today().isoformat(),
         sum(len(p.read_text(encoding="utf-8").splitlines()) for p in FILES),
@@ -63,8 +70,8 @@ else:
 with OUT.open("w", encoding="utf-8", newline="\n") as fh:
     fh.write("\n".join(banner) + "\n\n")
     for pno in chosen:
-        head = ("D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）"
-                "    第 %d 页 / 共 %d 页" % (pno + 1, total_pages))
+        head = ("D3L Tool of NASA Satellite %s    源程序（前30页+后30页节选）"
+                "    第 %d 页 / 共 %d 页" % (VERSION, pno + 1, total_pages))
         fh.write(head + "\n")
         fh.write("=" * 100 + "\n")
         fh.write("\n".join(pages[pno]) + "\n\n")

@@ -168,9 +168,12 @@ class TimeSeriesPanel(QWidget):
         self.stop_btn.clicked.connect(self._stop)
         self.export_btn = QPushButton(i18n.tr("ts_export"))
         self.export_btn.clicked.connect(self._export)
+        self.clear_btn = QPushButton(i18n.tr("ts_clear"))
+        self.clear_btn.clicked.connect(self._clear_chart)
         btn_row.addWidget(self.plot_btn, 1)
         btn_row.addWidget(self.stop_btn)
         btn_row.addWidget(self.export_btn)
+        btn_row.addWidget(self.clear_btn)
         root.addLayout(btn_row)
 
         self.status_label = QLabel(i18n.tr("ts_api_note"))
@@ -285,6 +288,20 @@ class TimeSeriesPanel(QWidget):
         else:
             self._status(i18n.tr("ts_no_data"), error=True)
 
+    def show_external_series(self, points, meta):
+        """Render a series produced elsewhere (the AI assistant's
+        point_timeseries/plot_timeseries tools) and record its context
+        for the status line and CSV export."""
+        self.render_points(points)
+        self._meta = dict(meta)
+        if points:
+            self._status(i18n.tr(
+                "ts_done", n=len(points), source=meta.get("source", ""),
+                layer=meta.get("layer", ""),
+                start=points[0][0], end=points[-1][0]))
+        else:
+            self._status(i18n.tr("ts_no_data"), error=True)
+
     def _on_failed(self, message):
         self._status(i18n.tr("ts_failed", reason=message), error=True)
 
@@ -334,6 +351,13 @@ class TimeSeriesPanel(QWidget):
                 writer.writerow([date, value])
 
     # -------------------------------------------------------------- chart
+
+    def _clear_chart(self):
+        """Reset the chart to its empty state; the form fields are kept so
+        the same query can be tweaked and re-plotted."""
+        self.render_points([])
+        self._meta = None
+        self._status(i18n.tr("ts_api_note"))
 
     def render_points(self, points):
         """Draw (or clear with []) the series; records self.last_points."""

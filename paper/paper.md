@@ -19,6 +19,7 @@ tags:
   - MERRA-2
   - Earthdata
   - data download
+  - time series
   - Python
 authors:
   - name: Shaoqing Dai
@@ -41,6 +42,9 @@ application in which the complete workflow — authentication, product discovery
 selection and download — happens inside one window. It is a full rewrite of the
 author's 2018 tool[@dai2018d3l], which automated order downloads through browser
 automation and was itself an early answer to the closure of the LAADS FTP servers.
+Since v2.3 the app can also sample the point time series of any MODIS/VIIRS or
+MERRA-2 layer directly over NASA's OPeNDAP services and plot it in-app — a
+lightweight revival of the MODIS Web Service that NASA retired.
 
 # Statement of need
 
@@ -63,15 +67,20 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
   session: parallel workers, chunked transfer with per-file progress, HTTP
   `Range` resumption of interrupted transfers, exponential-backoff retries,
   and file-size validation;
+- **point time-series sampling** (since v2.3): a dedicated drawer samples a
+  single pixel's values for any MODIS/VIIRS or MERRA-2 layer straight over
+  NASA's OPeNDAP servers — no third-party subset service such as AppEEARS —
+  and renders the line chart in-app, with one-click CSV export;
 - **local credential persistence** in the conventional `~/.netrc` file, silent
   session restore at startup, and configurable proxy support;
 - **a CLI** (`d3ltool search/download/login`) sharing the same core library as
   the GUI, so scripted pipelines and the GUI stay in feature parity;
 - **AI-native access**: since v2.1 the same core capabilities are exposed
-  through a Model Context Protocol (MCP) server (`d3ltool-mcp`, nine tools over
-  stdio) so AI assistants such as Claude Desktop, Cursor or ZCode can search and
-  download data on the user's behalf, and through a built-in conversational
-  assistant page in the GUI that accepts any OpenAI-compatible provider key;
+  through a Model Context Protocol (MCP) server (`d3ltool-mcp`, eleven tools
+  over stdio) so AI assistants such as Claude Desktop, Cursor or ZCode can
+  search and download data on the user's behalf, and through a built-in
+  conversational assistant drawer in the GUI that accepts any OpenAI-compatible
+  provider key and can plot fetched time series directly in the app;
   tool-driven downloads reuse the persisted credentials and require explicit
   user confirmation before queuing.
 
@@ -94,18 +103,22 @@ callbacks that a thin Qt bridge forwards to the UI; `auth.py` wraps
 `earthaccess` login (handling strategy/API differences across library
 versions), persists credentials to the platform netrc file, and restores
 sessions at startup; `tiles.py` implements the MODIS sinusoidal tile grid
-arithmetic; `products.py` holds a curated, bilingual product catalogue.
-`tools.py` registers the nine shared agent tools (sign-in status, catalogue,
-tile conversions, granule search, download queue control) with JSON schemas
+arithmetic; `products.py` holds a curated, bilingual product catalogue;
+`timeseries.py` samples point series over the OPeNDAP protocols of the LAADS
+DAAC (MODIS/VIIRS) and the GES DISC cloud gateway (MERRA-2).
+`tools.py` registers the eleven shared agent tools (sign-in status, catalogue,
+tile conversions, granule search, point time-series sampling, in-app plotting,
+download queue control) with JSON schemas
 derived from static signatures; `mcp_server.py` publishes the registry over
 MCP stdio (supporting both the v1 and v2 tool-APIs of the official SDK), and
 `agent/` provides a provider-agnostic streaming client for OpenAI-compatible
 endpoints plus a small tool-calling loop used by the built-in assistant.
 The GUI (`d3ltool.gui`) is a PySide6 application: a search panel with the
-tile map, results and task tables, a conversational assistant page sharing
-the main engine, settings (download directory, worker count, proxy) and a
+tile map, results and task tables, a slide-out assistant drawer and a
+time-series panel sharing the main engine, settings (download directory,
+worker count, proxy) and a
 language switcher; all strings live in a single i18n module. The test suite
-(78 pytest tests at submission time) covers the tile math, configuration
+(116 pytest tests at submission time) covers the tile math, configuration
 handling, search query construction and version fallbacks, the
 resume/retry engine against a local Range-capable HTTP server, the tool
 registry and agent loop with a local streaming-HTTP fake, an end-to-end

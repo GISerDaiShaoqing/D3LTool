@@ -302,6 +302,25 @@ def test_time_series_panel_renders_points(tmp_path, monkeypatch):
     assert panel.last_points == []
 
 
+def test_time_series_panel_clear_button(monkeypatch):
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+
+    from PySide6.QtWidgets import QApplication
+
+    from d3ltool.gui.timeseries_panel import TimeSeriesPanel
+
+    app = QApplication.instance() or QApplication([])
+    panel = TimeSeriesPanel()
+    panel.render_points([("2009-01-01", 0.7), ("2009-01-17", 1.3)])
+    panel._meta = {"product": "MOD13Q1"}
+    panel.clear_btn.click()
+    assert panel.chart.series() == []
+    assert panel.chart.axes() == []
+    assert panel.last_points == []
+    assert panel._meta is None
+
+
 def test_time_series_panel_hourly_stamps_and_fresh_axes(monkeypatch):
     """MERRA-2 hourly stamps parse, and re-plotting must not stack the
     previous run's axes beside the new ones."""
@@ -325,6 +344,29 @@ def test_time_series_panel_hourly_stamps_and_fresh_axes(monkeypatch):
     panel.render_points([("2009-01-01", 0.7), ("2009-01-17", 1.3)])
     assert panel.chart.series()[0].count() == 2
     assert len(panel.chart.axes()) == 2           # old axes gone, not piled up
+
+
+def test_agent_plot_sink_opens_ts_drawer(tmp_path, monkeypatch):
+    """The AI assistant's plot_timeseries tool lands in the app's own
+    time-series drawer and pops it open."""
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        window._plot_agent_series(
+            [("2010-01-01", 0.18), ("2010-01-17", 0.22)],
+            {"product": "MOD13Q1", "layer": "_250m_16_days_NDVI",
+             "lat": "36.833", "lon": "116.567",
+             "start": "2010-01-01", "end": "2010-12-31",
+             "source": "MOD13Q1 (LAADS OPeNDAP)"})
+        app.processEvents()
+        assert window.ts_drawer.isVisible()
+        assert window.ts_panel.chart.series()[0].count() == 2
+        assert window.ts_panel._meta["product"] == "MOD13Q1"
+        assert window.ts_panel.last_points == [["2010-01-01", 0.18],
+                                               ["2010-01-17", 0.22]]
+    finally:
+        window.close()
 
 
 def test_time_series_panel_validation(tmp_path, monkeypatch):

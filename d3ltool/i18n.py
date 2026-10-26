@@ -130,11 +130,28 @@ STRINGS = {
         "agent_bg_pick": "浏览...",
         "agent_bg_clear": "清除",
         "agent_drawer_tip": "打开 AI 助手",
-        "agent_welcome": "这是内置 AI 助手。点右上角 ⚙ 填好 API 地址与 Key 后，可直接用自然语言检索和下载数据，例如：“2020 年 1 月北京的夜光数据帮我下载”。工具与 MCP 服务器共用；下载会先弹窗确认。",
+        "agent_welcome": "这是内置 AI 助手。点右上角 ⚙ 填好 API 地址与 Key 后，可用自然语言下载数据（例：“2020 年 1 月北京的夜光数据帮我下载”），也可以直接计算并绘制任意点位的时间序列（例：“帮我画禹城 2010 年的 NDVI 序列”）。工具与 MCP 服务器共用；下载会先弹窗确认。",
         "agent_tool_run": "调用工具 {name}",
         "agent_confirm_title": "确认下载",
         "agent_confirm_text": "AI 请求执行 {name}，允许吗？",
-        "agent_system_prompt": "你是 NASA 数据下载工具 D3LTool 的内置 AI 助手。可用工具：check_auth 查登录状态、list_products 查产品目录、point_to_tile/tile_bounds 做经纬度与瓦片换算、search_granules 检索 granule、start_download 提交下载队列、download_status 查询进度、cancel_download/retry_download 控制任务。规则：1) 涉及产品名/文件名/瓦片号时必须用工具查询，不要编造；2) 帮用户下载前先检索并列出将下载的文件；3) start_download 会弹窗请用户确认，被拒绝时不要反复重试；4) 未登录时检索仍可用，下载会返回 not_authenticated，请引导用户在主界面登录 Earthdata（密码不经过对话）；5) 用用户的语言简洁回答。",
+        "agent_system_prompt": "你是 NASA 数据工具 D3LTool 的内置 AI 助手。工具分三组："
+                               "1) 点位时间序列——point_timeseries(经纬度+产品+起止日期) 直接从 "
+                               "NASA OPeNDAP 采样单像元序列（MODIS/VIIRS/MERRA-2，无需下载整景"
+                               "文件），返回点列与 series_id；在软件内接着调 plot_timeseries"
+                               "(series_id) 即可把序列画进时间序列抽屉。"
+                               "2) 检索下载——search_granules 检索 granule、start_download 提交"
+                               "下载队列、download_status/cancel_download/retry_download 管理"
+                               "任务。"
+                               "3) 辅助——check_auth 查登录、list_products 查产品目录、"
+                               "point_to_tile/tile_bounds 经纬度与瓦片换算。"
+                               "规则：1) 用户要“时间序列/趋势/折线图/某点的变化”时直接用 "
+                               "point_timeseries，不要检索或下载整景影像；2) 画完图后用一两句话"
+                               "总结数据特征（趋势、季节性、异常值）；3) 只有用户明确要“文件/"
+                               "影像”时才走 search_granules→start_download；4) 产品名/文件名/"
+                               "瓦片号必须用工具查询，不要编造；5) start_download 会弹窗请用户"
+                               "确认，被拒绝时不要反复重试；6) 未登录时检索仍可用，下载与序列采样"
+                               "需要登录（not_authenticated 时引导用户在主界面登录 Earthdata，"
+                               "密码不经过对话）；7) 用用户的语言简洁回答。",
         "tab_ts": "时间序列",
         "act_ts": "时间序列",
         "ts_drawer_tip": "打开时间序列",
@@ -146,6 +163,7 @@ STRINGS = {
         "ts_lon_ph": "116.567",
         "ts_plot": "绘制折线图",
         "ts_export": "导出 CSV",
+        "ts_clear": "清空图表",
         "ts_exported": "已导出：{path}",
         "ts_nothing": "还没有可导出的序列——先绘制一次",
         "ts_need_fields": "请先填写：{fields}",
@@ -168,7 +186,7 @@ STRINGS = {
         "settings_proxy": "代理（留空不使用，如 http://127.0.0.1:7890 或 socks5://...）",
         "settings_saved": "设置已保存",
         "about_text": "D3L Tool of NASA Satellite\n\n"
-                      "NASA MODIS / VIIRS / MERRA-2 数据检索与下载工具\n\n"
+                      "NASA MODIS / VIIRS / MERRA-2 数据检索与下载工具，附点位时间序列采样\n\n"
                       "v2.0 © 2026 GLM-5.3-Flash 基于 earthaccess / CMR 重构 · \n\n"
                       "v1.0 © 2018 戴劭勍 (dsq1993qingge@163.com)\n\n"
                       "官网: https://gisersqdai.top/D3LTool/",
@@ -322,24 +340,39 @@ STRINGS = {
         "agent_drawer_tip": "Open AI assistant",
         "agent_welcome": "This is the built-in AI assistant. Open ⚙ (top right) to fill in "
                          "the provider and API key, then just ask, e.g. “download the January "
-                         "2020 nighttime lights around Beijing”. It shares the tool set "
-                         "with the MCP server; downloads ask for confirmation first.",
+                         "2020 nighttime lights around Beijing”, or have it compute and plot "
+                         "a point time series, e.g. “plot the 2010 NDVI series at Yucheng”. "
+                         "It shares the tool set with the MCP server; downloads ask for "
+                         "confirmation first.",
         "agent_tool_run": "calling tool {name}",
         "agent_confirm_title": "Confirm download",
         "agent_confirm_text": "The AI wants to run {name}. Allow it?",
         "agent_system_prompt": "You are the built-in AI assistant of D3LTool, a NASA data "
-                               "downloader. Available tools: check_auth (sign-in state), "
-                               "list_products (catalog), point_to_tile / tile_bounds (tile "
-                               "math), search_granules (CMR search), start_download (queue "
-                               "downloads), download_status (progress), cancel_download / "
-                               "retry_download. Rules: 1) look up product names, files and "
-                               "tiles with tools, never invent them; 2) before downloading, "
-                               "search and list the files you are about to download; 3) "
-                               "start_download pops a user confirmation dialog — if declined, "
-                               "do not retry repeatedly; 4) without sign-in, search still "
-                               "works but downloads return not_authenticated — guide the "
-                               "user to sign in on the main window (the password never passes "
-                               "through chat); 5) answer in the user's language, concisely.",
+                               "tool. Tools come in three groups: 1) point time series — "
+                               "point_timeseries(lon/lat + product + date range) samples a "
+                               "single pixel's series straight from NASA OPeNDAP "
+                               "(MODIS/VIIRS/MERRA-2, no whole-file downloads) and returns "
+                               "the points plus a series_id; inside the desktop app follow "
+                               "with plot_timeseries(series_id) to draw it in the "
+                               "time-series drawer. 2) search & download — search_granules "
+                               "(CMR search), start_download (queue, asks confirmation), "
+                               "download_status / cancel_download / retry_download. "
+                               "3) helpers — check_auth (sign-in state), list_products "
+                               "(catalog), point_to_tile / tile_bounds (tile math). "
+                               "Rules: 1) for 'time series / trend / line chart / how a "
+                               "point changed' requests call point_timeseries directly — "
+                               "never search or download whole granules for that; 2) after "
+                               "plotting, summarise the series in a sentence or two (trend, "
+                               "seasonality, outliers); 3) only walk search_granules → "
+                               "start_download when the user explicitly asks for files or "
+                               "imagery; 4) look up product names, files and tiles with "
+                               "tools, never invent them; 5) start_download pops a "
+                               "confirmation dialog — if declined, do not retry "
+                               "repeatedly; 6) without sign-in, search still works but "
+                               "downloads and series sampling need it (not_authenticated → "
+                               "guide the user to sign in on the main window; the password "
+                               "never passes through chat); 7) answer in the user's "
+                               "language, concisely.",
         "tab_ts": "Time series",
         "act_ts": "Time series",
         "ts_drawer_tip": "Open the time-series drawer",
@@ -351,6 +384,7 @@ STRINGS = {
         "ts_lon_ph": "116.567",
         "ts_plot": "Plot series",
         "ts_export": "Export CSV",
+        "ts_clear": "Clear chart",
         "ts_exported": "Exported: {path}",
         "ts_nothing": "Nothing to export yet — plot a series first",
         "ts_need_fields": "Please fill in: {fields}",
@@ -378,7 +412,7 @@ STRINGS = {
         "settings_proxy": "Proxy (blank = none, e.g. http://127.0.0.1:7890 or socks5://...)",
         "settings_saved": "Settings saved",
         "about_text": "D3L Tool of NASA Satellite\n\n"
-                      "Search & download NASA MODIS / VIIRS / MERRA-2 data\n\n"
+                      "Search & download NASA MODIS / VIIRS / MERRA-2 data, plus point time-series sampling\n\n"
                       "v2.0 © 2026 GLM-5.3-Flash Rebuilt on earthaccess / CMR · \n\n"
                       "v1.0 © 2018 Dai Shaoqing (dsq1993qingge@163.com)\n\n"
                       "Website: https://gisersqdai.top/D3LTool/",

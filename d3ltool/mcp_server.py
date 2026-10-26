@@ -16,10 +16,14 @@ INSTRUCTIONS = (
     "MERRA-2 data from LAADS DAAC and GES DISC via CMR, plus point time "
     "series sampled straight over NASA OPeNDAP. Search works anonymously; "
     "downloads and point_timeseries reuse the Earthdata sign-in persisted "
-    "on this machine (passwords are never accepted through tools). Typical "
-    "flow: check_auth -> list_products / point_to_tile -> search_granules "
-    "-> start_download -> download_status; use point_timeseries for a "
-    "single pixel's series (e.g. NDVI, LST, 2-m temperature) at a lon/lat."
+    "on this machine (passwords are never accepted through tools). "
+    "Routing: for 'time series / trend / plotting' requests call "
+    "point_timeseries (inside the D3LTool desktop app follow with "
+    "plot_timeseries to draw it; plain MCP clients chart the returned "
+    "points themselves) — do NOT search or download granules for that. "
+    "The flow check_auth -> list_products / point_to_tile -> "
+    "search_granules -> start_download -> download_status is for file "
+    "requests only."
 )
 
 

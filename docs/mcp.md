@@ -18,7 +18,8 @@ drawer that slides out from the right edge of the GUI.
 | `point_to_tile` | 经纬度 → 正弦瓦片 (h, v) 及范围 |
 | `tile_bounds` | h/v → 瓦片地理范围 |
 | `search_granules` | CMR 检索：short_name + 时间 + 瓦片/范围，返回文件名/日期/大小/下载地址 |
-| `point_timeseries` | 点位时间序列：经纬度 + 产品 + 时间段 → LAADS/云 OPeNDAP 直采像素（MERRA-2 逐小时），返回点列与统计 |
+| `point_timeseries` | 点位时间序列：经纬度 + 产品 + 时间段 → LAADS/云 OPeNDAP 直采像素（MERRA-2 逐小时），返回点列与统计，并附 `series_id` |
+| `plot_timeseries` | 把 `series_id` 对应的序列画进软件时间序列图表（仅软件内 AI 助手可用；MCP 环境返回 not_in_gui） |
 | `start_download` | 把 URL 加入下载队列（断点续传），返回任务 id |
 | `download_status` | 查询下载进度（状态/大小/速度/失败原因） |
 | `cancel_download` / `retry_download` | 按任务 id 取消 / 重试 |
@@ -121,6 +122,8 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 2. **模型名** + **API Key**（Ollama 留空），点 **测试连接** 验证。
 3. 聊天框直接提需求。AI 会调用与 MCP 相同的工具集；调用 `start_download`
    前会弹窗请你确认，下载任务与手动下载共用同一个任务表（支持暂停/续传）。
+   让 AI “画 xx 的时间序列”时，它会先 `point_timeseries` 取数，再
+   `plot_timeseries` 直接画进时间序列抽屉（无需手动复制数据）。
 
 ### Key 安全 / Key storage
 

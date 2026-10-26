@@ -207,6 +207,7 @@ class MainWindow(QMainWindow):
         # in a right-edge drawer instead of a tab so the data page keeps
         # its own layout untouched
         tools.attach_engine(self.engine)
+        tools.attach_plot_sink(self._plot_agent_series)
         splitter.addWidget(self.search_panel)
         splitter.addWidget(data_page)
         splitter.setSizes([340, 760])
@@ -469,6 +470,13 @@ class MainWindow(QMainWindow):
             self._toggle_ts_drawer()
         else:
             self.ts_panel.product_combo.setFocus()
+
+    def _plot_agent_series(self, points, meta):
+        """Chart target for the AI assistant's plot_timeseries tool:
+        draw into the time-series drawer and bring it to the front."""
+        self.ts_panel.show_external_series(points, meta)
+        if not self._ts_ctl.is_open:
+            self._toggle_ts_drawer()
 
     def _switch_language(self, code):
         self.config = config.update_config(language=code)

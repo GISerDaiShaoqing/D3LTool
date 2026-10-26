@@ -115,6 +115,9 @@ _SESSION_FACTORY = auth.new_download_session   # replaced by tests
 _SEARCHER = None                               # replaced by tests; None -> earthaccess
 _ENGINE = None
 _ENGINE_LOCK = threading.Lock()
+_PLOT_SINK = None            # GUI chart target: callable(points, meta) -> set by attach_plot_sink
+_TS_CACHE = {}               # series_id -> {"meta": {...}, "points": [...]}
+_TS_SEQ = [0]
 
 
 def _get_engine(dest_dir=""):
@@ -144,6 +147,14 @@ def attach_engine(engine_obj) -> None:
     global _ENGINE
     with _ENGINE_LOCK:
         _ENGINE = engine_obj
+
+
+def attach_plot_sink(sink) -> None:
+    """Let the GUI register a chart target so the AI assistant can draw a
+    fetched series in the app's time-series drawer. MCP servers leave it
+    unset; plot_timeseries then reports that plotting is GUI-only."""
+    global _PLOT_SINK
+    _PLOT_SINK = sink
 
 
 # ----------------------------------------------------------------- tools
@@ -271,11 +282,13 @@ def search_granules(short_name: str, start: str, end: str, version: str = "",
     "Sample the point time series of a MODIS/VIIRS or MERRA-2 product at one "
     "lon/lat over a date range (YYYY-MM-DD). Pixels are read directly over "
     "NASA OPeNDAP (LAADS for MODIS/VIIRS, the cloud gateway for MERRA-2, "
-    "which yields hourly steps), no intermediate service. Requires the "
-    "Earthdata sign-in persisted on this machine. Returns source, layer, "
-    "points [[date, value], ...] capped at `limit` (default 200) plus "
-    "full-series stats; for long series narrow the date range or raise "
-    "`limit`.",
+    "which yields hourly steps), no intermediate service. For 'series / "
+    "trend / plot at a point' requests prefer this over search_granules — "
+    "it reads one pixel instead of whole files. Requires the Earthdata "
+    "sign-in persisted on this machine. Returns source, layer, points "
+    "[[date, value], ...] capped at `limit` (default 200) plus full-series "
+    "stats and a series_id for plot_timeseries; for long series narrow the "
+    "date range or raise `limit`.",
     "经纬度 + 产品 + 时间段 -> 点位时间序列（LAADS/云 OPeNDAP 直采像素，MERRA-2 为逐小时；"
     "需本机已登录 Earthdata，长序列截断到 limit 条并附统计）",
 )
@@ -309,7 +322,47 @@ def point_timeseries(lon: float, lat: float, product: str, start: str,
     if out["truncated"]:
         out["hint"] = (f"series has {len(points)} points, showing the first "
                        f"{limit}; narrow start..end or raise `limit`")
+    _TS_SEQ[0] += 1
+    series_id = f"ts{_TS_SEQ[0]}"
+    _TS_CACHE[series_id] = {
+        "meta": {"product": str(product).strip().upper(),
+                 "layer": layer_used, "source": source,
+                 "lat": str(lat), "lon": str(lon),
+                 "start": start, "end": end},
+        "points": list(points),          # full series, for plot_timeseries
+    }
+    while len(_TS_CACHE) > 4:            # keep only the most recent series
+        _TS_CACHE.pop(next(iter(_TS_CACHE)))
+    out["series_id"] = series_id
     return out
+
+
+@tool(
+    "plot_timeseries",
+    "Render a series fetched with point_timeseries in the D3LTool desktop "
+    "app's time-series chart (the drawer pops open). Only works when this "
+    "tool set runs inside the D3LTool GUI; from an MCP client there is no "
+    "app to draw in, so chart the returned points yourself or save them "
+    "to a file.",
+    "把 point_timeseries 取回的序列画进 D3LTool 软件的时间序列图表（仅软件内 AI 助手可用；"
+    "MCP 环境没有软件界面，请自行用返回的 points 绘图或存盘）",
+)
+def plot_timeseries(series_id: str, title: str = "") -> dict:
+    entry = _TS_CACHE.get(str(series_id).strip())
+    if entry is None:
+        return {"error": "unknown series_id",
+                "hint": "call point_timeseries first; its result carries a "
+                        "series_id to plot"}
+    if _PLOT_SINK is None:
+        return {"error": "not_in_gui",
+                "hint": "plotting renders inside the D3LTool desktop app; "
+                        "outside it, chart the returned points yourself"}
+    meta = dict(entry["meta"])
+    if title:
+        meta["title"] = str(title)
+    _PLOT_SINK(entry["points"], meta)
+    return {"plotted": True, "count": len(entry["points"]),
+            "layer": meta.get("layer", "")}
 
 
 @tool(

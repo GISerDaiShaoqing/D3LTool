@@ -9,7 +9,8 @@
 
 D3L Tool v2 is a free & open-source tool to **search and download** NASA Earth science data —
 the whole workflow (login → search → download) inside one app, built on NASA's official
-[earthaccess](https://earthaccess.readthedocs.io/) library and the CMR search service.
+[earthaccess](https://earthaccess.readthedocs.io/) library and the CMR search service —
+and, since v2.3, to sample a pixel's time series over OPeNDAP and plot it in-app.
 No more manual order creation, no more browser automation.
 
 ## Features
@@ -128,8 +129,10 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   MODIS/VIIRS from LAADS, hourly **MERRA-2** from the GES DISC cloud
   gateway (the same servers and credentials as the downloader: no
   AppEEARS, no proxy, mainland-network friendly) — with one-click **CSV
-  export**. The same sampling is also exposed as the `point_timeseries`
-  tool to MCP clients and the in-app AI assistant. Bonus fix: point→tile math now uses the true sinusoidal grid (pixel-exact against
+  export**. The same sampling is also exposed to MCP clients and the
+  in-app AI assistant as `point_timeseries` + `plot_timeseries` — the
+  assistant fetches the series and draws it straight into the app's
+  time-series drawer. Bonus fix: point→tile math now uses the true sinusoidal grid (pixel-exact against
   real files) instead of the old 10° box approximation, making the
   lat/lon locator and the AI's point_to_tile accurate again
 - **2026-10 v2.2.0** — AI Assistant redesigned as a floating right-edge

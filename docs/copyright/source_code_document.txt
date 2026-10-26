@@ -1,15 +1,15 @@
 ====================================================================================================
-D3L Tool of NASA Satellite V2.1.0  软件著作权登记  源程序文档
-开发语言: Python 3.10+    生成日期: 2026-10-22    代码总行数: 4203
+D3L Tool of NASA Satellite V2.3.0  软件著作权登记  源程序文档
+开发语言: Python 3.10+    生成日期: 2026-10-26    代码总行数: 5820
 ====================================================================================================
 
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 1 页 / 共 85 页
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 1 页 / 共 118 页
 ====================================================================================================
 # ===== 文件: d3ltool/__init__.py =====
 # -*- coding: utf-8 -*-
 """D3L Tool of NASA Satellite v2 — search & download NASA Earth science data."""
 
-__version__ = "2.1.0"
+__version__ = "2.3.0"
 APP_NAME = "D3L Tool of NASA Satellite"
 # ===== 文件: d3ltool/__main__.py =====
 # -*- coding: utf-8 -*-
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     sys.exit(run_gui())
 # ===== 文件: d3ltool/auth.py =====
 
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 2 页 / 共 85 页
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 2 页 / 共 118 页
 ====================================================================================================
 # -*- coding: utf-8 -*-
 """Earthdata Login via earthaccess. Search needs no auth; downloads do."""
@@ -109,7 +109,7 @@ def is_authenticated() -> bool:
     try:
         return bool(singleton.authenticated)
 
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 3 页 / 共 85 页
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 3 页 / 共 118 页
 ====================================================================================================
     except Exception:
         return False
@@ -162,7 +162,7 @@ def _call_login(**kwargs):
         return earthaccess.login(**kwargs)
 
 
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 4 页 / 共 85 页
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 4 页 / 共 118 页
 ====================================================================================================
 
 def _urs_probe(username: str, password: str) -> str:
@@ -215,7 +215,7 @@ def login(username: str, password: str, persist: bool = True) -> str:
 
     result = None
 
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 5 页 / 共 85 页
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 5 页 / 共 118 页
 ====================================================================================================
     error_text = ""
     for attempt in ({"strategy": "environment", "persist": persist}, {"persist": persist}):
@@ -268,7 +268,7 @@ def _persist_to_netrc(username: str, password: str) -> bool:
     (Windows name `_netrc`, or the path from the NETRC environment variable).
     """
 
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 6 页 / 共 85 页
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 6 页 / 共 118 页
 ====================================================================================================
     singleton = _auth_singleton()
     if singleton is not None:
@@ -306,26 +306,42 @@ def new_download_session():
     """An authenticated requests.Session for the download engine.
 
     Falls back to an anonymous session; downloads will then fail with 401
-    and the UI prompts for login.
+    and the UI prompts for login. The configured proxy (settings dialog)
+    is applied to every session created here.
     """
     import requests
 
+    session = None
     if earthaccess is not None:
         try:
-            return earthaccess.get_requests_https_session()
+            session = earthaccess.get_requests_https_session()
         except AttributeError:
             singleton = _auth_singleton()
             if singleton is not None:
                 try:
-                    return singleton.get_session()
-                except Exception:
-                    pass
+                    session = singleton.get_session()
 
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 7 页 / 共 85 页
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 7 页 / 共 118 页
 ====================================================================================================
+                except Exception:
+                    session = None
         except Exception:
-            pass
-    return requests.Session()
+            session = None
+    if session is None:
+        session = requests.Session()
+    _apply_configured_proxy(session)
+    return session
+
+
+def _apply_configured_proxy(session) -> None:
+    try:
+        from . import config
+
+        proxy = (config.load_config() or {}).get("proxy_url") or ""
+        if proxy:
+            session.proxies.update({"http": proxy, "https": proxy})
+    except Exception:
+        pass
 # ===== 文件: d3ltool/cli.py =====
 # -*- coding: utf-8 -*-
 """Command line interface: login / search / download / gui.
@@ -357,6 +373,9 @@ def _add_search_args(p):
     p.add_argument("--bbox", nargs="+", default=[],
                    help="bounding box: west,south,east,north (for MERRA-2 etc.); "
                         "spaces or commas both fine, e.g. --bbox 100 20 120 40")
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 8 页 / 共 118 页
+====================================================================================================
     p.add_argument("--version", default="", help="CMR version, e.g. 6.1 (optional)")
     p.add_argument("--limit", type=int, default=200, help="max granules (default 200)")
 
@@ -373,9 +392,6 @@ def _params_from_args(args):
         tiles=tiles,
         bbox=search.parse_bbox(" ".join(args.bbox)),
         max_results=args.limit,
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 8 页 / 共 85 页
-====================================================================================================
     )
 
 
@@ -410,6 +426,9 @@ def _cmd_download(args):
             print("not signed in; downloading requires Earthdata login")
             return _cmd_login(args)
         print("not signed in (no tty). Run `d3ltool login` first.", file=sys.stderr)
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 9 页 / 共 118 页
+====================================================================================================
         return 2
 
     params = _params_from_args(args)
@@ -426,9 +445,6 @@ def _cmd_download(args):
         if item is None:
             return
         if event == "status" and item.state in ("done", "skipped", "failed", "canceled"):
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 9 页 / 共 85 页
-====================================================================================================
             mark = {"done": "OK ", "skipped": "SKIP", "failed": "FAIL",
                     "canceled": "CANC"}.get(item.state, "    ")
             print(f"[{mark}] {item.filename} {item.message}")
@@ -463,6 +479,9 @@ def _cmd_gui(_args):
 def main(argv=None) -> int:
     _setup_stdout()
     parser = argparse.ArgumentParser(
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 10 页 / 共 118 页
+====================================================================================================
         prog="d3ltool",
         description=f"D3L Tool of NASA Satellite v{__version__} — "
                     "search & download MODIS/VIIRS/MERRA-2 data. "
@@ -479,9 +498,6 @@ def main(argv=None) -> int:
 
     p_dl = sub.add_parser("download", help="search + download")
     _add_search_args(p_dl)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 10 页 / 共 85 页
-====================================================================================================
     p_dl.add_argument("--dest", default="", help="destination directory (default: settings)")
     p_dl.add_argument("--workers", type=int, default=0, help="concurrent downloads")
     p_dl.set_defaults(func=_cmd_download)
@@ -516,11 +532,15 @@ DEFAULTS = {
     "download_dir": str(Path.home() / "Downloads"),
     "max_workers": 3,
     "proxy_url": "",
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 11 页 / 共 118 页
+====================================================================================================
     "username": "",
     # AI Assistant (any OpenAI-compatible provider); key stays on this machine
     "ai_base_url": "",
     "ai_model": "",
     "ai_api_key": "",
+    "ai_chat_bg": "",       # optional chat-drawer background image path
 }
 
 
@@ -532,9 +552,6 @@ def load_config() -> dict:
             cfg.update({k: v for k, v in raw.items() if k in DEFAULTS})
     except (OSError, ValueError):
         pass
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 11 页 / 共 85 页
-====================================================================================================
     return cfg
 
 
@@ -568,6 +585,9 @@ from urllib.parse import unquote
 import requests
 
 CHUNK_SIZE = 256 * 1024
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 12 页 / 共 118 页
+====================================================================================================
 MAX_ATTEMPTS = 4
 
 STATES = ("pending", "running", "done", "skipped", "failed", "paused", "canceled")
@@ -585,9 +605,6 @@ class _Canceled(Exception):
 class DownloadItem:
     url: str
     filename: str
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 12 页 / 共 85 页
-====================================================================================================
     dest_dir: Path
     id: int = 0
     state: str = "pending"
@@ -621,6 +638,9 @@ class DownloadEngine:
 
     # ------------------------------------------------------------------ public
 
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 13 页 / 共 118 页
+====================================================================================================
     def add(self, url, filename=None, size_hint=0) -> DownloadItem:
         filename = filename or filename_from_url(url)
         dest = self.dest_dir / filename
@@ -638,9 +658,6 @@ class DownloadEngine:
         self._set_state(item, "pending", "")
         self._ensure_pool()
         self._futures[item.id] = self._pool.submit(self._run, item)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 13 页 / 共 85 页
-====================================================================================================
         return item
 
     def pause(self, item_id) -> None:
@@ -674,6 +691,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
     def clear_finished(self) -> None:
         with self._lock:
             finished = [i for i, it in list(self.items.items())
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 14 页 / 共 118 页
+====================================================================================================
                         if it.state in ("done", "skipped", "failed", "canceled")]
             for i in finished:
                 it = self.items.pop(i)
@@ -691,9 +711,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
             return True
         try:
             concurrent.futures.wait(futures, timeout=timeout)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 14 页 / 共 85 页
-====================================================================================================
             return all(f.done() for f in futures)
         except Exception:
             return False
@@ -727,6 +744,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
 
     def _run(self, item):
         ctrl = self._control[item.id]
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 15 页 / 共 118 页
+====================================================================================================
         attempt = 0
         while True:
             if ctrl["cancel"]:
@@ -744,9 +764,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
             except Exception as exc:
                 attempt += 1
                 if attempt >= MAX_ATTEMPTS:
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 15 页 / 共 85 页
-====================================================================================================
                     self._set_state(item, "failed", f"{type(exc).__name__}: {exc}")
                     return
                 self._set_state(item, "running", f"retry {attempt}/{MAX_ATTEMPTS - 1}: {exc}")
@@ -780,6 +797,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
                 return
             dest.unlink()   # incomplete or corrupt: start over
 
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 16 页 / 共 118 页
+====================================================================================================
         offset = part.stat().st_size if part.exists() else 0
         if remote_size and offset > remote_size:
             offset = 0
@@ -797,9 +817,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
                 if remote_size and offset == remote_size:
                     part.rename(dest)
                     self._set_state(item, "done", "")
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 16 页 / 共 85 页
-====================================================================================================
                     return
                 part.unlink(missing_ok=True)
                 raise RuntimeError("HTTP 416 (range not satisfiable)")
@@ -833,6 +850,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
                     if now - last_t >= 0.4:
                         item.speed = (item.downloaded - last_b) / (now - last_t)
                         last_t, last_b = now, item.downloaded
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 17 页 / 共 118 页
+====================================================================================================
                         self._emit(item, "progress", {})
 
         if remote_size and item.downloaded != remote_size:
@@ -850,9 +870,6 @@ STRINGS = {
     "zh": {
         "app_title": "D3L Tool of NASA Satellite",
         "menu_help": "帮助",
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 17 页 / 共 85 页
-====================================================================================================
         "menu_language": "语言",
         "menu_settings": "设置",
         "menu_about": "关于",
@@ -886,6 +903,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "auth_urs_ok_but_failed": "URS 认可该账号，但登录流程未完成：{detail}。请重试一次；"
                                   "若仍失败请到 GitHub Issues 反馈。",
         "auth_earthaccess_generic": "Earthdata 登录未完成：{detail}。"
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 18 页 / 共 118 页
+====================================================================================================
                                     "若提示 EULA/权限，请先在 https://urs.earthdata.nasa.gov 登录并确认已同意相应 DAAC 协议。",
         "group_product": "产品",
         "group_time": "时间范围",
@@ -903,9 +923,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "col_group": "卫星/数据集",
         "col_shortname": "产品 short_name",
         "col_version": "版本",
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 18 页 / 共 85 页
-====================================================================================================
         "col_desc": "说明",
         "btn_use_product": "选用",
         "label_start": "开始日期",
@@ -939,6 +956,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "tasks_col_speed": "速度",
         "tasks_col_size": "大小",
         "state_pending": "等待中",
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 19 页 / 共 118 页
+====================================================================================================
         "state_running": "下载中",
         "state_done": "已完成",
         "state_skipped": "已存在，跳过",
@@ -956,9 +976,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "tab_data": "数据",
         "tab_agent": "AI 助手",
         "act_agent": "AI 助手",
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 19 页 / 共 85 页
-====================================================================================================
         "agent_input_hint": "输入问题，Enter 发送（Shift+Enter 换行）",
         "agent_send": "发送",
         "agent_stop": "停止",
@@ -976,11 +993,64 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "agent_test_fail": "连接失败：{reason}",
         "agent_need_setup": "请先填写：{fields}",
         "agent_key_note": "API Key 仅保存在本机 ~/.d3ltool/config.json，只发送给你填写的服务商；Earthdata 密码永远不会经过对话。",
-        "agent_welcome": "这是内置 AI 助手。填好右侧 API 地址与 Key 后，可直接用自然语言检索和下载数据，例如：“2020 年 1 月北京的夜光数据帮我下载”。工具与 MCP 服务器共用；下载会先弹窗确认。",
+        "agent_gear": "设置",
+        "agent_hide": "收起",
+        "agent_bg": "聊天背景（留空恢复默认）",
+        "agent_bg_pick": "浏览...",
+        "agent_bg_clear": "清除",
+        "agent_drawer_tip": "打开 AI 助手",
+        "agent_welcome": "这是内置 AI 助手。点右上角 ⚙ 填好 API 地址与 Key 后，可用自然语言下载数据（例：“2020 年 1 月北京的夜光数据帮我下载”），也可以直接计算并绘制任意点位的时间序列（例：“帮我画禹城 2010 年的 NDVI 序列”）。工具与 MCP 服务器共用；下载会先弹窗确认。",
         "agent_tool_run": "调用工具 {name}",
         "agent_confirm_title": "确认下载",
         "agent_confirm_text": "AI 请求执行 {name}，允许吗？",
-        "agent_system_prompt": "你是 NASA 数据下载工具 D3LTool 的内置 AI 助手。可用工具：check_auth 查登录状态、list_products 查产品目录、point_to_tile/tile_bounds 做经纬度与瓦片换算、search_granules 检索 granule、start_download 提交下载队列、download_status 查询进度、cancel_download/retry_download 控制任务。规则：1) 涉及产品名/文件名/瓦片号时必须用工具查询，不要编造；2) 帮用户下载前先检索并列出将下载的文件；3) start_download 会弹窗请用户确认，被拒绝时不要反复重试；4) 未登录时检索仍可用，下载会返回 not_authenticated，请引导用户在主界面登录 Earthdata（密码不经过对话）；5) 用用户的语言简洁回答。",
+        "agent_system_prompt": "你是 NASA 数据工具 D3LTool 的内置 AI 助手。工具分三组："
+                               "1) 点位时间序列——point_timeseries(经纬度+产品+起止日期) 直接从 "
+                               "NASA OPeNDAP 采样单像元序列（MODIS/VIIRS/MERRA-2，无需下载整景"
+                               "文件），返回点列与 series_id；在软件内接着调 plot_timeseries"
+                               "(series_id) 即可把序列画进时间序列抽屉。"
+                               "2) 检索下载——search_granules 检索 granule、start_download 提交"
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 20 页 / 共 118 页
+====================================================================================================
+                               "下载队列、download_status/cancel_download/retry_download 管理"
+                               "任务。"
+                               "3) 辅助——check_auth 查登录、list_products 查产品目录、"
+                               "point_to_tile/tile_bounds 经纬度与瓦片换算。"
+                               "规则：1) 用户要“时间序列/趋势/折线图/某点的变化”时直接用 "
+                               "point_timeseries，不要检索或下载整景影像；2) 画完图后用一两句话"
+                               "总结数据特征（趋势、季节性、异常值）；3) 只有用户明确要“文件/"
+                               "影像”时才走 search_granules→start_download；4) 产品名/文件名/"
+                               "瓦片号必须用工具查询，不要编造；5) start_download 会弹窗请用户"
+                               "确认，被拒绝时不要反复重试；6) 未登录时检索仍可用，下载与序列采样"
+                               "需要登录（not_authenticated 时引导用户在主界面登录 Earthdata，"
+                               "密码不经过对话）；7) 用用户的语言简洁回答。",
+        "tab_ts": "时间序列",
+        "act_ts": "时间序列",
+        "ts_drawer_tip": "打开时间序列",
+        "ts_product_ph": "LAADS 产品 short_name，如 MOD13Q1 / MOD11A2 / VNP46A1",
+        "ts_layer": "图层",
+        "ts_lat": "纬度",
+        "ts_lon": "经度",
+        "ts_lat_ph": "36.833",
+        "ts_lon_ph": "116.567",
+        "ts_plot": "绘制折线图",
+        "ts_export": "导出 CSV",
+        "ts_clear": "清空图表",
+        "ts_exported": "已导出：{path}",
+        "ts_nothing": "还没有可导出的序列——先绘制一次",
+        "ts_need_fields": "请先填写：{fields}",
+        "ts_field_product": "产品",
+        "ts_bad_coords": "纬度需在 -90~90，经度需在 -180~180",
+        "ts_bad_dates": "开始日期需早于或等于结束日期",
+        "ts_stage_search": "正在检索该坐标所在瓦片的数据文件（CMR）...",
+        "ts_odap_sample": "LAADS 直采：{i}/{n}（{date}）",
+        "ts_done": "绘制完成：{source} / {layer}，{n} 个有效点（{start} ~ {end}）",
+        "ts_no_data": "该时段没有有效数值（可能被云/QA 掩膜，或产品未覆盖该点）",
+        "ts_unsupported": "时间序列目前支持 MODIS/VIIRS（LAADS 档案）与 MERRA-2 产品；{product} 暂不支持",
+        "ts_no_granules": "没有找到 {product} 的数据文件（瓦片 {tile}，{start} ~ {end}）——请检查日期范围",
+        "ts_no_granules_url": "CMR 里找到了 {product}，但它的 OPeNDAP 链接缺失——请到 GitHub Issues 反馈",
+        "ts_failed": "时间序列获取失败：{reason}",
+        "ts_api_note": "单像元时间序列由 NASA OPeNDAP 直采：MODIS/VIIRS 走 LAADS，MERRA-2 走 GES DISC 云网关（复用本机登录凭据，直连可用、无需 AppEEARS）。",
         "settings_title": "设置",
         "settings_download_dir": "下载目录",
         "settings_browse": "浏览...",
@@ -988,10 +1058,13 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "settings_proxy": "代理（留空不使用，如 http://127.0.0.1:7890 或 socks5://...）",
         "settings_saved": "设置已保存",
         "about_text": "D3L Tool of NASA Satellite\n\n"
-                      "NASA MODIS / VIIRS / MERRA-2 数据检索与下载工具\n\n"
+                      "NASA MODIS / VIIRS / MERRA-2 数据检索与下载工具，附点位时间序列采样\n\n"
                       "v2.0 © 2026 GLM-5.3-Flash 基于 earthaccess / CMR 重构 · \n\n"
                       "v1.0 © 2018 戴劭勍 (dsq1993qingge@163.com)\n\n"
                       "官网: https://gisersqdai.top/D3LTool/",
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 21 页 / 共 118 页
+====================================================================================================
         "menu_sites": "网站",
         "menu_rs": "遥感资源",
         "site_home": "程序官网",
@@ -1009,9 +1082,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "donate_text": "您的支持是对软件开发者最大的鼓励！",
         "err_title": "错误",
         "info_title": "提示",
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 20 页 / 共 85 页
-====================================================================================================
     },
     "en": {
         "app_title": "D3L Tool of NASA Satellite",
@@ -1045,6 +1115,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
                                 "the username is not an email; watch for full-width IME characters "
                                 "or stray spaces; reset the password there if needed.",
         "auth_network": "Cannot reach urs.earthdata.nasa.gov; check network or proxy settings.",
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 22 页 / 共 118 页
+====================================================================================================
         "auth_blocked": "Earthdata refused this sign-in (account locked/restricted, or a one-time "
                         "browser verification is required). Sign in at https://urs.earthdata.nasa.gov first, then retry.",
         "auth_urs_ok_but_failed": "URS accepts this account but the login flow did not complete: {detail}. "
@@ -1062,9 +1135,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "btn_catalog": "Catalog",
         "catalog_title": "Product catalog",
         "catalog_all": "All",
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 21 页 / 共 85 页
-====================================================================================================
         "catalog_filter": "Filter",
         "catalog_filter_hint": "filter by name or description, e.g. night / NDVI / MERRA",
         "catalog_hint": "Double-click a row or press 'Use' to fill the product and version",
@@ -1098,6 +1168,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "btn_select_none": "Select none",
         "btn_enqueue": "Add to download queue",
         "tasks_title": "Downloads",
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 23 页 / 共 118 页
+====================================================================================================
         "tasks_col_file": "File",
         "tasks_col_state": "State",
         "tasks_col_progress": "Progress",
@@ -1115,9 +1188,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "btn_retry": "Retry",
         "btn_clear_done": "Clear finished",
         "btn_open_dir": "Open download folder",
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 22 页 / 共 85 页
-====================================================================================================
         "msg_enqueue_none": "Select files in the results table first",
         "msg_need_login": "Please sign in to Earthdata before downloading",
         "msg_lang_restart": "Language switched to {lang}. Restart the app to apply.",
@@ -1143,37 +1213,93 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         "agent_key_note": "The API key is stored only in ~/.d3ltool/config.json on this "
                           "machine and sent only to the provider you chose; your Earthdata "
                           "password never passes through the chat.",
-        "agent_welcome": "This is the built-in AI assistant. Fill in the provider and "
-                         "API key on the right, then just ask, e.g. “download the January "
-                         "2020 nighttime lights around Beijing”. It shares the tool set "
-                         "with the MCP server; downloads ask for confirmation first.",
+        "agent_gear": "Settings",
+        "agent_hide": "Hide",
+        "agent_bg": "Chat background (empty = default)",
+        "agent_bg_pick": "Browse...",
+        "agent_bg_clear": "Clear",
+        "agent_drawer_tip": "Open AI assistant",
+        "agent_welcome": "This is the built-in AI assistant. Open ⚙ (top right) to fill in "
+                         "the provider and API key, then just ask, e.g. “download the January "
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 24 页 / 共 118 页
+====================================================================================================
+                         "2020 nighttime lights around Beijing”, or have it compute and plot "
+                         "a point time series, e.g. “plot the 2010 NDVI series at Yucheng”. "
+                         "It shares the tool set with the MCP server; downloads ask for "
+                         "confirmation first.",
         "agent_tool_run": "calling tool {name}",
         "agent_confirm_title": "Confirm download",
         "agent_confirm_text": "The AI wants to run {name}. Allow it?",
         "agent_system_prompt": "You are the built-in AI assistant of D3LTool, a NASA data "
-                               "downloader. Available tools: check_auth (sign-in state), "
-                               "list_products (catalog), point_to_tile / tile_bounds (tile "
-                               "math), search_granules (CMR search), start_download (queue "
-                               "downloads), download_status (progress), cancel_download / "
-                               "retry_download. Rules: 1) look up product names, files and "
-                               "tiles with tools, never invent them; 2) before downloading, "
-                               "search and list the files you are about to download; 3) "
-                               "start_download pops a user confirmation dialog — if declined, "
-                               "do not retry repeatedly; 4) without sign-in, search still "
-                               "works but downloads return not_authenticated — guide the "
-                               "user to sign in on the main window (the password never passes "
-                               "through chat); 5) answer in the user's language, concisely.",
+                               "tool. Tools come in three groups: 1) point time series — "
+                               "point_timeseries(lon/lat + product + date range) samples a "
+                               "single pixel's series straight from NASA OPeNDAP "
+                               "(MODIS/VIIRS/MERRA-2, no whole-file downloads) and returns "
+                               "the points plus a series_id; inside the desktop app follow "
+                               "with plot_timeseries(series_id) to draw it in the "
+                               "time-series drawer. 2) search & download — search_granules "
+                               "(CMR search), start_download (queue, asks confirmation), "
+                               "download_status / cancel_download / retry_download. "
+                               "3) helpers — check_auth (sign-in state), list_products "
+                               "(catalog), point_to_tile / tile_bounds (tile math). "
+                               "Rules: 1) for 'time series / trend / line chart / how a "
+                               "point changed' requests call point_timeseries directly — "
+                               "never search or download whole granules for that; 2) after "
+                               "plotting, summarise the series in a sentence or two (trend, "
+                               "seasonality, outliers); 3) only walk search_granules → "
+                               "start_download when the user explicitly asks for files or "
+                               "imagery; 4) look up product names, files and tiles with "
+                               "tools, never invent them; 5) start_download pops a "
+                               "confirmation dialog — if declined, do not retry "
+                               "repeatedly; 6) without sign-in, search still works but "
+                               "downloads and series sampling need it (not_authenticated → "
+                               "guide the user to sign in on the main window; the password "
+                               "never passes through chat); 7) answer in the user's "
+                               "language, concisely.",
+        "tab_ts": "Time series",
+        "act_ts": "Time series",
+        "ts_drawer_tip": "Open the time-series drawer",
+        "ts_product_ph": "LAADS product short_name, e.g. MOD13Q1 / MOD11A2 / VNP46A1",
+        "ts_layer": "Layer",
+        "ts_lat": "Lat",
+        "ts_lon": "Lon",
+        "ts_lat_ph": "36.833",
+        "ts_lon_ph": "116.567",
+        "ts_plot": "Plot series",
+        "ts_export": "Export CSV",
+        "ts_clear": "Clear chart",
+        "ts_exported": "Exported: {path}",
+        "ts_nothing": "Nothing to export yet — plot a series first",
+        "ts_need_fields": "Please fill in: {fields}",
+        "ts_field_product": "product",
+        "ts_bad_coords": "Latitude must be within -90..90, longitude within -180..180",
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 25 页 / 共 118 页
+====================================================================================================
+        "ts_bad_dates": "The start date must be on or before the end date",
+        "ts_stage_search": "Listing the granules of the tile covering the point (CMR)...",
+        "ts_odap_sample": "LAADS direct sampling: {i}/{n} ({date})",
+        "ts_done": "Plotted {source} / {layer}: {n} valid points ({start} ~ {end})",
+        "ts_no_data": "No valid values in this period (cloud/QA masked, or the point is not covered)",
+        "ts_unsupported": "Time series currently supports MODIS/VIIRS (LAADS archive) and "
+                          "MERRA-2 products; {product} is not supported yet",
+        "ts_no_granules": "No granules found for {product} (tile {tile}, {start} ~ {end}) — "
+                          "check the date range",
+        "ts_no_granules_url": "{product} exists in CMR but carries no OPeNDAP link — "
+                              "please report this on GitHub Issues",
+        "ts_failed": "Time series failed: {reason}",
+        "ts_api_note": "Pixel series are sampled directly via NASA OPeNDAP: MODIS/VIIRS from "
+                       "LAADS, MERRA-2 from the GES DISC cloud gateway (same credentials as "
+                       "the downloader, reachable without a proxy and without AppEEARS).",
         "settings_title": "Settings",
         "settings_download_dir": "Download folder",
         "settings_browse": "Browse...",
         "settings_workers": "Concurrent downloads",
         "settings_proxy": "Proxy (blank = none, e.g. http://127.0.0.1:7890 or socks5://...)",
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 23 页 / 共 85 页
-====================================================================================================
         "settings_saved": "Settings saved",
         "about_text": "D3L Tool of NASA Satellite\n\n"
-                      "Search & download NASA MODIS / VIIRS / MERRA-2 data\n\n"
+                      "Search & download NASA MODIS / VIIRS / MERRA-2 data, plus point time-series sampling\n\n"
                       "v2.0 © 2026 GLM-5.3-Flash Rebuilt on earthaccess / CMR · \n\n"
                       "v1.0 © 2018 Dai Shaoqing (dsq1993qingge@163.com)\n\n"
                       "Website: https://gisersqdai.top/D3LTool/",
@@ -1202,6 +1328,9 @@ def set_language(lang: str) -> None:
     if lang in STRINGS:
         _current["lang"] = lang
 
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 26 页 / 共 118 页
+====================================================================================================
+
 
 def get_language() -> str:
     return _current["lang"]
@@ -1221,9 +1350,6 @@ def tr(key: str, **kw) -> str:
 # -*- coding: utf-8 -*-
 """MCP server exposing D3LTool capabilities over stdio.
 
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 24 页 / 共 85 页
-====================================================================================================
 Entry points: `d3ltool-mcp` (console script) or `python -m d3ltool.mcp_server`.
 Point any MCP client (Claude Desktop, Cursor, ZCode, ...) at this process.
 Requires the MCP SDK: pip install 'd3ltool[mcp]'.
@@ -1236,11 +1362,17 @@ import sys
 
 INSTRUCTIONS = (
     "D3L Tool of NASA Satellite: search & download NASA MODIS / VIIRS / "
-    "MERRA-2 data from LAADS DAAC and GES DISC via CMR. Search works "
-    "anonymously; downloads reuse the Earthdata sign-in persisted on this "
-    "machine (passwords are never accepted through tools). Typical flow: "
-    "check_auth -> list_products / point_to_tile -> search_granules -> "
-    "start_download -> download_status."
+    "MERRA-2 data from LAADS DAAC and GES DISC via CMR, plus point time "
+    "series sampled straight over NASA OPeNDAP. Search works anonymously; "
+    "downloads and point_timeseries reuse the Earthdata sign-in persisted "
+    "on this machine (passwords are never accepted through tools). "
+    "Routing: for 'time series / trend / plotting' requests call "
+    "point_timeseries (inside the D3LTool desktop app follow with "
+    "plot_timeseries to draw it; plain MCP clients chart the returned "
+    "points themselves) — do NOT search or download granules for that. "
+    "The flow check_auth -> list_products / point_to_tile -> "
+    "search_granules -> start_download -> download_status is for file "
+    "requests only."
 )
 
 
@@ -1248,8 +1380,12 @@ def _build_server():
     from . import tools
 
     # mcp 1.x keeps the high-level server in fastmcp; 2.x renamed it MCPServer.
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 27 页 / 共 118 页
+====================================================================================================
     # Signatures of (name, instructions), add_tool(fn, name, description) and
-    # run("stdio") are the same, so one alias covers both.
+    # run("stdio") are the same, so one alias covers both. The [mcp] extra is
+    # capped below 3 in pyproject to block a future breaking major release.
     try:
         from mcp.server.fastmcp import FastMCP
     except ImportError:
@@ -1274,9 +1410,6 @@ def run() -> int:
 
 
 if __name__ == "__main__":
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 25 页 / 共 85 页
-====================================================================================================
     sys.exit(run())
 # ===== 文件: d3ltool/products.py =====
 # -*- coding: utf-8 -*-
@@ -1300,6 +1433,9 @@ GROUPS = [
         ("MYD09GA", "6.1", "地表反射率，日，1km", "Surface reflectance, daily, 1km"),
         ("MYD10A1", "6.1", "积雪覆盖，日，500m", "Snow cover, daily, 500m"),
     ]),
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 28 页 / 共 118 页
+====================================================================================================
     ("MODIS Combined", [
         ("MCD43A4", "6.1", "Nadir BRDF 反射率 NBAR，日，500m", "Nadir BRDF-adjusted reflectance, daily, 500m"),
         ("MCD43A3", "6.1", "反照率 Albedo，日，500m", "Albedo, daily, 500m"),
@@ -1327,9 +1463,6 @@ GROUP_CUSTOM = "custom"
 
 
 def find_product(short_name: str):
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 26 页 / 共 85 页
-====================================================================================================
     short = short_name.strip().upper()
     for _, items in GROUPS:
         for p in items:
@@ -1353,6 +1486,9 @@ from urllib.parse import unquote
 @dataclass
 class SearchParams:
     short_name: str
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 29 页 / 共 118 页
+====================================================================================================
     start: str                 # YYYY-MM-DD (inclusive)
     end: str                   # YYYY-MM-DD (inclusive)
     version: str = ""          # CMR version, e.g. "6.1"; empty = latest
@@ -1380,9 +1516,6 @@ def run_search(p: SearchParams, searcher=None) -> list:
     """Execute the search. `searcher` is injectable for tests."""
     if searcher is None:
         import earthaccess
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 27 页 / 共 85 页
-====================================================================================================
         searcher = earthaccess.search_data
 
     query = build_query(p)
@@ -1406,6 +1539,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
             haystack = (granule_filename(g) + " " + granule_name(g)).lower()
             return any(pt in haystack for pt in pats)
 
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 30 页 / 共 118 页
+====================================================================================================
         granules = [g for g in granules if _has_tile(g)]
     return granules
 
@@ -1433,9 +1569,6 @@ def parse_bbox(text: str):
     parts = [x for x in re.split(r"[,\s]+", text) if x]
     if len(parts) != 4:
         raise ValueError(f"bbox needs 4 values west,south,east,north: {text!r}")
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 28 页 / 共 85 页
-====================================================================================================
     w, s, e, n = (float(x) for x in parts)
     if not (-180 <= w <= 180 and -180 <= e <= 180 and -90 <= s <= 90 and -90 <= n <= 90):
         raise ValueError(f"bbox out of range: {text!r}")
@@ -1459,653 +1592,9 @@ def granule_date(g) -> str:
 
 
 def granule_size_mb(g) -> float:
-    """Size in MB. earthaccess <0.19 exposes size() as a method, >=0.19 as property."""
-    val = None
-    try:
-        val = g.size()
-    except TypeError:
-        try:
-            val = g.size
-        except Exception:
-            val = None
-    except Exception:
-        return 0.0
-    try:
-        return round(float(val), 1)
-    except (TypeError, ValueError):
-        return 0.0
 
-
-def granule_links(g) -> list:
-    """HTTPS GET DATA links (never s3:// or OPeNDAP), in metadata order."""
-    out = []
-    try:
-        for r in g["umm"].get("RelatedUrls", []):
-            url = r.get("URL", "")
-            if url.startswith("http") and r.get("Type") == "GET DATA":
-                out.append(url)
-    except (KeyError, TypeError, AttributeError):
-        pass
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 29 页 / 共 85 页
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 89 页 / 共 118 页
 ====================================================================================================
-    if not out:
-        try:
-            out = [l for l in g.data_links() if isinstance(l, str) and l.startswith("http")]
-        except Exception:
-            out = []
-    return out
-
-
-def granule_filename(g) -> str:
-    links = granule_links(g)
-    if links:
-        base = links[0].split("?")[0].rstrip("/").rsplit("/", 1)[-1]
-        if base:
-            return unquote(base)
-    name = granule_name(g)
-    return (name.rsplit(":", 1)[-1] if name else "granule") + ".bin"
-
-
-def granule_tile(g) -> str:
-    for source in (granule_filename(g), granule_name(g)):
-        m = re.search(r"[hH]\d{2}[vV]\d{2}", source)
-        if m:
-            return m.group(0).lower()
-    return ""
-# ===== 文件: d3ltool/tiles.py =====
-# -*- coding: utf-8 -*-
-"""MODIS/VIIRS sinusoidal tile grid helpers.
-
-The operational tile grid is the 36x18 Integerized Sinusoidal grid:
-tile (h, v) covers 10 deg of longitude and 10 deg of latitude,
-h counted west->east from 180W, v counted north->south from 90N
-(v00 = 80N-90N ... v17 = 90S-80S).
-"""
-
-import math
-import re
-
-N_COLS = 36
-N_ROWS = 18
-R_SIN = 6371007.181            # MODIS sinusoidal sphere radius (m)
-TILE_SIZE = 1111950.5196666666  # tile edge length (m), = 2*pi*R/72
-
-_TILE_RE = re.compile(r"^h(\d{1,2})v(\d{1,2})$", re.IGNORECASE)
-
-
-def tile_name(h: int, v: int) -> str:
-    return f"h{h:02d}v{v:02d}"
-
-
-def parse_tile(text: str):
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 30 页 / 共 85 页
-====================================================================================================
-    """Parse 'h04v03' -> (4, 3). Raises ValueError on bad input."""
-    m = _TILE_RE.match(text.strip())
-    if not m:
-        raise ValueError(f"bad tile id: {text!r} (expected like h04v03)")
-    h, v = int(m.group(1)), int(m.group(2))
-    if not (0 <= h < N_COLS and 0 <= v < N_ROWS):
-        raise ValueError(f"tile out of range: {text!r}")
-    return h, v
-
-
-def lonlat_to_tile(lon: float, lat: float):
-    """Return (h, v) for a longitude/latitude degree pair."""
-    lon = ((float(lon) + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
-    lat = max(-90.0, min(90.0, float(lat)))
-    h = int((lon + 180.0) // 10.0)
-    v = int((90.0 - lat) // 10.0)
-    return min(N_COLS - 1, max(0, h)), min(N_ROWS - 1, max(0, v))
-
-
-def tile_bounds_lonlat(h: int, v: int):
-    """Return (lon_min, lat_min, lon_max, lat_max) of a tile, degrees."""
-    if not (0 <= h < N_COLS and 0 <= v < N_ROWS):
-        raise ValueError(f"tile index out of range: h={h}, v={v}")
-    lon_min = -180.0 + 10.0 * h
-    lon_max = lon_min + 10.0
-    lat_max = 90.0 - 10.0 * v
-    lat_min = lat_max - 10.0
-    return lon_min, lat_min, lon_max, lat_max
-
-
-def tile_center_lonlat(h: int, v: int):
-    lon_min, lat_min, lon_max, lat_max = tile_bounds_lonlat(h, v)
-    return (lon_min + lon_max) / 2.0, (lat_min + lat_max) / 2.0
-
-
-def row_width_fraction(v: int) -> float:
-    """Relative half-width of tile row v on a sinusoidal globe drawing (0..1]."""
-    _, lat_min, _, lat_max = tile_bounds_lonlat(0, v)
-    center = math.radians((lat_min + lat_max) / 2.0)
-    return max(0.0, math.cos(center))
-# ===== 文件: d3ltool/tools.py =====
-# -*- coding: utf-8 -*-
-"""Shared tool registry for the MCP server and the in-app AI agent.
-
-Every tool is a plain function with type hints that returns a JSON-friendly
-dict. JSON schemas are derived from the signatures, so the MCP surface and
-OpenAI-style function calling always describe the same thing.
-
-Credentials are never a tool parameter: download-capable tools reuse the
-sign-in persisted on this machine (GUI login / `d3ltool login`), so no
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 56 页 / 共 85 页
-====================================================================================================
-
-    def __init__(self, params, parent=None):
-        super().__init__(parent)
-        self._params = params
-
-    def run(self):
-        import time as _time
-
-        t0 = _time.time()
-        try:
-            granules = search.run_search(self._params)
-        except Exception as exc:
-            self.failed.emit(f"{type(exc).__name__}: {exc}")
-            return
-        self.done.emit(granules, _time.time() - t0)
-
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        self.config = config.load_config()
-        i18n.set_language(self.config.get("language", "zh"))
-
-        super().__init__()
-        self.setWindowTitle(f"{APP_NAME} v{__version__}")
-        self.resize(1100, 680)
-        icon_file = RES_DIR / "D3L.ico"
-        if icon_file.exists():
-            self.setWindowIcon(QIcon(str(icon_file)))
-
-        self.engine = engine.DownloadEngine(
-            session_factory=auth.new_download_session,
-            dest_dir=Path(self.config["download_dir"]),
-            max_workers=int(self.config.get("max_workers", 3)),
-        )
-        self.bridge = EngineBridge(self)
-        self.bridge.attach(self.engine)
-        self._search_thread = None
-
-        self._build_ui()
-        self._build_menus()
-        if auth.try_restore_session():
-            self.statusBar().showMessage(
-                i18n.tr("status_logged_in", user=auth.current_user()))
-        self._refresh_login_status()
-
-    # -------------------------------------------------------------------- UI
-
-    def _build_ui(self):
-        central = QWidget(self)
-        layout = QVBoxLayout(central)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 57 页 / 共 85 页
-====================================================================================================
-
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.search_panel = SearchPanel(splitter)
-        self.results_table = ResultsTable(splitter)
-        self.task_table = TaskTable(self.engine, splitter)
-        self.task_table.set_engine(self.engine)
-
-        right = QSplitter(Qt.Orientation.Vertical)
-        right.addWidget(self.results_table)
-        right.addWidget(self.task_table)
-        right.setSizes([380, 300])
-
-        data_page = QWidget()
-        data_layout = QVBoxLayout(data_page)
-        data_layout.setContentsMargins(0, 0, 0, 0)
-        data_layout.addWidget(right)
-
-        # agent downloads flow through the same engine so the task table
-        # and progress bridge show them like manual ones
-        tools.attach_engine(self.engine)
-        from .agent_panel import AgentPanel
-        self.agent_panel = AgentPanel()
-        self.main_tabs = QTabWidget()
-        self.main_tabs.addTab(data_page, i18n.tr("tab_data"))
-        self.main_tabs.addTab(self.agent_panel, i18n.tr("tab_agent"))
-
-        splitter.addWidget(self.search_panel)
-        splitter.addWidget(self.main_tabs)
-        splitter.setSizes([340, 760])
-        layout.addWidget(splitter)
-        self.setCentralWidget(central)
-
-        self.statusBar().showMessage(i18n.tr("status_logged_out"))
-
-        self.search_panel.search_requested.connect(self._do_search)
-        self.results_table.enqueue_requested.connect(self._enqueue)
-        self.bridge.status.connect(self.task_table.on_status)
-        self.bridge.progress.connect(self.task_table.on_progress)
-        self.bridge.cleared.connect(self.task_table.on_cleared)
-
-    def _build_menus(self):
-        # ---- websites: personal + NASA
-        menu_sites = self.menuBar().addMenu(i18n.tr("menu_sites"))
-        for key in ("site_home", "site_blog"):
-            act = QAction(i18n.tr(key), self)
-            act.triggered.connect(lambda _c=False, u=SITE_URLS[key]: self._open_url(u))
-            menu_sites.addAction(act)
-        menu_sites.addSeparator()
-        for key in ("site_nasa", "site_nasa_tools"):
-            act = QAction(i18n.tr(key), self)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 58 页 / 共 85 页
-====================================================================================================
-            act.triggered.connect(lambda _c=False, u=SITE_URLS[key]: self._open_url(u))
-            menu_sites.addAction(act)
-
-        # ---- remote sensing resources (kept from v1.0)
-        menu_rs = self.menuBar().addMenu(i18n.tr("menu_rs"))
-        for key, url in RS_URLS:
-            act = QAction(i18n.tr(key), self)
-            act.triggered.connect(lambda _c=False, u=url: self._open_url(u))
-            menu_rs.addAction(act)
-
-        menu_language = self.menuBar().addMenu(i18n.tr("menu_language"))
-        self._lang_actions = QActionGroup(self)
-        for code, label in (("zh", i18n.tr("lang_zh")), ("en", i18n.tr("lang_en"))):
-            act = QAction(label, self)
-            act.setCheckable(True)
-            act.setChecked(code == i18n.get_language())
-            act.setData(code)
-            act.triggered.connect(lambda _checked, c=code: self._switch_language(c))
-            self._lang_actions.addAction(act)
-            menu_language.addAction(act)
-
-        menu_settings = self.menuBar().addMenu(i18n.tr("menu_settings"))
-        self.act_login = QAction(i18n.tr("act_login"), self)
-        self.act_login.triggered.connect(self._on_login)
-        self.act_logout = QAction(i18n.tr("act_logout"), self)
-        self.act_logout.triggered.connect(self._on_logout)
-        self.act_settings = QAction(i18n.tr("act_settings"), self)
-        self.act_settings.triggered.connect(self._on_settings)
-        self.act_agent = QAction(i18n.tr("act_agent"), self)
-        self.act_agent.triggered.connect(self._focus_agent)
-        menu_settings.addAction(self.act_login)
-        menu_settings.addAction(self.act_logout)
-        menu_settings.addSeparator()
-        menu_settings.addAction(self.act_agent)
-        menu_settings.addSeparator()
-        menu_settings.addAction(self.act_settings)
-
-        menu_help = self.menuBar().addMenu(i18n.tr("menu_help"))
-        act_donate = QAction(i18n.tr("act_donate"), self)
-        act_donate.triggered.connect(self._on_donate)
-        menu_help.addAction(act_donate)
-        act_about = QAction(i18n.tr("act_about"), self)
-        act_about.triggered.connect(self._on_about)
-        menu_help.addAction(act_about)
-        menu_help.addSeparator()
-        act_quit = QAction(i18n.tr("act_quit"), self)
-        act_quit.triggered.connect(self.close)
-        menu_help.addAction(act_quit)
-
-        toolbar = self.addToolBar("main")
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 59 页 / 共 85 页
-====================================================================================================
-        toolbar.addAction(self.act_login)
-        toolbar.addAction(self.act_settings)
-        self._menus_built = True
-
-    # ----------------------------------------------------------------- login
-
-    def _refresh_login_status(self):
-        if auth.is_authenticated():
-            user = auth.current_user() or self.config.get("username", "")
-            self.statusBar().showMessage(i18n.tr("status_logged_in", user=user))
-            self.act_login.setEnabled(False)
-            self.act_logout.setEnabled(True)
-        else:
-            self.statusBar().showMessage(i18n.tr("status_logged_out"))
-            self.act_login.setEnabled(True)
-            self.act_logout.setEnabled(False)
-
-    def _on_login(self):
-        dlg = LoginDialog(self, username=self.config.get("username", ""))
-        if dlg.exec() == LoginDialog.DialogCode.Accepted:
-            if auth.is_authenticated():
-                if dlg.remember_username():
-                    self.config = config.update_config(username=dlg.logged_username())
-                self._refresh_login_status()
-
-    def _on_logout(self):
-        auth.logout()
-        self._refresh_login_status()
-
-    # ---------------------------------------------------------------- search
-
-    def _do_search(self, params):
-        if self._search_thread is not None and self._search_thread.isRunning():
-            return
-        self.statusBar().showMessage(i18n.tr("search_running", product=params.short_name))
-        self.search_panel.set_searching(True)
-        self._search_thread = _SearchThread(params, self)
-        self._search_thread.done.connect(self._on_search_done)
-        self._search_thread.failed.connect(self._on_search_failed)
-        self._search_thread.start()
-
-    def _on_search_done(self, granules, elapsed):
-        self.search_panel.set_searching(False)
-        self._search_thread = None
-        if not granules:
-            self.results_table.clear()
-            self.statusBar().showMessage(i18n.tr("search_none"))
-            return
-        self.results_table.populate(granules)
-        self.statusBar().showMessage(i18n.tr("search_done", n=len(granules), secs=elapsed))
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 60 页 / 共 85 页
-====================================================================================================
-
-    def _on_search_failed(self, message):
-        self.search_panel.set_searching(False)
-        self._search_thread = None
-        self.statusBar().showMessage(i18n.tr("search_failed", reason=message))
-        QMessageBox.warning(self, i18n.tr("err_title"),
-                            i18n.tr("search_failed", reason=message))
-
-    # --------------------------------------------------------------- download
-
-    def _ensure_logged_in(self) -> bool:
-        if auth.is_authenticated():
-            return True
-        QMessageBox.information(self, i18n.tr("info_title"), i18n.tr("msg_need_login"))
-        self._on_login()
-        return auth.is_authenticated()
-
-    def _enqueue(self, items):
-        if not items:
-            QMessageBox.information(self, i18n.tr("info_title"), i18n.tr("msg_enqueue_none"))
-            return
-        if not self._ensure_logged_in():
-            return
-        self.engine.dest_dir = Path(self.config["download_dir"])
-        self.engine.max_workers = int(self.config.get("max_workers", 3))
-        for it in items:
-            self.engine.add(it["url"], filename=it["filename"],
-                            size_hint=it.get("size_bytes", 0))
-        self.statusBar().showMessage(f"+{len(items)} → {self.engine.dest_dir}")
-
-    # --------------------------------------------------------------- settings
-
-    def _on_settings(self):
-        def apply(values):
-            self.config = config.update_config(**values)
-            self.engine.dest_dir = Path(self.config["download_dir"])
-            self.engine.max_workers = int(self.config["max_workers"])
-            self.statusBar().showMessage(i18n.tr("settings_saved"))
-
-        SettingsDialog(self, config=self.config, on_save=apply).exec()
-
-    def _focus_agent(self):
-        self.main_tabs.setCurrentWidget(self.agent_panel)
-        self.agent_panel.input.setFocus()
-
-    def _switch_language(self, code):
-        self.config = config.update_config(language=code)
-        i18n.set_language(code)
-        QMessageBox.information(self, i18n.tr("info_title"),
-                                i18n.tr("msg_lang_restart",
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 61 页 / 共 85 页
-====================================================================================================
-                                        lang="中文" if code == "zh" else "English"))
-
-    def _on_about(self):
-        QMessageBox.about(self, i18n.tr("act_about"), i18n.tr("about_text"))
-
-    # ------------------------------------------------------- links & donate
-
-    def _open_url(self, url):
-        QDesktopServices.openUrl(QUrl(url))
-
-    def _on_donate(self):
-        dlg = QDialog(self)
-        dlg.setWindowTitle(i18n.tr("act_donate"))
-        layout = QVBoxLayout(dlg)
-        pic = QLabel(dlg)
-        gif = RES_DIR / "alipay.gif"
-        if gif.exists():
-            from PySide6.QtGui import QPixmap
-
-            pic.setPixmap(QPixmap(str(gif)).scaled(
-                260, 260, Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation))
-        pic.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(pic)
-        text = QLabel(i18n.tr("donate_text"), dlg)
-        text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(text)
-        dlg.exec()
-# ===== 文件: d3ltool/gui/product_catalog.py =====
-# -*- coding: utf-8 -*-
-"""Product catalog dialog: browse products per satellite, pick with a double-click.
-
-Keeps the main search panel clean (one button) while giving non-experts a
-readable reference of products, versions and descriptions.
-"""
-
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QHBoxLayout, QLabel,
-                               QLineEdit, QListWidget, QPushButton,
-                               QTableWidget, QTableWidgetItem, QVBoxLayout)
-
-from .. import i18n, products
-
-COL_GROUP, COL_SHORT, COL_VERSION, COL_DESC = range(4)
-
-
-class ProductCatalogDialog(QDialog):
-    """Browsable catalog of all curated products; double-click applies one."""
-
-    product_selected = Signal(str, str)      # short_name, version_hint
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 62 页 / 共 85 页
-====================================================================================================
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(i18n.tr("catalog_title"))
-        self.resize(700, 480)
-
-        layout = QVBoxLayout(self)
-
-        filter_row = QHBoxLayout()
-        filter_row.addWidget(QLabel(i18n.tr("catalog_filter")))
-        self.filter_edit = QLineEdit()
-        self.filter_edit.setPlaceholderText(i18n.tr("catalog_filter_hint"))
-        self.filter_edit.textChanged.connect(self._apply_filter)
-        filter_row.addWidget(self.filter_edit, 1)
-        layout.addLayout(filter_row)
-
-        hint = QLabel(i18n.tr("catalog_hint"))
-        hint.setStyleSheet("color:#6b7280;")
-        layout.addWidget(hint)
-
-        middle = QHBoxLayout()
-        self.group_list = QListWidget()
-        self.group_list.setMaximumWidth(190)
-        self.group_list.addItem(i18n.tr("catalog_all"))
-        for name, _items in products.GROUPS:
-            self.group_list.addItem(name)
-        self.group_list.setCurrentRow(0)
-        self.group_list.currentRowChanged.connect(self._populate_table)
-        middle.addWidget(self.group_list)
-
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels([
-            i18n.tr("col_group"), i18n.tr("col_shortname"),
-            i18n.tr("col_version"), i18n.tr("col_desc"),
-        ])
-        self.table.verticalHeader().setVisible(False)
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.setWordWrap(False)
-        self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.doubleClicked.connect(lambda _index: self._apply_selection(self.table.currentRow()))
-        middle.addWidget(self.table, 1)
-        layout.addLayout(middle)
-
-        buttons = QHBoxLayout()
-        use_btn = QPushButton(i18n.tr("btn_use_product"))
-        use_btn.setObjectName("accentButton")
-        use_btn.clicked.connect(lambda: self._apply_selection(self.table.currentRow()))
-        buttons.addStretch(1)
-        buttons.addWidget(use_btn)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 63 页 / 共 85 页
-====================================================================================================
-        layout.addLayout(buttons)
-
-        self._populate_table()
-
-    # ------------------------------------------------------------------ public
-
-    def apply_product(self, short_name: str) -> None:
-        """Programmatically apply a product by short_name (tests / convenience)."""
-        for row in range(self.table.rowCount()):
-            item = self.table.item(row, COL_SHORT)
-            if item is not None and item.text().upper() == short_name.upper():
-                self._apply_selection(row)
-                return
-
-    # ------------------------------------------------------------------ slots
-
-    def _all_rows(self) -> list:
-        zh = i18n.get_language() == "zh"
-        rows = []
-        for gname, items in products.GROUPS:
-            for short, version, desc_zh, desc_en in items:
-                rows.append((gname, short, version, desc_zh if zh else desc_en))
-        return rows
-
-    def _populate_table(self, _row=None) -> None:
-        needle = self.filter_edit.text().strip().lower()
-        if needle:
-            rows = []
-            for gname, items in products.GROUPS:
-                for short, version, desc_zh, desc_en in items:
-                    desc = desc_zh if i18n.get_language() == "zh" else desc_en
-                    hay = f"{gname} {short} {desc_zh} {desc_en}".lower()
-                    if needle in hay:
-                        rows.append((gname, short, version, desc))
-            self._load_rows(rows)
-            return
-        group_item = self.group_list.currentItem()
-        group_name = group_item.text() if group_item else ""
-        if group_name == i18n.tr("catalog_all"):
-            self._load_rows(self._all_rows())
-            return
-        rows = [(g, s, v, d if i18n.get_language() == "zh" else de)
-                for g, items in products.GROUPS if g == group_name
-                for s, v, d, de in items]
-        self._load_rows(rows)
-
-    def _apply_filter(self, _text=None) -> None:
-        self._populate_table()
-
-    def _apply_selection(self, row=None) -> None:
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 64 页 / 共 85 页
-====================================================================================================
-        if row is None or row < 0 or row >= self.table.rowCount():
-            return
-        short_item = self.table.item(row, COL_SHORT)
-        version_item = self.table.item(row, COL_VERSION)
-        if short_item is None:
-            return
-        self.product_selected.emit(short_item.text(),
-                                   version_item.text() if version_item else "")
-        self.accept()
-
-    # ----------------------------------------------------------------- helpers
-
-    def _load_rows(self, rows) -> None:
-        self.table.setRowCount(len(rows))
-        for row, (gname, short, version, desc) in enumerate(rows):
-            self.table.setItem(row, COL_GROUP, QTableWidgetItem(gname))
-            self.table.setItem(row, COL_SHORT, QTableWidgetItem(short))
-            self.table.setItem(row, COL_VERSION, QTableWidgetItem(version))
-            desc_item = QTableWidgetItem(desc)
-            desc_item.setToolTip(desc)
-            self.table.setItem(row, COL_DESC, desc_item)
-# ===== 文件: d3ltool/gui/results_table.py =====
-# -*- coding: utf-8 -*-
-"""Search results table with select-all / enqueue actions."""
-
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (QHBoxLayout, QPushButton, QTableWidget,
-                               QTableWidgetItem, QVBoxLayout, QWidget)
-
-from .. import i18n, search
-
-COL_CHECK, COL_NAME, COL_DATE, COL_TILE, COL_SIZE = range(5)
-
-
-class ResultsTable(QWidget):
-    enqueue_requested = Signal(list)    # list[dict(url, filename, size_bytes)]
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._granules = []
-
-        layout = QVBoxLayout(self)
-        btn_row = QHBoxLayout()
-        self.select_all_btn = QPushButton(i18n.tr("btn_select_all"))
-        self.select_none_btn = QPushButton(i18n.tr("btn_select_none"))
-        self.enqueue_btn = QPushButton(i18n.tr("btn_enqueue"))
-        btn_row.addWidget(self.select_all_btn)
-        btn_row.addWidget(self.select_none_btn)
-        btn_row.addStretch(1)
-        btn_row.addWidget(self.enqueue_btn)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 65 页 / 共 85 页
-====================================================================================================
-        layout.addLayout(btn_row)
-
-        self.table = QTableWidget(0, 5)
-        self._set_headers()
-        layout.addWidget(self.table)
-
-        self.select_all_btn.clicked.connect(lambda: self._set_all_checked(True))
-        self.select_none_btn.clicked.connect(lambda: self._set_all_checked(False))
-        self.enqueue_btn.clicked.connect(self._on_enqueue)
-
-    def _set_headers(self):
-        self.table.setHorizontalHeaderLabels([
-            i18n.tr("results_col_check"),
-            i18n.tr("results_col_name"),
-            i18n.tr("results_col_date"),
-            i18n.tr("results_col_tile"),
-            i18n.tr("results_col_size"),
-        ])
-        header = self.table.horizontalHeader()
-        header.setStretchLastSection(False)
-        self.table.setColumnWidth(COL_CHECK, 36)
-        self.table.setColumnWidth(COL_DATE, 100)
-        self.table.setColumnWidth(COL_TILE, 70)
-        self.table.setColumnWidth(COL_SIZE, 90)
-        from PySide6.QtWidgets import QHeaderView
-        self.table.horizontalHeader().setSectionResizeMode(COL_NAME, QHeaderView.ResizeMode.Stretch)
-        self.table.verticalHeader().setVisible(False)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-
-    def populate(self, granules) -> None:
-        self._granules = list(granules)
-        self.table.setRowCount(len(self._granules))
-        for row, g in enumerate(self._granules):
             check = QTableWidgetItem()
             check.setCheckState(Qt.CheckState.Checked)
             check.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
@@ -2122,9 +1611,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         self._granules = []
         self.table.setRowCount(0)
 
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 66 页 / 共 85 页
-====================================================================================================
     def _set_all_checked(self, checked: bool) -> None:
         state = Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
         for row in range(self.table.rowCount()):
@@ -2160,6 +1646,9 @@ available space, and without scrolling the box layouts overflow and widgets
 overlap each other.
 """
 
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 90 页 / 共 118 页
+====================================================================================================
+
 from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtWidgets import (QComboBox, QDateEdit, QFormLayout, QGridLayout,
                                QGroupBox, QHBoxLayout, QLabel, QLineEdit,
@@ -2175,9 +1664,6 @@ CUSTOM_LABEL_ZH = "自定义产品 / Custom"
 class SearchPanel(QWidget):
     search_requested = Signal(object)   # SearchParams
 
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 67 页 / 共 85 页
-====================================================================================================
     def __init__(self, parent=None):
         super().__init__(parent)
         self._custom_mode = False
@@ -2212,6 +1698,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         self.product_combo.currentIndexChanged.connect(self._on_product_changed)
 
         product_row = QHBoxLayout()
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 91 页 / 共 118 页
+====================================================================================================
         product_row.addWidget(self.product_combo, 1)
         self.catalog_btn = QPushButton(i18n.tr("btn_catalog"))
         self.catalog_btn.setToolTip(i18n.tr("catalog_hint"))
@@ -2228,9 +1717,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         root.addWidget(prod_box)
 
         # ---- time group
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 68 页 / 共 85 页
-====================================================================================================
         time_box = QGroupBox(i18n.tr("group_time"))
         tform = QFormLayout(time_box)
         today = QDate.currentDate()
@@ -2265,6 +1751,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         locate_btn.clicked.connect(self._on_locate)
         locate_row.addWidget(QLabel("Lon"))
         locate_row.addWidget(self.lon_edit)
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 92 页 / 共 118 页
+====================================================================================================
         locate_row.addWidget(QLabel("Lat"))
         locate_row.addWidget(self.lat_edit)
         locate_row.addWidget(locate_btn)
@@ -2281,9 +1770,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
 
         # ---- options + search button: pinned below the scroll area so the
         # primary action stays visible even when the cards need scrolling
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 69 页 / 共 85 页
-====================================================================================================
         opt_row = QHBoxLayout()
         opt_row.addWidget(QLabel(i18n.tr("label_limit")))
         self.limit_spin = QSpinBox()
@@ -2318,6 +1804,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         idx = self.product_combo.findData(short_name)
         if idx < 0:
             self.product_combo.blockSignals(True)
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 93 页 / 共 118 页
+====================================================================================================
             self.product_combo.addItem(short_name, userData=short_name)
             self.product_combo.blockSignals(False)
             idx = self.product_combo.findData(short_name)
@@ -2334,9 +1823,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
             self.version_edit.clear()
             return
         for name, items in products.GROUPS:
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 70 页 / 共 85 页
-====================================================================================================
             if name == text:
                 for short, version, desc_zh, desc_en in items:
                     self.product_combo.addItem(short, userData=short)
@@ -2372,6 +1858,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
             return str(data)
         return self.product_combo.currentText().strip().upper()
 
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 94 页 / 共 118 页
+====================================================================================================
+
     def set_searching(self, busy: bool) -> None:
         self.search_btn.setEnabled(not busy)
         self.search_btn.setText(i18n.tr("btn_cancel_search") if busy else i18n.tr("btn_search"))
@@ -2387,9 +1876,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         start = self.start_edit.date().toString("yyyy-MM-dd")
         end = self.end_edit.date().toString("yyyy-MM-dd")
         return search.SearchParams(
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 71 页 / 共 85 页
-====================================================================================================
             short_name=self.current_short_name(),
             start=start,
             end=end,
@@ -2424,6 +1910,9 @@ class SettingsDialog(QDialog):
         self.dir_edit = QLineEdit(self._config.get("download_dir", ""))
         browse = QPushButton(i18n.tr("settings_browse"))
         browse.clicked.connect(self._browse)
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 95 页 / 共 118 页
+====================================================================================================
         dir_row.addWidget(self.dir_edit)
         dir_row.addWidget(browse)
         form.addRow(i18n.tr("settings_download_dir"), dir_row)
@@ -2440,9 +1929,6 @@ class SettingsDialog(QDialog):
         layout.addLayout(form)
         layout.addLayout(self._buttons())
 
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 72 页 / 共 85 页
-====================================================================================================
     def _buttons(self):
         from PySide6.QtWidgets import QHBoxLayout
 
@@ -2477,6 +1963,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtCore import QUrl
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 96 页 / 共 118 页
+====================================================================================================
 from PySide6.QtWidgets import (QHBoxLayout, QMessageBox, QProgressBar,
                                QPushButton, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
@@ -2493,9 +1982,6 @@ STATE_COLORS = {
     "canceled": "#6c757d",
     "running": "#1e6fd2",
     "pending": "#444444",
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 73 页 / 共 85 页
-====================================================================================================
 }
 
 
@@ -2530,6 +2016,9 @@ class TaskTable(QWidget):
 
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels([
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 97 页 / 共 118 页
+====================================================================================================
             i18n.tr("tasks_col_file"),
             i18n.tr("tasks_col_state"),
             i18n.tr("tasks_col_progress"),
@@ -2546,9 +2035,6 @@ class TaskTable(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 74 页 / 共 85 页
-====================================================================================================
 
         self.pause_btn.clicked.connect(lambda: self._act("pause"))
         self.resume_btn.clicked.connect(lambda: self._act("resume"))
@@ -2583,6 +2069,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
         state_item.setText(i18n.tr(f"state_{item.state}"))
         state_item.setForeground(Qt.GlobalColor.white if item.state in ("done", "failed") else Qt.GlobalColor.black)
         color = STATE_COLORS.get(item.state, "#444444")
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 98 页 / 共 118 页
+====================================================================================================
         from PySide6.QtGui import QColor
         state_item.setForeground(QColor(color))
         if item.message and item.state in ("failed", "running"):
@@ -2599,9 +2088,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
                 bar.setValue(100)
             else:
                 bar.setValue(0)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 75 页 / 共 85 页
-====================================================================================================
         if item.state in ("done", "skipped"):
             bar.setRange(0, 100)
             bar.setValue(100)
@@ -2636,6 +2122,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
             return None
         for item_id, r in self._rows.items():
             if r == row:
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 99 页 / 共 118 页
+====================================================================================================
                 return item_id
         return None
 
@@ -2652,9 +2141,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
 
     def _clear_done(self) -> None:
         if self.engine:
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 76 页 / 共 85 页
-====================================================================================================
             self.engine.clear_finished()
             self.rebuild()
 
@@ -2689,6 +2175,9 @@ QMenuBar {
     padding: 2px 6px;
 }
 QMenuBar::item {
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 100 页 / 共 118 页
+====================================================================================================
     padding: 5px 12px;
     border-radius: 6px;
     color: #334155;
@@ -2705,9 +2194,6 @@ QMenu {
 QMenu::item {
     padding: 6px 26px 6px 14px;
     border-radius: 6px;
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 77 页 / 共 85 页
-====================================================================================================
     color: #1f2937;
 }
 QMenu::item:selected {
@@ -2742,6 +2228,9 @@ QToolBar QToolButton:hover {
 QStatusBar {
     background: #f5f7fa;
     border-top: 1px solid #e3e8ef;
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 101 页 / 共 118 页
+====================================================================================================
     color: #64748b;
 }
 
@@ -2758,9 +2247,6 @@ QGroupBox::title {
     subcontrol-origin: margin;
     left: 12px;
     top: 1px;
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 78 页 / 共 85 页
-====================================================================================================
     padding: 0 5px;
     color: #123252;
     background: #f5f7fa;
@@ -2795,6 +2281,9 @@ QCalendarWidget QWidget {
 QPushButton {
     background: #ffffff;
     border: 1px solid #d0d7de;
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 102 页 / 共 118 页
+====================================================================================================
     border-radius: 7px;
     padding: 6px 16px;
     color: #334155;
@@ -2811,9 +2300,6 @@ QPushButton:disabled {
     background: #f2f4f7;
     border-color: #e3e8ef;
 }
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 79 页 / 共 85 页
-====================================================================================================
 QPushButton#accentButton {
     background: #d6372a;
     border: 1px solid #d6372a;
@@ -2848,6 +2334,9 @@ QTableWidget {
 }
 QTableWidget::item {
     padding: 4px 6px;
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 103 页 / 共 118 页
+====================================================================================================
     border: none;
 }
 QHeaderView::section {
@@ -2864,9 +2353,6 @@ QTableCornerButton::section {
 }
 
 /* ---------- progress bar ---------- */
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 80 页 / 共 85 页
-====================================================================================================
 QProgressBar {
     background: #e9edf3;
     border: none;
@@ -2901,6 +2387,9 @@ QScrollBar:horizontal {
     background: transparent;
     height: 10px;
     margin: 2px;
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 104 页 / 共 118 页
+====================================================================================================
 }
 QScrollBar::handle:horizontal {
     background: #c7cfda;
@@ -2917,9 +2406,6 @@ QSplitter::handle {
 QSplitter::handle:horizontal {
     width: 5px;
 }
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 81 页 / 共 85 页
-====================================================================================================
 QSplitter::handle:hover {
     background: #e3e8ef;
     border-radius: 2px;
@@ -2937,6 +2423,56 @@ QToolTip {
     border: none;
     border-radius: 5px;
     padding: 5px 8px;
+}
+
+/* ---------- edge drawers (AI assistant + time series) ---------- */
+QFrame#agentDrawer, QFrame#tsDrawer {
+    background: #ffffff;
+    border-left: 1px solid #d0d7de;
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+QLabel#agentTitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+QPushButton#agentHeaderBtn {
+    border: none;
+    background: transparent;
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 105 页 / 共 118 页
+====================================================================================================
+    color: #57606a;
+    font-size: 13px;
+    padding: 2px 7px;
+    border-radius: 5px;
+}
+QPushButton#agentHeaderBtn:hover {
+    background: #f3f4f6;
+    color: #d6372a;
+}
+QTextBrowser#agentChat {
+    background: transparent;
+}
+QToolButton#agentTabButton, QToolButton#tsTabButton {
+    background: #24292e;
+    color: #ffffff;
+    border: none;
+    border-radius: 7px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+}
+QToolButton#agentTabButton:hover, QToolButton#tsTabButton:hover {
+    background: #d6372a;
+}
+QLabel#tsStatus {
+    color: #64748b;
+    font-size: 12px;
+}
+QLabel#tsStatus[state="error"] {
+    color: #d6372a;
 }
 """
 
@@ -2957,6 +2493,9 @@ def apply_theme(app) -> None:
         app.setFont(font)
     app.setStyleSheet(QSS)
 # ===== 文件: d3ltool/gui/tile_map.py =====
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 106 页 / 共 118 页
+====================================================================================================
 # -*- coding: utf-8 -*-
 """Clickable 36x18 MODIS sinusoidal tile map."""
 
@@ -2970,9 +2509,6 @@ TILE_W = 9
 TILE_H = 13
 CANVAS_W = tiles.N_COLS * TILE_W    # 324
 CANVAS_H = tiles.N_ROWS * TILE_H    # 234
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 82 页 / 共 85 页
-====================================================================================================
 
 
 class TileMap(QWidget):
@@ -3010,6 +2546,9 @@ class TileMap(QWidget):
             except ValueError:
                 continue
         self._selected = sel
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 107 页 / 共 118 页
+====================================================================================================
         self.tiles_changed.emit()
         self.update()
 
@@ -3023,9 +2562,6 @@ class TileMap(QWidget):
             else:
                 self._selected.add(cell)
             self.tiles_changed.emit()
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 83 页 / 共 85 页
-====================================================================================================
             self.update()
 
     def mouseMoveEvent(self, event) -> None:
@@ -3063,6 +2599,9 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
                 painter.drawLine(int(x), int(y0), int(x), int(y0 + TILE_H))
             painter.drawLine(int(x0), int(y0 + TILE_H), int(x0 + band_half * 2), int(y0 + TILE_H))
             # row band border
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 108 页 / 共 118 页
+====================================================================================================
             painter.setPen(QPen(QColor("#9fb6d0"), 1))
             painter.drawRect(QRectF(x0, y0, band_half * 2, TILE_H))
 
@@ -3076,9 +2615,6 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
             if rect is not None:
                 painter.setPen(QPen(QColor("#e05500"), 2))
                 painter.drawRect(rect)
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 84 页 / 共 85 页
-====================================================================================================
 
         painter.end()
 
@@ -3107,9 +2643,442 @@ D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    �
             return None
         h = int((rel + 1.0) / 2.0 * tiles.N_COLS)
         return min(tiles.N_COLS - 1, max(0, h)), v
+# ===== 文件: d3ltool/gui/timeseries_panel.py =====
+# -*- coding: utf-8 -*-
+"""Time-series drawer panel: pixel values of any LAADS product layer.
+
+The data logic lives in d3ltool.timeseries (pure Python): pixel values are
+sampled straight from LAADS' own OPeNDAP service — the same servers as the
+downloader, no third-party subset service involved. This module is Qt only:
+a form (product / layer / dates / latitude / longitude), a QtCharts line
+chart, CSV export, and one worker thread at a time.
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 109 页 / 共 118 页
+====================================================================================================
+"""
+
+import csv
+import threading
+
+from PySide6.QtCharts import (QChart, QChartView, QDateTimeAxis, QLineSeries,
+                              QValueAxis)
+from PySide6.QtCore import QDate, QDateTime, QMargins, Qt, QThread, Signal
+from PySide6.QtGui import QColor, QPainter, QPen
+from PySide6.QtWidgets import (QComboBox, QCompleter, QDateEdit, QFileDialog,
+                               QHBoxLayout, QLabel, QLineEdit, QPushButton,
+                               QVBoxLayout, QWidget)
+
+from .. import i18n
+from .. import timeseries as tsl
+
+# popular starting points; any LAADS product short_name can be typed too
+SEED_PRODUCTS = ["MOD13Q1", "MOD13A2", "MYD13Q1", "MOD11A2", "MYD11A2",
+                 "MOD15A2H", "MCD43A4", "MOD09GA", "MOD17A2H",
+                 "MCD64A1", "MOD10A2", "VNP46A1", "VNP46A2", "VJ102IMG",
+                 "M2T1NXSLV", "M2TMNXSLV"]
+
+
+class _ThreadAdapter:
+    """Bridges data-layer progress calls to the thread's Qt signals."""
+
+    def __init__(self, thread):
+        self._thread = thread
+
+    def stage(self, key, **kw):
+        self._thread.stage.emit(i18n.tr(key, **kw))
+
+    def layers(self, layers):
+        self._thread.layers_ready.emit(layers)
+
+
+class TimeSeriesThread(QThread):
+    """The LAADS OPeNDAP pipeline (search -> probe -> sample) off the GUI
+    thread; one job at a time, stoppable between granules."""
+
+    layers_ready = Signal(list)          # [{layer, description, ...}]
+    series_ready = Signal(list)          # [source_label, layer, points]
+    stage = Signal(str)                  # human-readable progress text
+    failed = Signal(str)
+    finished_turn = Signal()
+
+    def __init__(self, args, parent=None):
+        super().__init__(parent)
+        self._args = args
+        self._stop_event = threading.Event()
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 110 页 / 共 118 页
+====================================================================================================
+
+    def stop(self):
+        self._stop_event.set()
+
+    def run(self):
+        try:
+            source, layer, points = tsl.run_point_series(
+                lat=self._args["lat"], lon=self._args["lon"],
+                product=self._args["product"],
+                start=self._args["start"], end=self._args["end"],
+                layer_hint=self._args.get("layer_hint", ""),
+                should_stop=self._stop_event.is_set,
+                adapter=_ThreadAdapter(self))
+            if self._stop_event.is_set():
+                raise tsl.StopRequested("stopped by user")
+            self.series_ready.emit([source, layer, points])
+        except tsl.StopRequested:
+            pass
+        except Exception as exc:      # noqa: BLE001 — the panel must not die
+            self.failed.emit(f"{type(exc).__name__}: {exc}")
+        finally:
+            self.finished_turn.emit()
+
+
+class TimeSeriesPanel(QWidget):
+    """Content of the right-edge '时间序列' drawer."""
+
+    hide_requested = Signal()         # the ✕ button; the drawer decides
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("tsPanel")
+        self._thread = None
+        self.last_points = None       # [(iso_date, value)] after a plot
+        self._meta = None             # context of the last plot (for export)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(10, 8, 10, 10)
+        root.setSpacing(6)
+
+        # ---------------- header row (same chrome style as AgentPanel)
+        header = QHBoxLayout()
+        title = QLabel(i18n.tr("tab_ts"))
+        title.setObjectName("agentTitle")
+        self.hide_btn = QPushButton("✕")
+        self.hide_btn.setObjectName("agentHeaderBtn")
+        self.hide_btn.setToolTip(i18n.tr("agent_hide"))
+        self.hide_btn.clicked.connect(self.hide_requested.emit)
+        header.addWidget(title)
+        header.addStretch(1)
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 111 页 / 共 118 页
+====================================================================================================
+        header.addWidget(self.hide_btn)
+        root.addLayout(header)
+
+        # ---------------- form
+        self.product_combo = QComboBox()
+        self.product_combo.setObjectName("tsProduct")
+        self.product_combo.setEditable(True)
+        self.product_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        completer = QCompleter(SEED_PRODUCTS, self.product_combo)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.product_combo.setCompleter(completer)
+        for name in SEED_PRODUCTS:
+            self.product_combo.addItem(name)
+        self.product_combo.setCurrentText("")
+        self.product_combo.lineEdit().setPlaceholderText(
+            i18n.tr("ts_product_ph"))
+        root.addWidget(self.product_combo)
+
+        layer_row = QHBoxLayout()
+        layer_label = QLabel(i18n.tr("ts_layer"))
+        self.layer_combo = QComboBox()
+        self.layer_combo.setObjectName("tsLayer")
+        layer_row.addWidget(layer_label)
+        layer_row.addWidget(self.layer_combo, 1)
+        root.addLayout(layer_row)
+
+        dates_row = QHBoxLayout()
+        dates_row.addWidget(QLabel(i18n.tr("label_start")))
+        self.start_edit = QDateEdit()
+        self.start_edit.setCalendarPopup(True)
+        self.start_edit.setDisplayFormat("yyyy-MM-dd")
+        self.start_edit.setDate(QDate.currentDate().addDays(-365))
+        dates_row.addWidget(self.start_edit, 1)
+        dates_row.addWidget(QLabel(i18n.tr("label_end")))
+        self.end_edit = QDateEdit()
+        self.end_edit.setCalendarPopup(True)
+        self.end_edit.setDisplayFormat("yyyy-MM-dd")
+        self.end_edit.setDate(QDate.currentDate())
+        dates_row.addWidget(self.end_edit, 1)
+        root.addLayout(dates_row)
+
+        coord_row = QHBoxLayout()
+        self.lat_edit = QLineEdit()
+        self.lat_edit.setPlaceholderText(i18n.tr("ts_lat_ph"))
+        self.lon_edit = QLineEdit()
+        self.lon_edit.setPlaceholderText(i18n.tr("ts_lon_ph"))
+        coord_row.addWidget(QLabel(i18n.tr("ts_lat")))
+        coord_row.addWidget(self.lat_edit, 1)
+        coord_row.addWidget(QLabel(i18n.tr("ts_lon")))
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 112 页 / 共 118 页
+====================================================================================================
+        coord_row.addWidget(self.lon_edit, 1)
+        root.addLayout(coord_row)
+
+        btn_row = QHBoxLayout()
+        self.plot_btn = QPushButton(i18n.tr("ts_plot"))
+        self.plot_btn.setObjectName("accentButton")
+        self.plot_btn.clicked.connect(self._plot)
+        self.stop_btn = QPushButton(i18n.tr("agent_stop"))
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.clicked.connect(self._stop)
+        self.export_btn = QPushButton(i18n.tr("ts_export"))
+        self.export_btn.clicked.connect(self._export)
+        self.clear_btn = QPushButton(i18n.tr("ts_clear"))
+        self.clear_btn.clicked.connect(self._clear_chart)
+        btn_row.addWidget(self.plot_btn, 1)
+        btn_row.addWidget(self.stop_btn)
+        btn_row.addWidget(self.export_btn)
+        btn_row.addWidget(self.clear_btn)
+        root.addLayout(btn_row)
+
+        self.status_label = QLabel(i18n.tr("ts_api_note"))
+        self.status_label.setObjectName("tsStatus")
+        self.status_label.setWordWrap(True)
+        root.addWidget(self.status_label)
+
+        # ---------------- chart
+        self.chart = QChart()
+        self.chart.legend().hide()
+        self.chart.setBackgroundVisible(False)
+        self.chart.setMargins(QMargins(0, 0, 0, 0))
+        self.chart_view = QChartView(self.chart)
+        self.chart_view.setObjectName("tsChart")
+        self.chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.chart_view.setMinimumHeight(160)
+        root.addWidget(self.chart_view, 1)
+
+    # ------------------------------------------------------------- helpers
+
+    def _status(self, text, error=False):
+        self.status_label.setProperty("state", "error" if error else "ok")
+        self.status_label.style().unpolish(self.status_label)
+        self.status_label.style().polish(self.status_label)
+        self.status_label.setText(text)
+
+    # ---------------------------------------------------------------- plot
+
+    def _plot(self):
+        if self._thread is not None and self._thread.isRunning():
+            return
+        try:
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 113 页 / 共 118 页
+====================================================================================================
+            lat = float(self.lat_edit.text().strip())
+            lon = float(self.lon_edit.text().strip())
+            if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+                raise ValueError("lat/lon out of range")
+        except ValueError:
+            self._status(i18n.tr("ts_bad_coords"), error=True)
+            return
+        start = self.start_edit.date().toString("yyyy-MM-dd")
+        end = self.end_edit.date().toString("yyyy-MM-dd")
+        if start > end:
+            self._status(i18n.tr("ts_bad_dates"), error=True)
+            return
+        product = self._typed_product()
+        if not product:
+            self._status(i18n.tr("ts_need_fields",
+                                 fields=i18n.tr("ts_field_product")),
+                         error=True)
+            return
+        layer_hint = self.layer_combo.currentData() or \
+            self.layer_combo.currentText()
+
+        self.plot_btn.setEnabled(False)
+        self.stop_btn.setEnabled(True)
+        self._status(i18n.tr("ts_stage_search"))
+        self._thread = TimeSeriesThread({
+            "lat": lat, "lon": lon, "product": product,
+            "layer_hint": layer_hint, "start": start, "end": end,
+        }, parent=self)
+        self._thread.layers_ready.connect(self._apply_layers)
+        self._thread.series_ready.connect(self._on_series_ready)
+        self._thread.stage.connect(self._status)
+        self._thread.failed.connect(self._on_failed)
+        self._thread.finished_turn.connect(self._on_finished)
+        self._thread.start()
+
+    def _typed_product(self):
+        text = self.product_combo.currentText().strip()
+        if not text:
+            return ""
+        return text.split()[0]        # drop any decoration the user typed
+
+    def _stop(self):
+        if self._thread is not None:
+            self._thread.stop()
+
+    # ------------------------------------------------------- thread slots
+
+    def _apply_layers(self, layers):
+        current = self.layer_combo.currentData()
+        self.layer_combo.blockSignals(True)
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 114 页 / 共 118 页
+====================================================================================================
+        self.layer_combo.clear()
+        for entry in layers:
+            name = str(entry.get("layer", ""))
+            if not name:
+                continue
+            desc = str(entry.get("description", "") or "")
+            label = f"{name} — {desc}" if desc else name
+            self.layer_combo.addItem(label, name)
+        self.layer_combo.blockSignals(False)
+        if current:
+            index = self.layer_combo.findData(current)
+            if index >= 0:
+                self.layer_combo.setCurrentIndex(index)
+
+    def _on_series_ready(self, payload):
+        source, layer, points = payload
+        self.render_points(points)
+        self._meta = {
+            "source": source, "layer": layer,
+            "product": self._typed_product(),
+            "lat": self.lat_edit.text().strip(),
+            "lon": self.lon_edit.text().strip(),
+            "start": self.start_edit.date().toString("yyyy-MM-dd"),
+            "end": self.end_edit.date().toString("yyyy-MM-dd"),
+        }
+        if points:
+            self._status(i18n.tr(
+                "ts_done", n=len(points), source=source, layer=layer,
+                start=points[0][0], end=points[-1][0]))
+        else:
+            self._status(i18n.tr("ts_no_data"), error=True)
+
+    def show_external_series(self, points, meta):
+        """Render a series produced elsewhere (the AI assistant's
+        point_timeseries/plot_timeseries tools) and record its context
+        for the status line and CSV export."""
+        self.render_points(points)
+        self._meta = dict(meta)
+        if points:
+            self._status(i18n.tr(
+                "ts_done", n=len(points), source=meta.get("source", ""),
+                layer=meta.get("layer", ""),
+                start=points[0][0], end=points[-1][0]))
+        else:
+            self._status(i18n.tr("ts_no_data"), error=True)
+
+    def _on_failed(self, message):
+        self._status(i18n.tr("ts_failed", reason=message), error=True)
+
+    def _on_finished(self):
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 115 页 / 共 118 页
+====================================================================================================
+        if self._thread is not None:
+            self._thread.wait(2000)
+        self._thread = None
+        self.plot_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+
+    # -------------------------------------------------------------- export
+
+    def _ask_save_path(self):
+        """Dialog seam (tests replace this)."""
+        meta = self._meta or {}
+        suggested = "timeseries.csv"
+        if meta.get("product"):
+            suggested = (f"{meta['product']}_{meta.get('layer', 'series')}"
+                         f"_{meta.get('lat', '')}_{meta.get('lon', '')}.csv")
+        path, _filter = QFileDialog.getSaveFileName(
+            self, i18n.tr("ts_export"), suggested, "CSV (*.csv)")
+        return path
+
+    def _export(self):
+        if not self.last_points:
+            self._status(i18n.tr("ts_nothing"), error=True)
+            return
+        path = self._ask_save_path()
+        if not path:
+            return
+        self.write_csv(path)
+        self._status(i18n.tr("ts_exported", path=path))
+
+    def write_csv(self, path):
+        """date/value CSV with a commented metadata header (utf-8-sig so
+        Excel opens Chinese text correctly; '# ' lines are pandas-safe)."""
+        meta = self._meta or {}
+        with open(path, "w", encoding="utf-8-sig", newline="") as fh:
+            writer = csv.writer(fh)
+            for key in ("product", "layer", "lat", "lon", "start", "end",
+                        "source"):
+                if meta.get(key):
+                    writer.writerow([f"# {key}: {meta[key]}"])
+            writer.writerow([f"# exported: {tsl.now_stamp()}"])
+            writer.writerow(["date", "value"])
+            for date, value in self.last_points:
+                writer.writerow([date, value])
+
+    # -------------------------------------------------------------- chart
+
+    def _clear_chart(self):
+        """Reset the chart to its empty state; the form fields are kept so
+        the same query can be tweaked and re-plotted."""
+        self.render_points([])
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 116 页 / 共 118 页
+====================================================================================================
+        self._meta = None
+        self._status(i18n.tr("ts_api_note"))
+
+    def render_points(self, points):
+        """Draw (or clear with []) the series; records self.last_points."""
+        self.chart.removeAllSeries()
+        for axis in self.chart.axes():    # removeAllSeries keeps old axes,
+            self.chart.removeAxis(axis)   # so labels pile up on every re-plot
+        self.last_points = [list(p) for p in (points or [])]
+        if not points:
+            return
+        series = QLineSeries()
+        times = []
+        for iso, value in points:
+            text = str(iso)
+            moment = QDateTime.fromString(text, Qt.ISODate)
+            if not moment.isValid():      # "2025-10-25T01:30" parses directly;
+                moment = QDateTime.fromString(   # pad date-only stamps
+                    text[:10] + "T00:00:00", Qt.ISODate)
+            if not moment.isValid():
+                continue
+            times.append(moment)
+            series.append(moment.toMSecsSinceEpoch(), float(value))
+        if not times:
+            return
+        pen = QPen(QColor("#d6372a"))
+        pen.setWidthF(1.8)
+        series.setPen(pen)
+
+        x_axis = QDateTimeAxis()
+        span_days = times[0].secsTo(times[-1]) // 86400
+        x_axis.setFormat("yyyy-MM-dd" if span_days <= 120 else "yyyy-MM")
+        x_axis.setRange(times[0], times[-1])
+        values = [float(v) for _, v in points]
+        lo, hi = min(values), max(values)
+        if lo == hi:
+            lo, hi = lo - 1.0, hi + 1.0
+        pad = (hi - lo) * 0.08
+        y_axis = QValueAxis()
+        y_axis.setRange(lo - pad, hi + pad)
+        y_axis.setLabelFormat("%.1f")
+
+        self.chart.addSeries(series)
+        self.chart.addAxis(x_axis, Qt.AlignmentFlag.AlignBottom)
+        self.chart.addAxis(y_axis, Qt.AlignmentFlag.AlignLeft)
+        series.attachAxis(x_axis)
+        series.attachAxis(y_axis)
 # ===== 文件: D3LToolNASA.py =====
 # -*- coding: utf-8 -*-
 """PyInstaller entry script for the D3LToolNASA.exe build."""
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 117 页 / 共 118 页
+====================================================================================================
 
 import os
 import sys
@@ -3129,9 +3098,6 @@ def smoke() -> int:
 
     from d3ltool.gui.main_window import MainWindow
     from d3ltool.gui.theme import apply_theme
-
-D3L Tool of NASA Satellite V2.1.0    源程序（前30页+后30页节选）    第 85 页 / 共 85 页
-====================================================================================================
 
     app = QApplication([])
     apply_theme(app)
@@ -3163,6 +3129,9 @@ import sys
 
 from d3ltool.mcp_server import run
 
+
+D3L Tool of NASA Satellite V2.3.0    源程序（前30页+后30页节选）    第 118 页 / 共 118 页
+====================================================================================================
 if __name__ == "__main__":
     sys.exit(run())
 
