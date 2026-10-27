@@ -18,7 +18,7 @@ drawer that slides out from the right edge of the GUI.
 | `point_to_tile` | 经纬度 → 正弦瓦片 (h, v) 及范围 |
 | `tile_bounds` | h/v → 瓦片地理范围 |
 | `search_granules` | CMR 检索：short_name + 时间 + 瓦片/范围，返回文件名/日期/大小/下载地址 |
-| `point_timeseries` | 点位时间序列：经纬度 + 产品 + 时间段 → LAADS/云 OPeNDAP 直采像素（MERRA-2 逐小时），返回点列与统计，并附 `series_id` |
+| `point_timeseries` | 点位时间序列：经纬度 + 产品 + 时间段 → LAADS/云 OPeNDAP 直采像素（MERRA-2 逐小时），返回点列与统计，并附 `series_id`；`layer` 支持简称（'NDVI' 即可命中 `_250m_16_days_NDVI`）或留空自动选层 |
 | `plot_timeseries` | 把 `series_id` 对应的序列画进软件时间序列图表（仅软件内 AI 助手可用；MCP 环境返回 not_in_gui） |
 | `start_download` | 把 URL 加入下载队列（断点续传），返回任务 id |
 | `download_status` | 查询下载进度（状态/大小/速度/失败原因） |

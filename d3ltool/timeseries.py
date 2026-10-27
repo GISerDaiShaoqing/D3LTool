@@ -70,21 +70,40 @@ PREFERRED_LAYERS = ("T2M", "NDVI", "EVI", "LST_Day_1km", "Lai_500m",
                     "FireMask", "Radiance_DNB")
 
 
-def pick_layer(layers, hint=""):
-    """Choose a sensible default layer: the hint, a preferred science
-    layer, else the first non-QC one."""
-    if hint:
-        for entry in layers:
-            if entry.get("layer") == hint:
-                return hint
-    names = [entry.get("layer", "") for entry in layers]
-    for want in PREFERRED_LAYERS:
-        if want in names:
-            return want
+def _norm_layer(name):
+    """'NDVI' == '_250m_16_days_NDVI' modulo case, underscores and spaces."""
+    return re.sub(r"[\s_]+", "", str(name)).lower()
+
+
+def _first_non_qc(names):
     for name in names:
         if name and not any(tok in name for tok in QC_TOKENS):
             return name
-    return names[0] if names else ""
+    return ""
+
+
+def pick_layer(layers, hint=""):
+    """Resolve the requested layer: the exact name, then a case/underscore-
+    insensitive match (a user's 'NDVI' finds _250m_16_days_NDVI; QC variants
+    only win when named exactly), else a preferred science layer, else the
+    first non-QC one. A hint nothing resembles raises."""
+    names = [entry.get("layer", "") for entry in layers]
+    if hint:
+        if hint in names:
+            return hint
+        wanted = _norm_layer(hint)
+        if wanted:
+            same = [n for n in names if n and _norm_layer(n) == wanted]
+            if same:
+                return same[0]
+            fuzzy = [n for n in names if n and wanted in _norm_layer(n)]
+            if fuzzy:
+                return _first_non_qc(fuzzy) or fuzzy[0]
+        raise TimeSeriesError(f"layer {hint!r} not found in the granule")
+    for want in PREFERRED_LAYERS:
+        if want in names:
+            return want
+    return _first_non_qc(names) or (names[0] if names else "")
 
 
 def laads_opendap_url(archive_url: str) -> str:
@@ -336,8 +355,7 @@ class LaadsOpendapSeries:
             found = self.layers(granules[0][1])
             if on_layers is not None:
                 on_layers(found)
-            if not layer:
-                layer = pick_layer(found)
+            layer = pick_layer(found, layer)
         meta = (self._variables or {}).get(layer)
         if not meta:
             raise TimeSeriesError(
@@ -453,8 +471,7 @@ class MerraOpendapSeries:
             found = self.layers(granules[0][1])
             if on_layers is not None:
                 on_layers(found)
-            if not layer:
-                layer = pick_layer(found)
+            layer = pick_layer(found, layer)
         meta = (self._variables or {}).get(layer)
         if not meta:
             raise TimeSeriesError(f"layer {layer!r} not found in the granule")

@@ -282,7 +282,10 @@ def search_granules(short_name: str, start: str, end: str, version: str = "",
     "Sample the point time series of a MODIS/VIIRS or MERRA-2 product at one "
     "lon/lat over a date range (YYYY-MM-DD). Pixels are read directly over "
     "NASA OPeNDAP (LAADS for MODIS/VIIRS, the cloud gateway for MERRA-2, "
-    "which yields hourly steps), no intermediate service. For 'series / "
+    "which yields hourly steps), no intermediate service. `layer` may be a "
+    "short name — 'NDVI' resolves to _250m_16_days_NDVI (case/underscore-"
+    "insensitive; QC layers only match by exact name) — or empty to "
+    "auto-pick. For 'series / "
     "trend / plot at a point' requests prefer this over search_granules — "
     "it reads one pixel instead of whole files. Requires the Earthdata "
     "sign-in persisted on this machine. Returns source, layer, points "
@@ -290,7 +293,7 @@ def search_granules(short_name: str, start: str, end: str, version: str = "",
     "stats and a series_id for plot_timeseries; for long series narrow the "
     "date range or raise `limit`.",
     "经纬度 + 产品 + 时间段 -> 点位时间序列（LAADS/云 OPeNDAP 直采像素，MERRA-2 为逐小时；"
-    "需本机已登录 Earthdata，长序列截断到 limit 条并附统计）",
+    "layer 支持简称如 'NDVI' 或留空自动选层；需本机已登录 Earthdata，长序列截断到 limit 条并附统计）",
 )
 def point_timeseries(lon: float, lat: float, product: str, start: str,
                      end: str, layer: str = "", limit: int = 200) -> dict:

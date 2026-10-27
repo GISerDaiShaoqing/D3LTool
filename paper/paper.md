@@ -118,7 +118,7 @@ tile map, results and task tables, a slide-out assistant drawer and a
 time-series panel sharing the main engine, settings (download directory,
 worker count, proxy) and a
 language switcher; all strings live in a single i18n module. The test suite
-(116 pytest tests at submission time) covers the tile math, configuration
+(118 pytest tests at submission time) covers the tile math, configuration
 handling, search query construction and version fallbacks, the
 resume/retry engine against a local Range-capable HTTP server, the tool
 registry and agent loop with a local streaming-HTTP fake, an end-to-end

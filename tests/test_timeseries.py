@@ -121,6 +121,25 @@ def test_parse_ascii_value():
     assert tsl.parse_ascii_value("_x[0], NaN\n", "_x") is None
 
 
+def test_pick_layer_fuzzy_hints():
+    """Users and the agent say 'NDVI'; files call it _250m_16_days_NDVI."""
+    layers = [{"layer": "_250m_16_days_NDVI", "description": "NDVI"},
+              {"layer": "_250m_16_days_NDVI_QC", "description": "quality"}]
+    assert tsl.pick_layer(layers, "NDVI") == "_250m_16_days_NDVI"
+    assert tsl.pick_layer(layers, "ndvi") == "_250m_16_days_NDVI"
+    # case / underscores / spaces are all interchangeable
+    assert tsl.pick_layer(layers, "250m 16 days NDVI") == "_250m_16_days_NDVI"
+    # an exact name — including QC — is honoured as-is
+    assert tsl.pick_layer(layers, "_250m_16_days_NDVI_QC") \
+        == "_250m_16_days_NDVI_QC"
+    # an empty hint keeps the sensible default (QC skipped)
+    assert tsl.pick_layer(layers) == "_250m_16_days_NDVI"
+    # a hint nothing resembles raises instead of silently picking another
+    # science layer
+    with pytest.raises(tsl.TimeSeriesError, match="EVI"):
+        tsl.pick_layer(layers, "EVI")
+
+
 def _fake_granule(date, tile, suffix="061", cloud=True):
     """CMR-style granule: Earthdata-Cloud link by default, classic LAADS
     archive link when cloud=False. Filenames use the real AYYYYDDD day
@@ -205,6 +224,19 @@ def test_opendap_series_full():
     ascii_calls = [u for m, u, _b in session.calls if ".ascii?" in u]
     assert ascii_calls[0].endswith(
         f".ascii?_250m_16_days_NDVI[{row}][{col}]")
+
+
+def test_opendap_series_fuzzy_layer_hint():
+    """'NDVI' — what the user or the agent actually says — samples the
+    file's _250m_16_days_NDVI instead of dying with 'layer not found'."""
+    granules = [("2009-01-01", "https://ladsweb.example/opendap/a.hdf")]
+    session = FakeSession(_opendap_routes(["_250m_16_days_NDVI[0], 3470"]))
+    s = tsl.LaadsOpendapSeries(session=session)
+    _source, layer, points = s.series(
+        36.833, 116.567, "MOD13Q1", "2009-01-01", "2009-12-31",
+        layer="NDVI", granules=granules)
+    assert layer == "_250m_16_days_NDVI"
+    assert points == [("2009-01-01", 0.347)]
 
 
 def test_opendap_series_stop():

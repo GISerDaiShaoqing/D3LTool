@@ -531,7 +531,11 @@ class AgentPanel(QWidget):
         except ValueError:
             return payload_json[:120]
         if isinstance(data, dict) and data.get("error"):
-            return str(data["error"])[:120]
+            message = str(data["error"])
+            hint = str(data.get("hint") or "").strip()
+            if hint and hint != message:
+                message = f"{message}: {hint}"
+            return message[:160]
         if isinstance(data, dict) and "count" in data:
             extra = ""
             items = data.get("granules") or data.get("items") or data.get("products")

@@ -134,7 +134,10 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   assistant fetches the series and draws it straight into the app's
   time-series drawer. Bonus fix: point→tile math now uses the true sinusoidal grid (pixel-exact against
   real files) instead of the old 10° box approximation, making the
-  lat/lon locator and the AI's point_to_tile accurate again
+  lat/lon locator and the AI's point_to_tile accurate again. Layer names
+  now match loosely — plain 'NDVI' resolves to _250m_16_days_NDVI
+  (case/underscore-insensitive) — and the agent chat shows the reason
+  behind a failed tool call instead of just its error key
 - **2026-10 v2.2.0** — AI Assistant redesigned as a floating right-edge
   drawer: the data page keeps its own layout, API settings moved into a
   popup dialog, user background image supported

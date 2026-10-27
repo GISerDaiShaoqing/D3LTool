@@ -261,3 +261,8 @@ def test_agent_tool_result_summary():
 
     err = AgentPanel._summarize_result(json.dumps({"error": "boom"}))
     assert "boom" in err
+
+    hint = AgentPanel._summarize_result(json.dumps({
+        "error": "timeseries_failed",
+        "hint": "layer 'NDVI' not found in the granule"}))
+    assert "timeseries_failed" in hint and "not found" in hint
