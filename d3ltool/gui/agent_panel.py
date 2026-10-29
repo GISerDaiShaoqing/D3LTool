@@ -28,6 +28,7 @@ class AgentThread(QThread):
     text_delta = Signal(str)
     tool_started = Signal(str, str)       # name, arguments-json
     tool_result = Signal(str, str)        # name, payload-json (truncated)
+    tool_progress = Signal(str)           # live sampling line (i18n'd)
     failed = Signal(str)
     finished_turn = Signal()
     # object (NOT dict): PySide6 copies dict payloads across queued
@@ -57,6 +58,8 @@ class AgentThread(QThread):
         else:
             transport = self._transport
         try:
+            tools.attach_ts_stop(self._stop_event.is_set)
+            tools.attach_progress_sink(self._emit_progress)
             loop.run_agent_loop(
                 self._messages, transport, tools,
                 on_event=self._dispatch,
@@ -83,7 +86,7 @@ class AgentThread(QThread):
             self.failed.emit(event["message"])
 
     # Runs in the worker thread: block on an Event until the GUI thread
-    # answers the confirm_needed signal.
+    # answers the confirm callback.
     def _ask_confirm(self, name, arguments):
         self._confirm_event.clear()
         self._confirm_holder = {"answer": False}
@@ -95,6 +98,14 @@ class AgentThread(QThread):
         })
         self._confirm_event.wait(timeout=600)
         return self._confirm_holder.get("answer", False)
+
+    # Called by the sampling tools on the worker thread; the signal
+    # delivers to the GUI thread (queued).
+    def _emit_progress(self, key, **kw):
+        try:
+            self.tool_progress.emit(i18n.tr(key, **kw))
+        except Exception:            # noqa: BLE001 — progress must not kill sampling
+            pass
 
 
 class _InputEdit(QTextEdit):
@@ -252,6 +263,13 @@ class AgentPanel(QWidget):
         self.chat.setOpenExternalLinks(True)
         self.chat.setStyleSheet("QTextBrowser { background: transparent; }")
         root.addWidget(self.chat, 1)
+
+        # ---------------- live tool progress (one updating line, no chat spam)
+        self.progress = QLabel()
+        self.progress.setObjectName("agentProgress")
+        self.progress.setWordWrap(True)
+        self.progress.hide()
+        root.addWidget(self.progress)
 
         # ---------------- input row
         input_row = QHBoxLayout()
@@ -448,6 +466,7 @@ class AgentPanel(QWidget):
         self._agent_thread.text_delta.connect(self._on_text_delta)
         self._agent_thread.tool_started.connect(self._on_tool_started)
         self._agent_thread.tool_result.connect(self._on_tool_result)
+        self._agent_thread.tool_progress.connect(self._on_tool_progress)
         self._agent_thread.failed.connect(self._on_failed)
         self._agent_thread.finished_turn.connect(self._on_turn_finished)
         self._agent_thread.confirm_needed.connect(self._on_confirm_needed)
@@ -481,9 +500,14 @@ class AgentPanel(QWidget):
                           f"<code>{self._escape(summary)}</code></span>")
 
     def _on_tool_result(self, name, payload_json):
+        self.progress.hide()
         summary = self._summarize_result(payload_json)
         color = "#1a7f37" if '"error"' not in payload_json else "#d6372a"
         self._append_html(f"<span style='color:{color}'>   ↳ {summary}</span>")
+
+    def _on_tool_progress(self, text):
+        self.progress.setText(text)
+        self.progress.show()
 
     def _on_failed(self, message):
         self._end_stream_block()
@@ -492,6 +516,7 @@ class AgentPanel(QWidget):
 
     def _on_turn_finished(self):
         self._end_stream_block()
+        self.progress.hide()
         self.send_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
         thread = self._agent_thread
@@ -544,4 +569,19 @@ class AgentPanel(QWidget):
                 name = first.get("filename") or first.get("short_name") or ""
                 extra = f" · {name}"
             return f"{data['count']} 项{extra}"
+        if isinstance(data, dict) and "stats" in data and "source" in data:
+            # point_timeseries: "24 个点 · _250m_16_days_NDVI (K) · MOD13Q1 ..."
+            stats = data.get("stats") or {}
+            head = (f"{stats.get('count', '?')} 个点 · "
+                    f"{data.get('layer', '')}")
+            if data.get("units"):
+                head += f" ({data['units']})"
+            line = f"{head} · {data.get('source', '')}"
+            if data.get("truncated"):
+                line += " · 已截断"
+            return line[:160]
+        if isinstance(data, dict) and "authenticated" in data:
+            if data.get("authenticated"):
+                return f"已登录：{data.get('user', '')}"
+            return "未登录"
         return payload_json[:120]

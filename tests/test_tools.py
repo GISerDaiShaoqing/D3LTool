@@ -4,6 +4,7 @@
 Network-free: search and downloads use the shared fakes/local range server.
 """
 
+import json
 import time
 
 import pytest
@@ -221,6 +222,42 @@ def test_point_timeseries_tool_laads(monkeypatch):
     assert out["series_id"]
 
 
+def test_point_timeseries_progress_and_stop(monkeypatch):
+    """The in-app agent path: stage progress flows to the GUI sink and the
+    panel's stop checker aborts sampling between granules (a temperature
+    turn used to grind silently for minutes on the slow GES DISC gateway
+    with no way to cancel it)."""
+    from d3ltool import auth
+    from test_timeseries import FakeSession, _fake_granule, _opendap_routes
+
+    monkeypatch.setattr(tools, "_SEARCHER",
+                        lambda **query: [_fake_granule("2009-01-17", "h27v05")])
+    monkeypatch.setattr(auth, "new_download_session", lambda: FakeSession(
+        _opendap_routes(["_250m_16_days_NDVI[0], 3470"])))
+    seen = []
+    monkeypatch.setattr(tools, "_PROGRESS_SINK",
+                        lambda key, **kw: seen.append((key, kw)))
+    monkeypatch.setattr(tools, "_PLOT_SINK", object())   # in-app environment
+    monkeypatch.setattr(tools, "_TS_STOP", lambda: False)
+    out = tools.point_timeseries(lon=116.567, lat=36.833, product="MOD13Q1",
+                                 start="2009-01-01", end="2009-12-31")
+    assert out["series_id"]
+    assert f"plot_timeseries(series_id='{out['series_id']}')" in out["hint"]
+    assert [k for k, _kw in seen] == ["ts_stage_search", "ts_odap_sample"]
+    assert seen[1][1] == {"i": 1, "n": 1, "date": "2009-01-17"}
+
+    # the stop button aborts the loop; the tool reports it as a quiet error
+    monkeypatch.setattr(tools, "_SEARCHER",
+                        lambda **query: [_fake_granule("2009-01-17", "h27v05"),
+                                         _fake_granule("2009-02-01", "h27v05")])
+    monkeypatch.setattr(tools, "_TS_STOP", lambda: True)
+    stopped = tools.point_timeseries(lon=116.567, lat=36.833,
+                                     product="MOD13Q1",
+                                     start="2009-01-01", end="2009-12-31")
+    assert stopped["error"] == "timeseries_failed"
+    assert "stop" in stopped["hint"].lower()
+
+
 def test_plot_timeseries_tool(monkeypatch):
     """point_timeseries caches the full series under a series_id;
     plot_timeseries hands it to the GUI sink, and reports honestly
@@ -250,6 +287,47 @@ def test_plot_timeseries_tool(monkeypatch):
     monkeypatch.setattr(tools, "_PLOT_SINK", None)   # e.g. plain MCP server
     assert tools.plot_timeseries(out["series_id"])["error"] == "not_in_gui"
     assert tools.plot_timeseries("ts999")["error"] == "unknown series_id"
+
+
+def test_point_timeseries_budget_compaction(monkeypatch):
+    """Long series are compacted to fit the tool-result budget with
+    series_id and hint kept at the head — the loop could otherwise chop
+    both off mid-points-array (DeepSeek diagnosed exactly the missing
+    series_id on a 15-day hourly fetch)."""
+    from d3ltool import auth
+    from d3ltool.agent import loop as loop_mod
+    from test_timeseries import (FakeSession, MERRA_DMR, TextResp,
+                                 _dap_body, _fake_merra_granule)
+
+    class _BytesSession(FakeSession):
+        def get(self, url, **kwargs):
+            if ".dap" in url and not url.endswith(".dmr.xml"):
+                self.calls.append(("GET", url, None))
+                body = _dap_body([270.0 + h * 0.2 for h in range(24)])
+                return TextResp(body.decode("latin-1"))
+            return super().get(url, **kwargs)
+
+    monkeypatch.setattr(loop_mod, "TOOL_RESULT_LIMIT", 1180)
+    monkeypatch.setattr(tools, "_SEARCHER",
+                        lambda **query: [_fake_merra_granule("2020-01-01")])
+    monkeypatch.setattr(auth, "new_download_session", lambda: _BytesSession(
+        [("GET", ".dmr.xml", lambda kw: TextResp(MERRA_DMR))]))
+
+    out = tools.point_timeseries(lon=116.567, lat=36.833,
+                                 product="M2T1NXSLV",
+                                 start="2020-01-01", end="2020-01-01")
+    assert out["stats"]["count"] == 24          # stats cover the FULL series
+    assert out["truncated"] is True
+    assert len(out["points"]) == 12
+    assert "tool budget" in out["hint"]
+    assert out["series_id"].startswith("ts")
+    assert out["layer_long_name"] == "2-meter_air_temperature"
+    assert out["units"] == "K"
+    # the compacted result itself stays within the loop's budget
+    assert len(json.dumps(out, ensure_ascii=False, default=str)) \
+        <= loop_mod.TOOL_RESULT_LIMIT + 200     # worst-case trim headroom
+    # and the id still resolves in the plot cache
+    assert tools.plot_timeseries(out["series_id"])["error"] == "not_in_gui"
 
 
 def test_point_timeseries_tool_merra_truncates(monkeypatch):

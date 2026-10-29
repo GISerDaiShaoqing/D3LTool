@@ -62,7 +62,7 @@ class TimeSeriesThread(QThread):
 
     def run(self):
         try:
-            source, layer, points = tsl.run_point_series(
+            source, layer, points, layer_meta = tsl.run_point_series(
                 lat=self._args["lat"], lon=self._args["lon"],
                 product=self._args["product"],
                 start=self._args["start"], end=self._args["end"],
@@ -71,7 +71,7 @@ class TimeSeriesThread(QThread):
                 adapter=_ThreadAdapter(self))
             if self._stop_event.is_set():
                 raise tsl.StopRequested("stopped by user")
-            self.series_ready.emit([source, layer, points])
+            self.series_ready.emit([source, layer, points, layer_meta])
         except tsl.StopRequested:
             pass
         except Exception as exc:      # noqa: BLE001 — the panel must not die
@@ -271,7 +271,8 @@ class TimeSeriesPanel(QWidget):
                 self.layer_combo.setCurrentIndex(index)
 
     def _on_series_ready(self, payload):
-        source, layer, points = payload
+        source, layer, points = payload[:3]
+        layer_meta = payload[3] if len(payload) > 3 else {}
         self.render_points(points)
         self._meta = {
             "source": source, "layer": layer,
@@ -281,6 +282,8 @@ class TimeSeriesPanel(QWidget):
             "start": self.start_edit.date().toString("yyyy-MM-dd"),
             "end": self.end_edit.date().toString("yyyy-MM-dd"),
         }
+        if layer_meta.get("units"):
+            self._meta["units"] = layer_meta["units"]
         if points:
             self._status(i18n.tr(
                 "ts_done", n=len(points), source=source, layer=layer,
@@ -341,8 +344,8 @@ class TimeSeriesPanel(QWidget):
         meta = self._meta or {}
         with open(path, "w", encoding="utf-8-sig", newline="") as fh:
             writer = csv.writer(fh)
-            for key in ("product", "layer", "lat", "lon", "start", "end",
-                        "source"):
+            for key in ("product", "layer", "units", "lat", "lon", "start",
+                        "end", "source"):
                 if meta.get(key):
                     writer.writerow([f"# {key}: {meta[key]}"])
             writer.writerow([f"# exported: {tsl.now_stamp()}"])

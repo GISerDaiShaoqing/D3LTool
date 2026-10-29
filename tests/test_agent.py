@@ -331,6 +331,37 @@ def test_agent_loop_stop_requested_ends_cleanly():
     assert events[-1] == {"type": "done", "note": "stopped by user"}
 
 
+def test_agent_loop_empty_reply_retries_then_answers():
+    """A dead-air round (providers hiccup; free models return empty
+    replies) is retried, not silently accepted as the final answer —
+    the turn used to just die with enabled Send and disabled Stop."""
+    posts = []
+
+    def transport(messages, tool_specs):
+        posts.append(1)
+        if len(posts) == 1:
+            return iter([])            # dead air, no text, no tool calls
+        return iter([{"type": "text", "text": "这次来了"},
+                     {"type": "done", "finish_reason": "stop"}])
+
+    events = _events_of(transport, FakeRegistry({}),
+                        [{"role": "user", "content": "hi"}])
+    assert "".join(e["text"] for e in events if e["type"] == "text") \
+        == "这次来了"
+    assert not any(e["type"] == "error" for e in events)
+    assert len(posts) == 2
+
+
+def test_agent_loop_persistent_empty_reply_errors_visibly():
+    def transport(messages, tool_specs):
+        return iter([])                # dead air every round
+
+    events = _events_of(transport, FakeRegistry({}),
+                        [{"role": "user", "content": "hi"}])
+    assert any(e["type"] == "error" and "empty reply" in e["message"]
+               for e in events)
+
+
 def test_proxy_skips_loopback(monkeypatch):
     """With the app proxy set, loopback targets (Ollama, test servers)
     must still be reached directly — a remote node would 502 them."""

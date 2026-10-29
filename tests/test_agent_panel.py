@@ -266,3 +266,16 @@ def test_agent_tool_result_summary():
         "error": "timeseries_failed",
         "hint": "layer 'NDVI' not found in the granule"}))
     assert "timeseries_failed" in hint and "not found" in hint
+
+    ts = AgentPanel._summarize_result(json.dumps({
+        "source": "M2T1NXSLV (GES DISC OPeNDAP)", "layer": "T2M",
+        "units": "K",
+        "stats": {"count": 24}, "truncated": False,
+        "points": [["2019-12-01T01:30", 267.2]]}))
+    assert "24 个点" in ts and "T2M" in ts and "K" in ts
+
+    login = AgentPanel._summarize_result(json.dumps(
+        {"authenticated": True, "user": "giser.d", "hint": ""}))
+    assert "已登录" in login and "giser.d" in login
+    assert AgentPanel._summarize_result(
+        json.dumps({"authenticated": False})) == "未登录"

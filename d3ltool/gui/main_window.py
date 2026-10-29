@@ -3,8 +3,8 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import (QEasingCurve, QPoint, QPropertyAnimation, Qt,
-                            QThread, QUrl, Signal)
+from PySide6.QtCore import (QEasingCurve, QObject, QPoint,
+                            QPropertyAnimation, Qt, QThread, QUrl, Signal)
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QIcon
 from PySide6.QtWidgets import (QDialog, QFrame, QLabel, QMainWindow,
                                QMessageBox, QSizePolicy, QSplitter,
@@ -59,6 +59,16 @@ class _SearchThread(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
             return
         self.done.emit(granules, _time.time() - t0)
+
+
+class _AgentPlotBridge(QObject):
+    """tools.plot_timeseries fires on the agent worker thread, but every
+    widget / chart / animation / focus call must happen on the GUI thread
+    — the sink therefore relays through this queued signal. Payloads use
+    `object`: queued connections copy plain lists/dicts (v2.1.1 lesson),
+    which is fine here because both are read-only snapshots."""
+
+    plot = Signal(object, object)
 
 
 class _EdgeDrawerCtl:
@@ -207,7 +217,9 @@ class MainWindow(QMainWindow):
         # in a right-edge drawer instead of a tab so the data page keeps
         # its own layout untouched
         tools.attach_engine(self.engine)
-        tools.attach_plot_sink(self._plot_agent_series)
+        self._plot_bridge = _AgentPlotBridge(self)
+        self._plot_bridge.plot.connect(self._plot_agent_series)
+        tools.attach_plot_sink(self._plot_bridge.plot.emit)
         splitter.addWidget(self.search_panel)
         splitter.addWidget(data_page)
         splitter.setSizes([340, 760])
@@ -473,7 +485,9 @@ class MainWindow(QMainWindow):
 
     def _plot_agent_series(self, points, meta):
         """Chart target for the AI assistant's plot_timeseries tool:
-        draw into the time-series drawer and bring it to the front."""
+        draw into the time-series drawer and bring it to the front.
+        Runs on the GUI thread — the worker-side sink emits through
+        _AgentPlotBridge."""
         self.ts_panel.show_external_series(points, meta)
         if not self._ts_ctl.is_open:
             self._toggle_ts_drawer()

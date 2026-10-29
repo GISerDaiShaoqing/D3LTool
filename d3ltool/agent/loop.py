@@ -48,6 +48,7 @@ def run_agent_loop(messages, transport, registry, on_event=None,
     if registry is not None and getattr(registry, "openai_tool_specs", None):
         tool_specs = registry.openai_tool_specs()
 
+    empties = 0
     for _round in range(max_rounds):
         text_parts = []
         calls = []
@@ -71,7 +72,19 @@ def run_agent_loop(messages, transport, registry, on_event=None,
         if not calls:
             if text:
                 messages.append({"role": "assistant", "content": text})
-            _emit(on_event, {"type": "done"})
+                _emit(on_event, {"type": "done"})
+                return messages
+            # Dead-air round: some providers hiccup or free models return an
+            # empty reply. Retry instead of ending the turn in silence —
+            # nothing was consumed, so re-posting the same messages is safe.
+            if empties < 2 and _round < max_rounds - 1:
+                empties += 1
+                continue
+            _emit(on_event, {"type": "error",
+                             "message": f"the model returned an empty reply "
+                                        f"({empties} retries) — resend the "
+                                        "message, or try another model or "
+                                        "provider"})
             return messages
 
         messages.append({

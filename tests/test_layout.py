@@ -393,3 +393,44 @@ def test_time_series_panel_validation(tmp_path, monkeypatch):
     panel._plot()                          # missing product
     assert panel._thread is None
     assert "error" == panel.status_label.property("state")
+
+
+def test_agent_plot_sink_relays_to_gui_thread(tmp_path, monkeypatch):
+    """plot_timeseries executes on the agent worker thread (QThread.run ->
+    run_agent_loop -> spec.fn); before the plot bridge the sink touched
+    drawer widgets from that thread — undefined behaviour that
+    intermittently hard-crashes the app. The sink must deliver through a
+    queued signal so the drawer is only ever touched on the GUI thread."""
+    import threading
+
+    from d3ltool import tools
+
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        seen = {}
+
+        def fake_render(points, meta):
+            seen["render"] = threading.current_thread()
+
+        def fake_toggle(animate=True):
+            seen["toggle"] = threading.current_thread()
+
+        monkeypatch.setattr(window.ts_panel, "show_external_series",
+                            fake_render)
+        monkeypatch.setattr(window, "_toggle_ts_drawer", fake_toggle)
+
+        def fire():
+            tools._PLOT_SINK([("2010-08-07", 0.78)],
+                             {"product": "MOD13Q1", "layer": "NDVI"})
+
+        t = threading.Thread(target=fire)
+        t.start()
+        t.join()
+        deadline = time.time() + 2
+        while "render" not in seen and time.time() < deadline:
+            app.processEvents()
+
+        assert seen["render"] is threading.current_thread()
+        assert seen["toggle"] is threading.current_thread()
+    finally:
+        window.close()

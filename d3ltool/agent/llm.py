@@ -98,7 +98,7 @@ def _is_loopback(url: str) -> bool:
 
 
 def stream_chat(base_url, api_key, model, messages, tools=None,
-                timeout=(30, 600), should_stop=None):
+                timeout=(30, 300), should_stop=None):
     """POST /chat/completions with stream=True and yield structured events:
 
       {"type": "text", "text": str}         — a content delta as it arrives
@@ -134,41 +134,47 @@ def stream_chat(base_url, api_key, model, messages, tools=None,
         # SSE is UTF-8 by spec, but requests defaults text/* responses to
         # ISO-8859-1 when the provider omits a charset (Ollama does) —
         # decode the byte lines explicitly instead.
-        for raw in resp.iter_lines():
-            if should_stop is not None and should_stop():
-                raise StopRequested("stopped by user")
-            line = raw.decode("utf-8", errors="replace") \
-                if isinstance(raw, (bytes, bytearray)) else raw
-            if not line or not line.startswith("data:"):
-                continue
-            payload = line[5:].strip()
-            if payload == "[DONE]":
-                break
-            try:
-                chunk = json.loads(payload)
-            except ValueError:
-                continue
-            choices = chunk.get("choices") or []
-            if not choices:
-                continue
-            choice = choices[0]
-            delta = choice.get("delta") or {}
-            finish_reason = choice.get("finish_reason") or finish_reason
-            piece = delta.get("content")
-            if piece:
-                text_parts.append(piece)
-                yield {"type": "text", "text": piece}
-            for frag in delta.get("tool_calls") or []:
-                idx = frag.get("index", 0)
-                slot = fragments.setdefault(
-                    idx, {"id": "", "name": "", "arguments": ""})
-                if frag.get("id"):
-                    slot["id"] = frag["id"]
-                fn = frag.get("function") or {}
-                if fn.get("name") and not slot["name"]:
-                    slot["name"] = fn["name"]
-                if fn.get("arguments"):
-                    slot["arguments"] += fn["arguments"]
+        try:
+            for raw in resp.iter_lines():
+                if should_stop is not None and should_stop():
+                    raise StopRequested("stopped by user")
+                line = raw.decode("utf-8", errors="replace") \
+                    if isinstance(raw, (bytes, bytearray)) else raw
+                if not line or not line.startswith("data:"):
+                    continue
+                payload = line[5:].strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(payload)
+                except ValueError:
+                    continue
+                choices = chunk.get("choices") or []
+                if not choices:
+                    continue
+                choice = choices[0]
+                delta = choice.get("delta") or {}
+                finish_reason = (choice.get("finish_reason")
+                                 or finish_reason)
+                piece = delta.get("content")
+                if piece:
+                    text_parts.append(piece)
+                    yield {"type": "text", "text": piece}
+                for frag in delta.get("tool_calls") or []:
+                    idx = frag.get("index", 0)
+                    slot = fragments.setdefault(
+                        idx, {"id": "", "name": "", "arguments": ""})
+                    if frag.get("id"):
+                        slot["id"] = frag["id"]
+                    fn = frag.get("function") or {}
+                    if fn.get("name") and not slot["name"]:
+                        slot["name"] = fn["name"]
+                    if fn.get("arguments"):
+                        slot["arguments"] += fn["arguments"]
+        except StopRequested:
+            raise
+        except requests.RequestException as exc:
+            raise LLMError(f"stream error at {url}: {exc}") from exc
     finally:
         resp.close()
 

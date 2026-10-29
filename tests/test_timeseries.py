@@ -135,9 +135,13 @@ def test_pick_layer_fuzzy_hints():
     # an empty hint keeps the sensible default (QC skipped)
     assert tsl.pick_layer(layers) == "_250m_16_days_NDVI"
     # a hint nothing resembles raises instead of silently picking another
-    # science layer
+    # science layer, and the message lists the available names
     with pytest.raises(tsl.TimeSeriesError, match="EVI"):
         tsl.pick_layer(layers, "EVI")
+    # a one-letter guess must not substring-hit everything: it raises with
+    # the available list so the caller can retry with an exact name
+    with pytest.raises(tsl.TimeSeriesError, match="available"):
+        tsl.pick_layer(layers, "T")
 
 
 def _fake_granule(date, tile, suffix="061", cloud=True):
@@ -209,7 +213,7 @@ def test_opendap_series_full():
     progress_log = []
     layers_seen = []
 
-    source, layer, points = s.series(
+    source, layer, points, layer_meta = s.series(
         36.833, 116.567, "MOD13Q1", "2009-01-01", "2009-12-31",
         granules=granules,
         progress=lambda i, n, d: progress_log.append((i, n, d)),
@@ -232,7 +236,7 @@ def test_opendap_series_fuzzy_layer_hint():
     granules = [("2009-01-01", "https://ladsweb.example/opendap/a.hdf")]
     session = FakeSession(_opendap_routes(["_250m_16_days_NDVI[0], 3470"]))
     s = tsl.LaadsOpendapSeries(session=session)
-    _source, layer, points = s.series(
+    _source, layer, points, layer_meta = s.series(
         36.833, 116.567, "MOD13Q1", "2009-01-01", "2009-12-31",
         layer="NDVI", granules=granules)
     assert layer == "_250m_16_days_NDVI"
@@ -263,7 +267,7 @@ def test_run_point_series_prefers_opendap():
         def layers(self, layers):
             pass
 
-    source, layer, points = tsl.run_point_series(
+    source, layer, points, layer_meta = tsl.run_point_series(
         36.833, 116.567, "MOD13Q1", "2009-01-01", "2009-12-31",
         adapter=Adapter(), session=session, searcher=searcher)
     assert "LAADS OPeNDAP" in source
@@ -292,7 +296,9 @@ def test_run_point_series_rejects_non_laads_product():
                              session=session, searcher=searcher)
 
 
-def test_run_point_series_no_granules():
+def test_run_point_series_no_granules(monkeypatch):
+    monkeypatch.setattr(tsl, "cmr_product_exists", lambda name: True)
+
     def searcher(**query):
         return []
 
@@ -300,6 +306,22 @@ def test_run_point_series_no_granules():
     with pytest.raises(tsl.TimeSeriesError, match="h27v05"):
         tsl.run_point_series(36.833, 116.567, "MOD13Q1",
                              "2099-01-01", "2099-01-31",
+                             session=session, searcher=searcher)
+
+
+def test_run_point_series_unknown_product(monkeypatch):
+    """An invented product name (models guess 'MCD13Q1'; CMR has no such
+    short_name — the real VI family is MOD13/MYD13) is called out as such
+    instead of blaming the date range."""
+    monkeypatch.setattr(tsl, "cmr_product_exists", lambda name: False)
+
+    def searcher(**query):
+        return []
+
+    session = FakeSession([])
+    with pytest.raises(tsl.TimeSeriesError, match="MCD13Q1"):
+        tsl.run_point_series(36.833, 116.567, "MCD13Q1",
+                             "2010-01-01", "2010-12-31",
                              session=session, searcher=searcher)
 
 
@@ -395,13 +417,17 @@ def test_run_point_series_merra(monkeypatch):
     session = BinarySession([
         ("GET", ".dmr.xml", lambda kw: TextResp(MERRA_DMR)),
     ])
-    source, layer, points = tsl.run_point_series(
+    source, layer, points, layer_meta = tsl.run_point_series(
         36.833, 116.567, "M2T1NXSLV", "2020-01-01", "2020-01-01",
         session=session, searcher=searcher)
+    assert layer_meta["units"] == "K"
+    assert layer_meta["long_name"] == "2-meter_air_temperature"
     assert source == "M2T1NXSLV (GES DISC OPeNDAP)"
     assert layer == "T2M"
     assert len(points) == 24
-    assert points[0][0] == "2020-01-01T01:30"
+    stamps = [t for t, _v in points]
+    assert stamps == sorted(stamps)          # native labels keep day order
+    assert points[0][0] == "2020-01-01T00:30"
     assert points[0][1] == 270.0
 
 
@@ -436,7 +462,7 @@ def test_merra_series_drops_float32_fill():
     session = _BytesSession(
         [("GET", ".dmr.xml", lambda kw: TextResp(MERRA_DMR))])
     s = tsl.MerraOpendapSeries(session=session)
-    _source, _layer, points = s.series(
+    _source, _layer, points, _meta = s.series(
         36.833, 116.567, "M2T1NXSLV", "2020-01-01", "2020-01-01",
         granules=[("2020-01-01", "https://opendap.example/g")])
-    assert points == [("2020-01-01T02:30", 270.0)]
+    assert points == [("2020-01-01T01:30", 270.0)]

@@ -11,6 +11,7 @@ password ever flows through chat or MCP messages.
 """
 
 import inspect
+import json
 import threading
 import types
 import typing
@@ -116,6 +117,8 @@ _SEARCHER = None                               # replaced by tests; None -> eart
 _ENGINE = None
 _ENGINE_LOCK = threading.Lock()
 _PLOT_SINK = None            # GUI chart target: callable(points, meta) -> set by attach_plot_sink
+_PROGRESS_SINK = None        # GUI progress target: callable(key, **kw) -> set by attach_progress_sink
+_TS_STOP = None              # callable() -> bool: the panel's stop event -> set by attach_ts_stop
 _TS_CACHE = {}               # series_id -> {"meta": {...}, "points": [...]}
 _TS_SEQ = [0]
 
@@ -155,6 +158,37 @@ def attach_plot_sink(sink) -> None:
     unset; plot_timeseries then reports that plotting is GUI-only."""
     global _PLOT_SINK
     _PLOT_SINK = sink
+
+
+def attach_progress_sink(sink) -> None:
+    """Let the GUI receive live point_timeseries progress as
+    (i18n stage key, kwargs); the sink must be thread-safe (the tool runs
+    on the agent worker thread — a Qt-signal emit qualifies). MCP servers
+    leave it unset and the tool stays silent, as before."""
+    global _PROGRESS_SINK
+    _PROGRESS_SINK = sink
+
+
+def attach_ts_stop(checker) -> None:
+    """Let the GUI's stop button abort a running point_timeseries sampling
+    (checked between granule requests)."""
+    global _TS_STOP
+    _TS_STOP = checker
+
+
+class _ToolSeriesProgress:
+    """Progress adapter for the agent path: forwards run_point_series stage
+    events to the GUI progress sink; no-ops when the sink is unset."""
+
+    def stage(self, key, **kw):
+        if _PROGRESS_SINK is not None:
+            try:
+                _PROGRESS_SINK(key, **kw)
+            except Exception:       # noqa: BLE001 — progress must not kill sampling
+                pass
+
+    def layers(self, layers):
+        pass
 
 
 # ----------------------------------------------------------------- tools
@@ -282,28 +316,38 @@ def search_granules(short_name: str, start: str, end: str, version: str = "",
     "Sample the point time series of a MODIS/VIIRS or MERRA-2 product at one "
     "lon/lat over a date range (YYYY-MM-DD). Pixels are read directly over "
     "NASA OPeNDAP (LAADS for MODIS/VIIRS, the cloud gateway for MERRA-2, "
-    "which yields hourly steps), no intermediate service. `layer` may be a "
+    "which yields hourly steps — one gateway request per day, so keep "
+    "MERRA-2 ranges to days or weeks), no intermediate service. `product` must "
+    "be a real CMR short_name picked from list_products (NDVI/EVI: "
+    "MOD13Q1 / MYD13Q1). `layer` may be a "
     "short name — 'NDVI' resolves to _250m_16_days_NDVI (case/underscore-"
-    "insensitive; QC layers only match by exact name) — or empty to "
-    "auto-pick. For 'series / "
+    "insensitive; hints under 3 characters are rejected; QC layers only "
+    "match by exact name; an unresolvable hint fails listing available "
+    "layers) — or empty to auto-pick. For 'series / "
     "trend / plot at a point' requests prefer this over search_granules — "
     "it reads one pixel instead of whole files. Requires the Earthdata "
-    "sign-in persisted on this machine. Returns source, layer, points "
-    "[[date, value], ...] capped at `limit` (default 200) plus full-series "
-    "stats and a series_id for plot_timeseries; for long series narrow the "
-    "date range or raise `limit`.",
+    "sign-in persisted on this machine. Points' values are in the layer's "
+    "native units (reported as `units` — MERRA-2 T2M is Kelvin, °C = K − "
+    "273.15; MODIS NDVI is already scaled to [-1, 1]). Returns source, "
+    "layer with its long_name and units, points [[date, value], ...] "
+    "capped at `limit` (default 200) plus full-series stats and a "
+    "series_id for plot_timeseries; for long series narrow the date "
+    "range or raise `limit`.",
     "经纬度 + 产品 + 时间段 -> 点位时间序列（LAADS/云 OPeNDAP 直采像素，MERRA-2 为逐小时；"
-    "layer 支持简称如 'NDVI' 或留空自动选层；需本机已登录 Earthdata，长序列截断到 limit 条并附统计）",
+    "layer 支持简称如 'NDVI' 或留空自动选层；需本机已登录 Earthdata，长序列截断到 limit 条并附统计；"
+    "数值为原生单位，结果里带 units——T2M 是开尔文，°C = K − 273.15）",
 )
 def point_timeseries(lon: float, lat: float, product: str, start: str,
                      end: str, layer: str = "", limit: int = 200) -> dict:
     from . import timeseries as timeseries_mod
 
     try:
-        source, layer_used, points = timeseries_mod.run_point_series(
+        source, layer_used, points, layer_meta = timeseries_mod.run_point_series(
             lat=float(lat), lon=float(lon), product=str(product).strip(),
             start=start, end=end, layer_hint=layer or "",
-            searcher=_SEARCHER)
+            searcher=_SEARCHER,
+            should_stop=(_TS_STOP if _TS_STOP is not None else None),
+            adapter=_ToolSeriesProgress())
     except timeseries_mod.TimeSeriesError as exc:
         return {"error": "timeseries_failed", "hint": str(exc)}
     values = [v for _d, v in points]
@@ -312,31 +356,68 @@ def point_timeseries(lon: float, lat: float, product: str, start: str,
         stats.update(min=min(values), max=max(values),
                      mean=round(sum(values) / len(values), 6))
     limit = max(0, int(limit))
-    out = {
-        "source": source,
-        "layer": layer_used,
-        "point": {"lon": float(lon), "lat": float(lat)},
-        "start": start,
-        "end": end,
-        "stats": stats,
-        "truncated": len(points) > limit,
-        "points": [[d, v] for d, v in points[:limit]],
-    }
-    if out["truncated"]:
-        out["hint"] = (f"series has {len(points)} points, showing the first "
-                       f"{limit}; narrow start..end or raise `limit`")
+    from .agent.loop import TOOL_RESULT_LIMIT
+
+    max_chars = TOOL_RESULT_LIMIT - 400    # headroom for hint + trim tail
+    series_len = len(points)
     _TS_SEQ[0] += 1
     series_id = f"ts{_TS_SEQ[0]}"
     _TS_CACHE[series_id] = {
         "meta": {"product": str(product).strip().upper(),
                  "layer": layer_used, "source": source,
+                 "long_name": layer_meta.get("long_name", ""),
+                 "units": layer_meta.get("units", ""),
                  "lat": str(lat), "lon": str(lon),
                  "start": start, "end": end},
         "points": list(points),          # full series, for plot_timeseries
     }
     while len(_TS_CACHE) > 4:            # keep only the most recent series
         _TS_CACHE.pop(next(iter(_TS_CACHE)))
-    out["series_id"] = series_id
+    out = {
+        "series_id": series_id,            # head: survives any mid-list cut
+        "source": source,
+        "layer": layer_used,
+        "layer_long_name": layer_meta.get("long_name", ""),
+        "units": layer_meta.get("units", ""),
+        "point": {"lon": float(lon), "lat": float(lat)},
+        "start": start,
+        "end": end,
+        "stats": stats,
+    }
+
+    # The agent loop trims tool results at TOOL_RESULT_LIMIT chars, and a
+    # cut inside the points array would chop the tail fields the model
+    # needs (DeepSeek caught exactly that). Compact the point list
+    # adaptively so the whole result stays under the budget instead.
+    cut = min(limit, series_len)
+    for cap in (limit, 120, 60, 24, 12):
+        cut = min(cap, limit, series_len)
+        probe = dict(out)
+        probe["points"] = [[d, v] for d, v in points[:cut]]
+        if len(json.dumps(probe, ensure_ascii=False, default=str)) \
+                <= max_chars:
+            break
+
+    hints = []
+    if cut < series_len:
+        out["truncated"] = True
+        if cut == limit:
+            hints.append(f"series has {series_len} points, showing the "
+                         f"first {cut}; narrow start..end or raise `limit`")
+        else:
+            hints.append(f"full series has {series_len} points; showing "
+                         f"the first {cut} to fit the tool budget — the "
+                         "complete series is cached and drawn by "
+                         "plot_timeseries")
+    else:
+        out["truncated"] = False
+
+    if _PLOT_SINK is not None:      # in-app: tell weak models the next move
+        hints.append(f"next: call plot_timeseries(series_id='{series_id}') "
+                     "to render the line chart in the app for the user")
+    if hints:
+        out["hint"] = "; ".join(hints)
+    out["points"] = [[d, v] for d, v in points[:cut]]
     return out
 
 

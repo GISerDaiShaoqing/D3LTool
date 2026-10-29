@@ -282,6 +282,10 @@ QPushButton#agentHeaderBtn:hover {
 QTextBrowser#agentChat {
     background: transparent;
 }
+QLabel#agentProgress {
+    color: #57606a;
+    font-size: 12px;
+}
 QToolButton#agentTabButton, QToolButton#tsTabButton {
     background: #24292e;
     color: #ffffff;

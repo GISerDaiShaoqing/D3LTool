@@ -42,7 +42,7 @@
 已完成（仓库内）：
 - ✅ `paper/paper.md` —— 投稿短文草稿（英文，JOSS 结构），提交前删除草稿注释、补 Zenodo DOI
 - ✅ `CITATION.cff` —— 引用元数据（含 ORCID 0000-0003-0858-4728）
-- ✅ 118 项 pytest + GitHub Actions CI + 中英文档 + MIT 许可
+- ✅ 124 项 pytest + GitHub Actions CI + 中英文档 + MIT 许可
 
 待办（按序）：
 1. **Zenodo 归档拿 DOI**：

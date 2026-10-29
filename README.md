@@ -137,7 +137,31 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   lat/lon locator and the AI's point_to_tile accurate again. Layer names
   now match loosely — plain 'NDVI' resolves to _250m_16_days_NDVI
   (case/underscore-insensitive) — and the agent chat shows the reason
-  behind a failed tool call instead of just its error key
+  behind a failed tool call instead of just its error key; a product
+  name CMR doesn't know (a model's guess like MCD13Q1) is called out as
+  such instead of blaming the date range. Assistant-side
+  plotting now relays through a queued signal: charting runs on the GUI
+  thread, fixing the intermittent hard crash when plot_timeseries touched
+  the drawer from the agent worker thread. Sampling itself now reports
+  live progress in the chat (one updating line) and the stop button
+  aborts it between granule requests — a temperature turn used to grind
+  silently for minutes on the slow GES DISC gateway. Tool results now
+  carry the layer's long name and native units (T2M is Kelvin, °C = K −
+  273.15), so a bare series of 264–277 no longer reads as "crypto
+  prices" to the model — and a dead-air empty reply is now retried
+  (then reported visibly) instead of silently ending the turn, which
+  used to look like a frozen drawer. Layer hints under 3 characters no
+  longer substring-match everything — a lone 'T' once grabbed CLDTMP
+  (the cloud temperature) instead of T2M — they raise with the available
+  layer names instead, and a successful fetch tells the in-app agent to
+  call plot_timeseries for the user. A fetch longer than the 6 000-char
+  tool budget is compacted adaptively with series_id kept at the head —
+  the loop used to slice mid-points-array and chop exactly the fields
+  the model needed (DeepSeek caught it). Hourly stamps now follow the
+  file's native 00:30–23:30 order — the old (h+1)%24 mapping wrapped
+  each day's last hour to 00:30 and drew backward diagonals across the
+  chart — and the assistant welcome text now notes how the chart treats
+  masked pixels and native units
 - **2026-10 v2.2.0** — AI Assistant redesigned as a floating right-edge
   drawer: the data page keeps its own layout, API settings moved into a
   popup dialog, user background image supported

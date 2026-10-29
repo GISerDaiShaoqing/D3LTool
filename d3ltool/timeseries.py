@@ -47,6 +47,23 @@ def proxies():
     return None
 
 
+def cmr_product_exists(short_name):
+    """Anonymous CMR collections probe: True when the short_name exists at
+    all. This tells an invented product name apart from a real product
+    that merely has no data in the requested range (e.g. 'MCD13Q1' — a
+    plausible name models guess; the real VI family is MOD13/MYD13 only).
+    Any probe failure returns True so the original failure is never
+    masked."""
+    try:
+        resp = requests.get(
+            "https://cmr.earthdata.nasa.gov/search/collections.umm_json",
+            params={"short_name": str(short_name).strip(), "page_size": 1},
+            timeout=(15, 45), proxies=proxies())
+        return resp.ok and int(resp.json().get("hits", 0)) > 0
+    except Exception:               # noqa: BLE001 — probe must not mask the cause
+        return True
+
+
 # ============================== LAADS OPeNDAP =================================
 
 OPENDAP_BASE = "https://ladsweb.modaps.eosdis.nasa.gov"
@@ -86,7 +103,10 @@ def pick_layer(layers, hint=""):
     """Resolve the requested layer: the exact name, then a case/underscore-
     insensitive match (a user's 'NDVI' finds _250m_16_days_NDVI; QC variants
     only win when named exactly), else a preferred science layer, else the
-    first non-QC one. A hint nothing resembles raises."""
+    first non-QC one. Hints shorter than 3 significant characters never
+    fuzzy-match — 'T' would substring-hit everything — and an unresolvable
+    hint raises listing the available names so the caller can retry with an
+    exact one."""
     names = [entry.get("layer", "") for entry in layers]
     if hint:
         if hint in names:
@@ -96,10 +116,13 @@ def pick_layer(layers, hint=""):
             same = [n for n in names if n and _norm_layer(n) == wanted]
             if same:
                 return same[0]
-            fuzzy = [n for n in names if n and wanted in _norm_layer(n)]
-            if fuzzy:
-                return _first_non_qc(fuzzy) or fuzzy[0]
-        raise TimeSeriesError(f"layer {hint!r} not found in the granule")
+            if len(wanted) >= 3:
+                fuzzy = [n for n in names if n and wanted in _norm_layer(n)]
+                if fuzzy:
+                    return _first_non_qc(fuzzy) or fuzzy[0]
+        raise TimeSeriesError(
+            f"layer {hint!r} not found in the granule; available: "
+            + ", ".join(n for n in names if n)[:300])
     for want in PREFERRED_LAYERS:
         if want in names:
             return want
@@ -384,7 +407,7 @@ class LaadsOpendapSeries:
                 + (meta["offset"] if meta["offset"] is not None else 0.0)
             if date:
                 points.append((date, round(value, 6)))
-        return f"{product} (LAADS OPeNDAP)", layer, points
+        return f"{product} (LAADS OPeNDAP)", layer, points, meta
 
 
 class MerraOpendapSeries:
@@ -506,9 +529,13 @@ class MerraOpendapSeries:
                 value = raw * (meta["scale"] if meta["scale"] is not None
                                else 1.0) \
                     + (meta["offset"] if meta["offset"] is not None else 0.0)
-                stamp = f"{date}T{(hour + 1) % 24:02d}:30"
+                # native MERRA-2 labels: hour h averages [h, h+1) UTC and
+                # time[0..23] run 00:30..23:30 in order — the earlier
+                # (h+1)%24 wrapped h=23 back to 00:30, disordering each day
+                # and drawing backward diagonals between days
+                stamp = f"{date}T{hour:02d}:30"
                 points.append((stamp, round(value, 4)))
-        return f"{product} (GES DISC OPeNDAP)", layer, points
+        return f"{product} (GES DISC OPeNDAP)", layer, points, meta
 
     def granule_urls(self, product, start, end):
         return self.collect(product, start, end)[0]
@@ -520,7 +547,8 @@ def run_point_series(lat, lon, product, start, end, layer_hint="",
     """Sample one pixel's series, dispatching on the product family:
     MODIS/VIIRS -> LAADS OPeNDAP direct sampling; MERRA-2 -> the NASA cloud
     OPeNDAP gateway. adapter.stage(key, **kw) / adapter.layers(list) report
-    progress. Returns (source_label, layer, points)."""
+    progress. Returns (source_label, layer, points, layer_meta) where
+    layer_meta carries long_name / units / fill / scale / offset."""
     if adapter is None:
         adapter = _NullAdapter()
 
@@ -533,6 +561,9 @@ def run_point_series(lat, lon, product, start, end, layer_hint="",
             if saw_granules:
                 raise TimeSeriesError(i18n.tr(
                     "ts_no_granules_url", product=name))
+            if not cmr_product_exists(name):
+                raise TimeSeriesError(i18n.tr(
+                    "ts_unknown_product", product=name))
             raise TimeSeriesError(i18n.tr(
                 "ts_no_granules", product=name, tile="—",
                 start=start, end=end))
@@ -556,6 +587,9 @@ def run_point_series(lat, lon, product, start, end, layer_hint="",
             # CMR knows the product but its files are not on LAADS
             raise TimeSeriesError(i18n.tr(
                 "ts_unsupported", product=name))
+        if not cmr_product_exists(name):
+            raise TimeSeriesError(i18n.tr(
+                "ts_unknown_product", product=name))
         raise TimeSeriesError(i18n.tr(
             "ts_no_granules", product=name, tile=tile,
             start=start, end=end))

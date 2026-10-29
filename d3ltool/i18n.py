@@ -130,7 +130,7 @@ STRINGS = {
         "agent_bg_pick": "浏览...",
         "agent_bg_clear": "清除",
         "agent_drawer_tip": "打开 AI 助手",
-        "agent_welcome": "这是内置 AI 助手。点右上角 ⚙ 填好 API 地址与 Key 后，可用自然语言下载数据（例：“2020 年 1 月北京的夜光数据帮我下载”），也可以直接计算并绘制任意点位的时间序列（例：“帮我画禹城 2010 年的 NDVI 序列”）。工具与 MCP 服务器共用；下载会先弹窗确认。",
+        "agent_welcome": "这是内置 AI 助手。点右上角 ⚙ 填好 API 地址与 Key 后，可用自然语言下载数据（例：“2020 年 1 月北京的夜光数据帮我下载”），也可以直接计算并绘制任意点位的时间序列（例：“帮我画禹城 2010 年的 NDVI 序列”）。工具与 MCP 服务器共用；下载会先弹窗确认。时序图按数据点顺序连折线：逐小时序列跨天连续相连、像素值均为原生单位（MERRA-2 为开尔文），被云等掩膜跳过的像素不出现，线段会直接跨过数据空洞。",
         "agent_tool_run": "调用工具 {name}",
         "agent_confirm_title": "确认下载",
         "agent_confirm_text": "AI 请求执行 {name}，允许吗？",
@@ -171,11 +171,12 @@ STRINGS = {
         "ts_bad_coords": "纬度需在 -90~90，经度需在 -180~180",
         "ts_bad_dates": "开始日期需早于或等于结束日期",
         "ts_stage_search": "正在检索该坐标所在瓦片的数据文件（CMR）...",
-        "ts_odap_sample": "LAADS 直采：{i}/{n}（{date}）",
+        "ts_odap_sample": "OPeNDAP 直采：{i}/{n}（{date}）",
         "ts_done": "绘制完成：{source} / {layer}，{n} 个有效点（{start} ~ {end}）",
         "ts_no_data": "该时段没有有效数值（可能被云/QA 掩膜，或产品未覆盖该点）",
         "ts_unsupported": "时间序列目前支持 MODIS/VIIRS（LAADS 档案）与 MERRA-2 产品；{product} 暂不支持",
         "ts_no_granules": "没有找到 {product} 的数据文件（瓦片 {tile}，{start} ~ {end}）——请检查日期范围",
+        "ts_unknown_product": "CMR 未收录产品 {product}——名字多半是猜的：NDVI/EVI 用 MOD13Q1 / MYD13Q1，目录可先 list_products 查",
         "ts_no_granules_url": "CMR 里找到了 {product}，但它的 OPeNDAP 链接缺失——请到 GitHub Issues 反馈",
         "ts_failed": "时间序列获取失败：{reason}",
         "ts_api_note": "单像元时间序列由 NASA OPeNDAP 直采：MODIS/VIIRS 走 LAADS，MERRA-2 走 GES DISC 云网关（复用本机登录凭据，直连可用、无需 AppEEARS）。",
@@ -343,7 +344,10 @@ STRINGS = {
                          "2020 nighttime lights around Beijing”, or have it compute and plot "
                          "a point time series, e.g. “plot the 2010 NDVI series at Yucheng”. "
                          "It shares the tool set with the MCP server; downloads ask for "
-                         "confirmation first.",
+                         "confirmation first. The chart connects the points in order: "
+                         "hourly series run continuously across days and values are native "
+                         "units (MERRA-2 is Kelvin); masked pixels are absent, so a segment "
+                         "spans the hole.",
         "agent_tool_run": "calling tool {name}",
         "agent_confirm_title": "Confirm download",
         "agent_confirm_text": "The AI wants to run {name}. Allow it?",
@@ -392,13 +396,15 @@ STRINGS = {
         "ts_bad_coords": "Latitude must be within -90..90, longitude within -180..180",
         "ts_bad_dates": "The start date must be on or before the end date",
         "ts_stage_search": "Listing the granules of the tile covering the point (CMR)...",
-        "ts_odap_sample": "LAADS direct sampling: {i}/{n} ({date})",
+        "ts_odap_sample": "OPeNDAP direct sampling: {i}/{n} ({date})",
         "ts_done": "Plotted {source} / {layer}: {n} valid points ({start} ~ {end})",
         "ts_no_data": "No valid values in this period (cloud/QA masked, or the point is not covered)",
         "ts_unsupported": "Time series currently supports MODIS/VIIRS (LAADS archive) and "
                           "MERRA-2 products; {product} is not supported yet",
         "ts_no_granules": "No granules found for {product} (tile {tile}, {start} ~ {end}) — "
                           "check the date range",
+        "ts_unknown_product": "CMR knows no product {product} — the name is likely invented: "
+                              "for NDVI/EVI use MOD13Q1 / MYD13Q1, or browse list_products first",
         "ts_no_granules_url": "{product} exists in CMR but carries no OPeNDAP link — "
                               "please report this on GitHub Issues",
         "ts_failed": "Time series failed: {reason}",
