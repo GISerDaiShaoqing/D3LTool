@@ -23,11 +23,15 @@ drawer that slides out from the right edge of the GUI.
 | `start_download` | 把 URL 加入下载队列（断点续传），返回任务 id |
 | `download_status` | 查询下载进度（状态/大小/速度/失败原因） |
 | `cancel_download` / `retry_download` | 按任务 id 取消 / 重试 |
+| `export_download_urls` | v2.4 新增：URL 导出成本地清单——`.txt` 一行一条（`wget -i` / `aria2c -i` / 下载管理器直喂）+ 自包含 `.html` 索引页；`urls` 收 URL 字符串或 `search_granules` 返回的 granule 行，`fmt` 可选 txt/html/both |
+| `open_download_page` | v2.4 新增：生成 `.html` 索引页并在默认浏览器打开（仅 GUI 内用 `attach_browser_sink` 时生效）；纯 MCP 无界面环境返回路径请在浏览器自行打开；浏览器须已登录 Earthdata，批量点选可用 Download It All / DownThemAll 类扩展 |
 
 **凭证模型 / Credentials**: 检索匿名即可；下载与 `point_timeseries` 复用本机已登录的
 Earthdata 凭据（GUI 登录一次会持久化到 `~/.netrc`（Windows `_netrc`），
 CLI 用 `d3ltool login`）。
 **用户名/密码永远不会作为工具参数**出现在对话或 MCP 消息里。
+清单导出 / `open_download_page` 涉及浏览器会话（v2.4 的浏览器辅助下载）：
+浏览器侧凭据由浏览器自身持有，本工具完全不经手。
 
 Search is anonymous; download and `point_timeseries` tools reuse the
 Earthdata sign-in persisted on this machine. Passwords are never tool
@@ -101,7 +105,9 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 配置完成后在客户端里直接说需求即可，例如：
 “查一下 2020 年 1 月北京的夜光数据，把前三个文件下载到 D:/data”（依次调用
 `point_to_tile → search_granules → start_download → download_status`），或
-“给我禹城站（36.83N, 116.57E）2009 年 MOD13Q1 的 NDVI 时间序列”（→ `point_timeseries`）。
+“给我禹城站（36.83N, 116.57E）2009 年 MOD13Q1 的 NDVI 时间序列”（→ `point_timeseries`），
+或“检索结果里的 30 个文件导成 wget 清单”（→ `export_download_urls`；
+`open_download_page` 直接弹浏览器索引页，v2.4 浏览器辅助下载）。
 
 ## 方式二：软件内 AI 助手
 

@@ -90,8 +90,11 @@ class SearchPanel(QWidget):
 
         self.tile_edit = QLineEdit()
         self.tile_edit.setPlaceholderText("h04v03, h26v05")
+        self.tile_clear_btn = QPushButton(i18n.tr("btn_clear_tiles"))
         agrid.addWidget(QLabel(i18n.tr("label_tile")), 0, 0)
-        agrid.addWidget(self.tile_edit, 0, 1, 1, 2)
+        agrid.addWidget(self.tile_edit, 0, 1)
+        agrid.addWidget(self.tile_clear_btn, 0, 2)
+        self.tile_clear_btn.clicked.connect(self._clear_tiles)
 
         self.tile_map = TileMap()
         self.tile_map.tiles_changed.connect(self._on_map_changed)
@@ -183,6 +186,12 @@ class SearchPanel(QWidget):
 
     def _on_map_changed(self):
         self.tile_edit.setText(", ".join(self.tile_map.selected_tiles()))
+
+    def _clear_tiles(self):
+        """「清除瓦片」一键清空：地图选择与手输的瓦片列表一起复位
+        （原来只能逐个点击已选瓦片取消——能取消但不可见）。"""
+        self.tile_map.clear_selection()
+        self.tile_edit.clear()
 
     def _on_locate(self):
         try:

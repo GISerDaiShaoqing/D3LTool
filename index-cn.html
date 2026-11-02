@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>D3L Tool of NASA Satellite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="D3LTool —— 免费、双语的 NASA MODIS / VIIRS / MERRA-2 数据检索与下载桌面软件：可点击瓦片地图、断点续传、点位时间序列采样、MCP 服务器与内置 AI 助手。">
+    <meta name="description" content="D3LTool —— 免费、双语的 NASA MODIS / VIIRS / MERRA-2 数据检索与下载桌面软件：可点击瓦片地图、断点续传、点位时间序列采样、浏览器辅助下载清单、MCP 服务器与内置 AI 助手。">
     <link rel="stylesheet" type="text/css" href="stylesheets/site.css" media="screen">
   </head>
   <body>
@@ -21,9 +21,10 @@
         <p class="tagline">NASA 卫星的 D3L 工具</p>
         <p class="lede">一款免费的桌面软件，一站式<b>检索与下载</b> NASA MODIS / VIIRS /
         MERRA-2 数据——选产品、选时间、点瓦片、排队下载，全流程不出一个窗口；
-        v2.3 起还支持单像元时间序列采样与软件内绘图。</p>
+        v2.3 起还支持单像元时间序列采样与软件内绘图；v2.4 起导不出时还能把链接
+        清单交给你的浏览器或 wget。</p>
         <div class="badges">
-          <span class="badge">v2.3.0</span>
+          <span class="badge">v2.4.0</span>
           <span class="badge">MIT 协议</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -60,11 +61,19 @@
             <p>多线程队列、分块进度、HTTP 断点续传、失败自动重试、文件大小校验，
             弱网环境也可靠。</p>
           </div>
+          <div class="card">
+            <div class="ico">📤</div>
+            <h3>浏览器辅助下载</h3>
+            <p>v2.4 新增：勾选的粒子可导出成一列 URL 的 <code>.txt</code>（
+            <code>wget -i</code> / <code>aria2c -i</code> / 下载管理器直喂）或
+            一键点的 <code>.html</code> 索引页——直连 401/403 卡住时的救援线，
+            让你已登录的浏览器会话代劳。</p>
+          </div>
           <div class="card wide">
             <div class="ico">🤖</div>
             <h3>MCP 服务器 + AI 助手</h3>
-            <p>自 v2.1 起，<code>d3ltool-mcp</code> 把 11 个工具（检索、瓦片换算、
-            时序采样、软件内绘图、下载控制）暴露给 Claude Desktop、Cursor、ZCode
+            <p>自 v2.1 起，<code>d3ltool-mcp</code> 把 13 个工具（检索、瓦片换算、
+            时序采样、软件内绘图、下载控制、清单导出）暴露给 Claude Desktop、Cursor、ZCode
             等 MCP 客户端，复用本机
             已登录的凭据；软件内也有右缘滑出的 <b>AI 助手</b>抽屉，用自然语言驱动同一套
             工具，取到序列还能直接画进时间序列抽屉。<a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">接入指南 →</a></p>
@@ -141,6 +150,14 @@
         与速度，可暂停/续传/重试；已完成文件重新下载时自动跳过，中断的自动续传。
         下载目录、并发数与代理都在“设置”里。</p>
 
+        <h3 class="sub">浏览器辅助下载</h3>
+        <p>某个下载反复失败（部分代理会被 401/403 拦）时，勾选对应行点
+        <b>“导出清单”</b>（<b>“在浏览器打开”</b>直接弹出 <code>.html</code>
+        索引页）：让你已登录的浏览器或 DownThemAll 类扩展去拉文件，<code>.txt</code>
+        清单也能喂给 <code>wget -i</code> / <code>aria2c -i</code>。MCP 工具
+        <code>export_download_urls</code> / <code>open_download_page</code>
+        给 AI 客户端同样的操作——密码不进聊天也不进 MCP 消息。</p>
+
         <pre class="term"><span class="c"># 命令行</span>
 pip install d3ltool
 d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
@@ -154,8 +171,8 @@ d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 4
         “清空图表”复位画面。大范围批量分析仍建议下载原始数据离线处理。</p>
 
         <h3 class="sub">MCP 服务器与 AI 助手</h3>
-        <p><code>d3ltool-mcp</code> 通过 stdio 暴露 11 个工具（检索、瓦片换算、
-        时序采样、软件内绘图、下载控制），接入 Claude Desktop、Cursor、ZCode 等
+        <p><code>d3ltool-mcp</code> 通过 stdio 暴露 13 个工具（检索、瓦片换算、
+        时序采样、软件内绘图、下载控制、清单导出），接入 Claude Desktop、Cursor、ZCode 等
         MCP 客户端；软件内右缘滑出的
         <b>AI 助手</b>抽屉用自然语言驱动同一套工具。配置示例见
         <a href="https://github.com/GISerDaiShaoqing/D3LTool/blob/master/docs/mcp.md">接入指南</a>。</p>

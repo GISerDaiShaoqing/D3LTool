@@ -434,3 +434,116 @@ def test_agent_plot_sink_relays_to_gui_thread(tmp_path, monkeypatch):
         assert seen["toggle"] is threading.current_thread()
     finally:
         window.close()
+
+
+def test_results_export_and_browse_requests(tmp_path, monkeypatch):
+    """The two browser-handoff buttons emit the checked rows to the main
+    window; unchecked rows and none-checks stay out."""
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+
+    import d3ltool.search as search
+
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
+
+    from d3ltool.gui.results_table import ResultsTable
+
+    app = QApplication.instance() or QApplication([])
+
+    granule = object()
+    monkeypatch.setattr(
+        search, "granule_links",
+        lambda g: ["https://ladsweb.modaps.eosdis.nasa.gov/a.hdf"])
+    monkeypatch.setattr(search, "granule_filename", lambda g: "a.hdf")
+    monkeypatch.setattr(search, "granule_date", lambda g: "2025-01-16")
+    monkeypatch.setattr(search, "granule_size_mb", lambda g: 5.0)
+
+    t = ResultsTable()
+    t.populate([granule, granule])
+    t.table.item(1, 0).setCheckState(Qt.CheckState.Unchecked)   # keep 1 row
+
+    got = []
+    t.export_requested.connect(lambda items: got.append(list(items)))
+    browsed = []
+    t.browse_requested.connect(lambda items: browsed.append(list(items)))
+    t.export_btn.click()
+    t.open_browser_btn.click()
+    assert len(got) == 1 and len(got[0]) == 1
+    assert got[0][0]["url"].startswith("https://ladsweb")
+    assert got[0][0]["date"] == "2025-01-16"
+    assert got[0][0]["size_bytes"] == 5 * 1024 * 1024
+    assert len(browsed) == 1 and browsed[0] == got[0]
+
+    t.clear_btn.click()
+    assert t.table.rowCount() == 0 and t._granules == []
+    got.clear()
+    t.export_btn.click()
+    assert got == [[]]      # still one empty emission -> main window shows
+                            # the generic "nothing to export" status line
+
+
+def test_task_table_export_requests_engine_rows(tmp_path, monkeypatch):
+    """任务表「导出失败清单」：只导失败任务（401/403 救援线，跨检索
+    生存）；成功/排队中/运行中永不混入。"""
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+
+    import types
+
+    from PySide6.QtWidgets import QApplication
+
+    from d3ltool.gui.task_table import TaskTable
+
+    app = QApplication.instance() or QApplication([])
+    engine = types.SimpleNamespace(items={
+        1: types.SimpleNamespace(url="https://x/1.hdf", filename="1.hdf",
+                                 total=1024 * 1024, state="failed"),
+        2: types.SimpleNamespace(url="https://x/2.hdf", filename="2.hdf",
+                                 total=0, state="pending"),
+        3: types.SimpleNamespace(url="https://x/3.hdf", filename="3.hdf",
+                                 total=0, state="done"),
+    })
+    t = TaskTable(engine)
+    got = []
+    t.export_requested.connect(lambda items: got.append(list(items)))
+    t.export_btn.click()
+    assert [it["url"] for it in got[0]] == ["https://x/1.hdf"]
+    assert got[0][0]["size_bytes"] == 1024 * 1024
+
+
+def test_tile_clear_button(tmp_path, monkeypatch):
+    """「清除瓦片」一键全清：地图选择与瓦片输入框一起复位。"""
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        sp = window.search_panel
+        sp.tile_map.set_selected_names(["h29v05", "h35v05"])
+        assert sp.tile_edit.text() == "h29v05, h35v05"
+        sp.tile_clear_btn.click()
+        assert sp.tile_map.selected_tiles() == []
+        assert sp.tile_edit.text() == ""
+    finally:
+        window.close()
+
+
+def test_tile_map_has_no_stripes_outside_bands(tmp_path, monkeypatch):
+    """窄行格线必须随带宽收窄：旧的固定 9px 步距把格线画过行的右缘，
+    在球体外面留下一把条纹梳子（用户截图红圈处）。"""
+    pytest.importorskip("PySide6")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+
+    import d3ltool.tiles as tiles_mod
+
+    from d3ltool.gui.tile_map import CANVAS_W, TILE_H, TileMap
+
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance() or QApplication([])
+    m = TileMap()
+    img = m.grab().toImage()
+    cx = CANVAS_W / 2.0
+    for v in (0, 17):                       # the two narrowest rows
+        edge = cx + tiles_mod.row_width_fraction(v) * CANVAS_W / 2.0
+        for x in range(int(edge) + 4, min(int(edge) + 44, CANVAS_W)):
+            assert img.pixelColor(x, v * TILE_H + 6).name() == "#f4f7fb", \
+                f"stripe pixel outside row {v}'s band at x={x}"

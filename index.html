@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>D3L Tool of NASA Satellite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="D3LTool — a free bilingual desktop app to search and download NASA MODIS / VIIRS / MERRA-2 data, with a clickable tile map, resumable downloads, point time-series sampling, an MCP server and a built-in AI assistant.">
+    <meta name="description" content="D3LTool — a free bilingual desktop app to search and download NASA MODIS / VIIRS / MERRA-2 data, with a clickable tile map, resumable downloads, point time-series sampling, browser-assisted download lists, an MCP server and a built-in AI assistant.">
     <link rel="stylesheet" type="text/css" href="stylesheets/site.css" media="screen">
   </head>
   <body>
@@ -22,9 +22,10 @@
         <p class="lede">A free, bilingual desktop app to <b>search and download</b>
         NASA MODIS / VIIRS / MERRA-2 data — product, date, tiles and download
         queue, the whole workflow in one window. Since v2.3 it also samples and
-        plots a pixel's time series right in the app.</p>
+        plots a pixel's time series right in the app; since v2.4 failing
+        downloads can hand a link list to your own browser or wget.</p>
         <div class="badges">
-          <span class="badge">v2.3.0</span>
+          <span class="badge">v2.4.0</span>
           <span class="badge">MIT License</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -62,11 +63,21 @@
             <p>Parallel queue, chunked progress, HTTP Range resume, automatic
             retries and file-size validation — safe on slow or unstable links.</p>
           </div>
+          <div class="card">
+            <div class="ico">📤</div>
+            <h3>Browser hand-off</h3>
+            <p>Since v2.4, export the checked granules as a <code>.txt</code>
+            list (one URL per line for <code>wget -i</code> / <code>aria2c
+            -i</code> / download managers) or a one-click <code>.html</code>
+            index page — a rescue line when direct downloads hit 401/403:
+            your logged-in browser does the fetching.</p>
+          </div>
           <div class="card wide">
             <div class="ico">🤖</div>
             <h3>MCP server + AI Assistant</h3>
-            <p>Since v2.1, <code>d3ltool-mcp</code> exposes 11 tools (search, tile
-            math, time-series sampling, in-app plotting, downloads) to Claude
+            <p>Since v2.1, <code>d3ltool-mcp</code> exposes 13 tools (search, tile
+            math, time-series sampling, in-app plotting, downloads,
+            browser-handoff export) to Claude
             Desktop, Cursor, ZCode and any MCP client,
             reusing the sign-in saved on your machine; the GUI gains a floating
             right-edge <b>AI Assistant</b> drawer that drives the same tools with
@@ -153,6 +164,15 @@
         interrupted ones resume automatically. Download folder, concurrency and
         proxy live in “Settings”.</p>
 
+        <h3 class="sub">Browser hand-off</h3>
+        <p>When a download keeps failing (some proxies trigger 401/403),
+        select the rows and use <b>“Export links”</b> (<b>“Open in browser”</b>
+        pops the <code>.html</code> index): your signed-in browser or a
+        DownThemAll-style extension fetches the files — the <code>.txt</code>
+        list also feeds <code>wget -i</code> / <code>aria2c -i</code>. The MCP
+        tools <code>export_download_urls</code> / <code>open_download_page</code>
+        give AI clients the same move, with no password ever in chat or MCP.</p>
+
         <pre class="term"><span class="c"># command line</span>
 pip install d3ltool
 d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
@@ -168,8 +188,9 @@ d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 4
         the plot. For large-scale analysis, download the raw files instead.</p>
 
         <h3 class="sub">MCP server &amp; AI assistant</h3>
-        <p><code>d3ltool-mcp</code> exposes 11 tools (search, tile math, time-
-        series sampling, in-app plotting, download control) over stdio for
+        <p><code>d3ltool-mcp</code> exposes 13 tools (search, tile math, time-
+        series sampling, in-app plotting, download control, browser-handoff
+        export) over stdio for
         Claude Desktop, Cursor, ZCode and any MCP client;
         the right-edge <b>AI Assistant</b> drawer in the GUI drives the same tools
         with plain language. Wiring examples live in the

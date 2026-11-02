@@ -47,6 +47,7 @@ def isolated_tools(monkeypatch):
     monkeypatch.setattr(tools, "_SESSION_FACTORY", requests.Session)
     monkeypatch.setattr(tools, "_SEARCHER", None)
     monkeypatch.setattr(tools, "_PLOT_SINK", None)
+    monkeypatch.setattr(tools, "_BROWSER_SINK", None)
     tools._reset_engine()
     yield
     tools._reset_engine()
@@ -72,7 +73,7 @@ def test_registry_contains_all_tools():
         "check_auth", "list_products", "point_to_tile", "tile_bounds",
         "search_granules", "point_timeseries", "plot_timeseries",
         "start_download", "download_status", "cancel_download",
-        "retry_download",
+        "retry_download", "export_download_urls", "open_download_page",
     }
     assert set(tools.REGISTRY) == expected
     for spec in tools.all_specs():
@@ -428,3 +429,80 @@ def test_download_status_without_engine():
     tools._reset_engine()
     out = tools.download_status()
     assert out == {"count": 0, "items": []}
+
+
+# ------------------------------------------------------- browser-assisted
+
+def test_export_download_urls_writes_txt_and_html(tmp_path):
+    out = tools.export_download_urls(
+        urls=[
+            "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/"
+            "6/MOD13Q1/2025/001/MOD13Q1.A2025001.h27v05.006.2025002.hdf",
+            {"url": "https://files.gesdisc.eosdis.nasa.gov/JAN/"
+                    "MERRA2_400.tavg1_2d_slv_Nx.20200101.nc",
+             "filename": "MERRA2_400.nc", "date": "2020-01-01",
+             "size_bytes": 2000},
+            {"not": "a url"},                 # unsupported row -> skipped
+            "ftp://old.invalid/a.hdf",        # scheme rejected -> skipped
+        ],
+        dir=str(tmp_path), stem="my batch", fmt="both")
+    assert out["count"] == 2
+    assert out["skipped"] == 2
+    assert out["txt_path"].endswith("my_batch.txt")
+    txt = (tmp_path / "my_batch.txt").read_text(encoding="utf-8")
+    assert len(txt.splitlines()) == 2          # url lines only, no headers
+    assert txt.splitlines()[0].startswith("https://ladsweb")
+    page = (tmp_path / "my_batch.html").read_text(encoding="utf-8")
+    assert 'href="https://ladsweb' in page
+    assert "MERRA2_400.nc" in page
+    assert "2020-01-01" in page
+    assert "<h2>" not in page                  # no grouping for one product
+    assert "ftp://" not in page and "ftp://" not in txt
+    assert "wget -i" in out["hint"]
+
+
+def test_export_download_urls_rejects_junk():
+    assert tools.export_download_urls([])["error"] == "no urls given"
+    assert tools.export_download_urls(["file:///c:/x"])["error"] \
+        == "no usable urls"
+    assert "fmt" in tools.export_download_urls(
+        urls=["https://a/x"], fmt="pdf")["error"]
+
+
+def test_export_download_urls_groups_html_by_product(tmp_path):
+    out = tools.export_download_urls(
+        urls=[{"url": "https://a/MOD13Q1.hdf", "product": "MOD13Q1"},
+              {"url": "https://a/MOD11A2.hdf", "product": "MOD11A2"}],
+        dir=str(tmp_path), stem="two")
+    page = (tmp_path / "two.html").read_text(encoding="utf-8")
+    assert "<h2>MOD13Q1</h2>" in page and "<h2>MOD11A2</h2>" in page
+    assert out["count"] == 2
+
+
+def test_open_download_page_with_gui_sink(tmp_path, monkeypatch):
+    import d3ltool.config as config
+
+    monkeypatch.setattr(
+        config, "load_config",
+        lambda: {**config.DEFAULTS, "download_dir": str(tmp_path)})
+    seen = []
+    monkeypatch.setattr(tools, "_BROWSER_SINK", seen.append)
+    out = tools.open_download_page(
+        ["https://example.com/a.hdf", "https://example.com/b.hdf"],
+        stem="batch")
+    assert out["count"] == 2 and out["opened"] is True
+    assert seen == [out["html_path"]]
+    assert (tmp_path / "batch.html").exists()
+    assert (tmp_path / "batch.txt").exists()
+
+
+def test_open_download_page_outside_gui(tmp_path, monkeypatch):
+    import d3ltool.config as config
+
+    monkeypatch.setattr(
+        config, "load_config",
+        lambda: {**config.DEFAULTS, "download_dir": str(tmp_path)})
+    out = tools.open_download_page(["https://example.com/a.hdf"])
+    assert out["opened"] is False
+    assert out["html_path"].endswith("d3ltool_links.html")
+    assert out["hint"].startswith("not in the GUI")

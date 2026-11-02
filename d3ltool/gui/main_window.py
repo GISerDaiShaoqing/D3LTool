@@ -6,11 +6,11 @@ from pathlib import Path
 from PySide6.QtCore import (QEasingCurve, QObject, QPoint,
                             QPropertyAnimation, Qt, QThread, QUrl, Signal)
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QIcon
-from PySide6.QtWidgets import (QDialog, QFrame, QLabel, QMainWindow,
-                               QMessageBox, QSizePolicy, QSplitter,
-                               QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QDialog, QFileDialog, QFrame, QLabel,
+                               QMainWindow, QMessageBox, QSizePolicy,
+                               QSplitter, QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, auth, config, engine, i18n, search, tools
+from .. import __version__, auth, config, engine, i18n, links, search, tools
 from .. import APP_NAME
 from .bridge import EngineBridge
 from .login_dialog import LoginDialog
@@ -220,6 +220,7 @@ class MainWindow(QMainWindow):
         self._plot_bridge = _AgentPlotBridge(self)
         self._plot_bridge.plot.connect(self._plot_agent_series)
         tools.attach_plot_sink(self._plot_bridge.plot.emit)
+        tools.attach_browser_sink(self._open_link_page)
         splitter.addWidget(self.search_panel)
         splitter.addWidget(data_page)
         splitter.setSizes([340, 760])
@@ -232,6 +233,9 @@ class MainWindow(QMainWindow):
 
         self.search_panel.search_requested.connect(self._do_search)
         self.results_table.enqueue_requested.connect(self._enqueue)
+        self.results_table.export_requested.connect(self._export_link_items)
+        self.results_table.browse_requested.connect(self._browse_link_items)
+        self.task_table.export_requested.connect(self._export_link_items)
         self.bridge.status.connect(self.task_table.on_status)
         self.bridge.progress.connect(self.task_table.on_progress)
         self.bridge.cleared.connect(self.task_table.on_cleared)
@@ -459,6 +463,47 @@ class MainWindow(QMainWindow):
             self.engine.add(it["url"], filename=it["filename"],
                             size_hint=it.get("size_bytes", 0))
         self.statusBar().showMessage(f"+{len(items)} → {self.engine.dest_dir}")
+
+    # --------------------------------------------------- browser handoff
+
+    def _export_link_items(self, items):
+        """'导出下载清单' (results & task tables): a wget/aria2-friendly .txt and
+        a self-contained .html index of the checked URLs, under the
+        configured download folder unless the user picks another place."""
+        if not items:
+            self.statusBar().showMessage(i18n.tr("links_none"))
+            return
+        default = Path(self.config["download_dir"]) / "d3ltool_links.html"
+        path, _fl = QFileDialog.getSaveFileName(
+            self, i18n.tr("dlg_export_links"), str(default),
+            "Text/HTML (*.txt *.html);;All files (*)")
+        if not path:
+            return
+        out = Path(path)
+        stem = links.sanitize_stem(out.stem)
+        res = links.export_links(items, out.parent, stem, fmt="both")
+        self.statusBar().showMessage(
+            i18n.tr("links_exported", n=res["count"], dir=str(out.parent)),
+            6000)
+
+    def _browse_link_items(self, items):
+        """'在浏览器打开' (results table): one temp index page in the
+        default browser — N checked rows never become N OS tabs."""
+        if not items:
+            self.statusBar().showMessage(i18n.tr("links_none"))
+            return
+        import tempfile
+
+        res = links.export_links(items, tempfile.gettempdir(),
+                                 "d3ltool_links", fmt="html")
+        self._open_link_page(res["html"])
+        self.statusBar().showMessage(
+            i18n.tr("links_opened", n=res["count"]), 6000)
+
+    def _open_link_page(self, path):
+        """Sink for tools.open_download_page (and the browse action):
+        open the HTML index page in the system default browser."""
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
 
     # --------------------------------------------------------------- settings
 

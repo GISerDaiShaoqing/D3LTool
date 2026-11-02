@@ -112,7 +112,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   author  = {Dai, Shaoqing},
   orcid   = {0000-0003-0858-4728},
   title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
-  version = {2.3.0},
+  version = {2.4.0},
   year    = {2026},
   url     = {https://github.com/GISerDaiShaoqing/D3LTool},
 }
@@ -120,6 +120,25 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-11 v2.4.0** — new **browser-assisted download** hand-off (the modern,
+  dependency-free successor of v1.0's 2018 browser automation): the results
+  table gains **Export download list** (a `.txt` of the checked granule URLs — one URL
+  per line for `wget -i` / `aria2c -i` / download managers — plus a
+  self-contained `.html` index page) and **Open in browser** (that index page
+  in your default browser, where you can click files or batch-select them
+  with a Download-It-All-style extension); the task table gains **Export
+  failed links** (failed tasks only — the next search overwrites the results
+  table, but failed URLs live on in the queue, so the rescue line survives
+  across searches): files stuck on 401/403 get fetched by your browser's own
+  Earthdata session instead. The results table also gained a one-click
+  **"Clear results"** button. The same surface is exposed
+  to MCP/AI via two new tools, `export_download_urls` and `open_download_page`
+  (13 tools now; no Earthdata password ever enters chat or MCP — the browser
+  session carries the login). The tile row also gained a one-click
+  **"Clear tiles"** button (until now deselecting meant re-clicking each tile).
+  The tile map's narrow rows now draw their cell grid at the band's own pitch —
+  the old fixed 9px pitch spilled its lines past the band edge, leaving a comb
+  of vertical stripes outside the globe (painted cells now match click zones)
 - **2026-10 v2.3.0** — new **Time Series** drawer (its own right-edge drawer
   with an "TS" edge tab next to the AI one; opening one closes the other):
   type any MODIS/VIIRS product + layer, a latitude/longitude point and a

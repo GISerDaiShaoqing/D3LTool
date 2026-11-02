@@ -88,13 +88,17 @@ class TileMap(QWidget):
             frac = tiles.row_width_fraction(v)
             band_half = frac * CANVAS_W / 2.0
             x0 = cx - band_half
+            # cell pitch follows the band width: rows narrow toward the
+            # poles, and a fixed pitch used to spill its lines past the
+            # band's right edge as loose stripes outside the globe
+            pitch = band_half * 2.0 / tiles.N_COLS
             y0 = v * TILE_H
             # row band background
             painter.fillRect(QRectF(x0, y0, band_half * 2, TILE_H), QColor("#dfe9f5"))
             # vertical cell lines
             painter.setPen(QPen(QColor("#b8cbe2"), 1))
             for i in range(tiles.N_COLS + 1):
-                x = x0 + i * TILE_W
+                x = x0 + i * pitch
                 painter.drawLine(int(x), int(y0), int(x), int(y0 + TILE_H))
             painter.drawLine(int(x0), int(y0 + TILE_H), int(x0 + band_half * 2), int(y0 + TILE_H))
             # row band border
@@ -119,13 +123,11 @@ class TileMap(QWidget):
     def _cell_rect(self, h, v):
         frac = tiles.row_width_fraction(v)
         band_half = frac * CANVAS_W / 2.0
-        x0 = cx = CANVAS_W / 2.0
-        x0 = cx - band_half
-        x = x0 + h * TILE_W
+        pitch = band_half * 2.0 / tiles.N_COLS
+        x0 = CANVAS_W / 2.0 - band_half
+        x = x0 + h * pitch
         y = v * TILE_H
-        if x < 0 or x + TILE_W > CANVAS_W:
-            return None
-        return QRectF(x, y, TILE_W, TILE_H)
+        return QRectF(x, y, pitch, TILE_H)
 
     def _cell_at(self, px, py):
         v = int(py // TILE_H)

@@ -17,7 +17,7 @@ import types
 import typing
 from pathlib import Path
 
-from . import auth, config, engine, products, search
+from . import auth, config, engine, links, products, search
 from .tiles import lonlat_to_tile, parse_tile, tile_bounds_lonlat, tile_name
 
 # ---------------------------------------------------------------- registry
@@ -119,6 +119,7 @@ _ENGINE_LOCK = threading.Lock()
 _PLOT_SINK = None            # GUI chart target: callable(points, meta) -> set by attach_plot_sink
 _PROGRESS_SINK = None        # GUI progress target: callable(key, **kw) -> set by attach_progress_sink
 _TS_STOP = None              # callable() -> bool: the panel's stop event -> set by attach_ts_stop
+_BROWSER_SINK = None         # GUI default-browser opener: callable(html_path) -> attach_browser_sink
 _TS_CACHE = {}               # series_id -> {"meta": {...}, "points": [...]}
 _TS_SEQ = [0]
 
@@ -174,6 +175,15 @@ def attach_ts_stop(checker) -> None:
     (checked between granule requests)."""
     global _TS_STOP
     _TS_STOP = checker
+
+
+def attach_browser_sink(sink) -> None:
+    """Let the GUI open the HTML index built by open_download_page in its
+    default browser the moment the tool runs. Headless contexts (plain
+    MCP server, CLI) leave it unset: the tool then returns the page path
+    with a hint for the user to open it manually."""
+    global _BROWSER_SINK
+    _BROWSER_SINK = sink
 
 
 class _ToolSeriesProgress:
@@ -528,3 +538,108 @@ def retry_download(id: int) -> dict:
         return {"error": f"unknown task id: {id}"}
     eng.retry(int(id))
     return {"ok": True, "id": int(id)}
+
+
+# -------------------------------------------------------------- browser ask
+
+
+_LINK_CAP = 5000
+
+_LINK_HINT = (
+    "feed the .txt list to `wget -i urls.txt` / `aria2c -i urls.txt` / a "
+    "download manager, or open the .html index in a browser that is signed "
+    "in to Earthdata and pick rows with a Download-It-All-style extension; "
+    "no Earthdata password flows through this tool — the browser session "
+    "carries the login")
+
+
+@tool(
+    "export_download_urls",
+    "Write the given data-file URLs to local artifacts for tools outside "
+    "this program: a plain .txt list (one URL per line — `wget -i`/"
+    "`aria2c -i`/download managers consume it directly) and a "
+    "self-contained .html index page for a logged-in browser plus "
+    "Download-It-All-style extensions. This is the hand-off way around "
+    "requests-level 401/403: your browser supplies its own Earthdata "
+    "session. `urls` items may be plain URL strings or granule dicts from "
+    "search_granules; a `dir` outside the download folder must already "
+    "offer a writable path.",
+    "把文件 URL 导出成本地清单：.txt 供 `wget -i`/`aria2c -i`/下载管理器直喂，"
+    ".html 索引页用已登录 Earthdata 的浏览器（配 Download It All 类扩展）批量"
+    "点选下载；凭据只走浏览器会话，不经过聊天或 MCP 消息",
+)
+def export_download_urls(urls: list, dir: str = "", stem: str = "",
+                         fmt: str = "both") -> dict:
+    urls = [u for u in (urls or []) if u]
+    if not urls:
+        return {"error": "no urls given"}
+    hint = ""
+    if len(urls) > _LINK_CAP:
+        hint = (f"the list has {len(urls)} urls; writing the first "
+                f"{_LINK_CAP} — split the range and call again for the rest")
+        urls = urls[:_LINK_CAP]
+    if fmt not in links.FORMATS:
+        return {"error": f"fmt must be one of {links.FORMATS}, got {fmt!r}"}
+    try:
+        items, skipped = links.prepare_items(urls)
+    except ValueError as exc:
+        return {"error": "no usable urls", "hint": str(exc)}
+    out_dir = (Path(str(dir)).expanduser() if str(dir).strip()
+               else Path(config.load_config()["download_dir"]))
+    try:
+        res = links.export_links(items, out_dir, stem, fmt)
+    except OSError as exc:
+        return {"error": f"cannot write list: {exc}"}
+    out = {"count": res["count"], "txt_path": res["txt"] or "",
+           "html_path": res["html"] or "", "dir": str(out_dir)}
+    if skipped:
+        out["skipped"] = skipped
+        hint = hint or f"{skipped} entries had no http(s) url and were dropped"
+    out["hint"] = f"{hint}. {_LINK_HINT}" if hint else _LINK_HINT
+    return out
+
+
+@tool(
+    "open_download_page",
+    "Build the one-click .html index for the given data-file URLs and open "
+    "it in this machine's default browser (only when running inside the "
+    "D3LTool GUI) so the user can pick files there with a "
+    "Download-It-All-style browser extension or click each link; the "
+    "browser must already be signed in to NASA Earthdata. From an MCP/"
+    "CLI context there is no GUI to open: the tool returns the page path "
+    "and a hint for the user to open it manually. urls accept plain URL "
+    "strings or granule dicts from search_granules.",
+    "把 URL 生成一张本地 .html 索引页并在默认浏览器打开（仅 GUI 内可用；浏览器"
+    "须已登录 Earthdata）。MCP/CLI 环境没有界面，只返回路径请用户自行打开",
+)
+def open_download_page(urls: list, stem: str = "") -> dict:
+    urls = [u for u in (urls or []) if u]
+    if not urls:
+        return {"error": "no urls given"}
+    if len(urls) > _LINK_CAP:
+        urls = urls[:_LINK_CAP]
+    try:
+        items, _skipped = links.prepare_items(urls)
+    except ValueError as exc:
+        return {"error": "no usable urls", "hint": str(exc)}
+    out_dir = Path(config.load_config()["download_dir"])   # persistent: easy to find again
+    try:
+        res = links.export_links(items, out_dir, stem or "d3ltool_links",
+                                 fmt="both")
+    except OSError as exc:
+        return {"error": f"cannot write page: {exc}"}
+    opened = False
+    if _BROWSER_SINK is not None:
+        try:
+            _BROWSER_SINK(res["html"])
+            opened = True
+        except Exception:          # noqa: BLE001 — sink failure must not kill the turn
+            opened = False
+    out = {"count": res["count"], "txt_path": res["txt"] or "",
+           "html_path": res["html"] or "", "dir": str(out_dir),
+           "opened": opened}
+    if not opened:
+        out["hint"] = (f"not in the GUI: open {res['html']} in a browser "
+                       "that is signed in to Earthdata, then pick rows "
+                       "with a Download-It-All-style extension")
+    return out

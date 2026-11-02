@@ -76,13 +76,18 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
 - **a CLI** (`d3ltool search/download/login`) sharing the same core library as
   the GUI, so scripted pipelines and the GUI stay in feature parity;
 - **AI-native access**: since v2.1 the same core capabilities are exposed
-  through a Model Context Protocol (MCP) server (`d3ltool-mcp`, eleven tools
+  through a Model Context Protocol (MCP) server (`d3ltool-mcp`, thirteen tools
   over stdio) so AI assistants such as Claude Desktop, Cursor or ZCode can
   search and download data on the user's behalf, and through a built-in
   conversational assistant drawer in the GUI that accepts any OpenAI-compatible
   provider key and can plot fetched time series directly in the app;
   tool-driven downloads reuse the persisted credentials and require explicit
-  user confirmation before queuing.
+  user confirmation before queuing;
+- **browser-assisted download hand-off**: since v2.4 the checked granules can
+  be exported as a plain URL list (for `wget -i`/`aria2c -i`/download
+  managers) and a self-contained HTML index page for a logged-in browser,
+  giving a rescue line when transport-level 401/403 blocks the built-in
+  downloader.
 
 # Software description
 
@@ -106,9 +111,9 @@ sessions at startup; `tiles.py` implements the MODIS sinusoidal tile grid
 arithmetic; `products.py` holds a curated, bilingual product catalogue;
 `timeseries.py` samples point series over the OPeNDAP protocols of the LAADS
 DAAC (MODIS/VIIRS) and the GES DISC cloud gateway (MERRA-2).
-`tools.py` registers the eleven shared agent tools (sign-in status, catalogue,
+`tools.py` registers the thirteen shared agent tools (sign-in status, catalogue,
 tile conversions, granule search, point time-series sampling, in-app plotting,
-download queue control) with JSON schemas
+download queue control, download-list export) with JSON schemas
 derived from static signatures; `mcp_server.py` publishes the registry over
 MCP stdio (supporting both the v1 and v2 tool-APIs of the official SDK), and
 `agent/` provides a provider-agnostic streaming client for OpenAI-compatible
@@ -118,7 +123,7 @@ tile map, results and task tables, a slide-out assistant drawer and a
 time-series panel sharing the main engine, settings (download directory,
 worker count, proxy) and a
 language switcher; all strings live in a single i18n module. The test suite
-(124 pytest tests at submission time) covers the tile math, configuration
+(140 pytest tests at submission time) covers the tile math, configuration
 handling, search query construction and version fallbacks, the
 resume/retry engine against a local Range-capable HTTP server, the tool
 registry and agent loop with a local streaming-HTTP fake, an end-to-end

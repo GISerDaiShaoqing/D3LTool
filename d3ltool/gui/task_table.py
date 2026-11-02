@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """Download task table: per-file progress, pause/resume/retry."""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (QHBoxLayout, QMessageBox, QProgressBar,
                                QPushButton, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
@@ -33,6 +32,8 @@ def _fmt_bytes(n) -> str:
 
 
 class TaskTable(QWidget):
+    export_requested = Signal(list)     # engine items as hand-off rows
+
     def __init__(self, engine=None, parent=None):
         super().__init__(parent)
         self.engine = engine
@@ -45,9 +46,11 @@ class TaskTable(QWidget):
         self.retry_btn = QPushButton(i18n.tr("btn_retry"))
         self.clear_btn = QPushButton(i18n.tr("btn_clear_done"))
         self.open_btn = QPushButton(i18n.tr("btn_open_dir"))
+        self.export_btn = QPushButton(i18n.tr("btn_export_failed"))
         for b in (self.pause_btn, self.resume_btn, self.retry_btn):
             btn_row.addWidget(b)
         btn_row.addStretch(1)
+        btn_row.addWidget(self.export_btn)
         btn_row.addWidget(self.clear_btn)
         btn_row.addWidget(self.open_btn)
         layout.addLayout(btn_row)
@@ -76,6 +79,7 @@ class TaskTable(QWidget):
         self.retry_btn.clicked.connect(lambda: self._act("retry"))
         self.clear_btn.clicked.connect(self._clear_done)
         self.open_btn.clicked.connect(self._open_dir)
+        self.export_btn.clicked.connect(self._export_failed_links)
 
     # ------------------------------------------------------------------ public
 
@@ -181,3 +185,14 @@ class TaskTable(QWidget):
         path = pathlib.Path(self.engine.dest_dir)
         path.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+
+    def _export_failed_links(self) -> None:
+        """「导出失败清单」只取失败任务：下一次检索会把结果表覆盖掉，
+        而失败 URL 在任务表里一直活着——这是跨检索生存的 401/403 救援线。"""
+        if self.engine is None:
+            return
+        items = [{"url": it.url, "filename": it.filename,
+                  "size_bytes": it.total or 0}
+                 for it in self.engine.items.values()
+                 if it.state == "failed"]
+        self.export_requested.emit(items)
