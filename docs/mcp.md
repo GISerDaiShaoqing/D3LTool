@@ -14,13 +14,13 @@ drawer that slides out from the right edge of the GUI.
 | 工具 | 作用 |
 | --- | --- |
 | `check_auth` | 查询本机 Earthdata 登录状态 |
-| `list_products` | 内置产品目录（MODIS / VIIRS / MERRA-2，按组筛选） |
+| `list_products` | 内置产品目录（MODIS / VIIRS / MERRA-2 / GLASS，按组筛选；输出上限 80 行并附 hint） |
 | `point_to_tile` | 经纬度 → 正弦瓦片 (h, v) 及范围 |
 | `tile_bounds` | h/v → 瓦片地理范围 |
-| `search_granules` | CMR 检索：short_name + 时间 + 瓦片/范围，返回文件名/日期/大小/下载地址 |
+| `search_granules` | 检索：short_name + 时间 + 瓦片/范围，返回文件名/日期/大小/下载地址。NASA 产品走 CMR；**GLASS 变体 id**（`list_products(group='GLASS')`，如 `LAI_MODIS_250M`，v2.5 新增）走公开 glass.hku.hk 档案目录列表——免登录，日期范围展开为合成 DOY 文件夹，bbox 按正弦网格精确求交 |
 | `point_timeseries` | 点位时间序列：经纬度 + 产品 + 时间段 → LAADS/云 OPeNDAP 直采像素（MERRA-2 逐小时），返回点列与统计，并附 `series_id`；`product` 须为 CMR 真实 short_name（NDVI/EVI 用 MOD13Q1/MYD13Q1），`layer` 支持简称（'NDVI' 即可命中 `_250m_16_days_NDVI`）或留空自动选层（简称需 ≥3 字符，过短会被拒绝并列出可用图层）；数值为原生单位，结果带 `units`（T2M 为开尔文，°C = K − 273.15）；超出工具结果预算的长序列会自适应压缩点列、`series_id` 保持在前且统计覆盖完整序列 |
 | `plot_timeseries` | 把 `series_id` 对应的序列画进软件时间序列图表（仅软件内 AI 助手可用；MCP 环境返回 not_in_gui） |
-| `start_download` | 把 URL 加入下载队列（断点续传），返回任务 id |
+| `start_download` | 把 URL 加入下载队列（断点续传），返回任务 id。NASA 数据需本机已登录 Earthdata；GLASS 公开档案 URL 无需任何登录 |
 | `download_status` | 查询下载进度（状态/大小/速度/失败原因） |
 | `cancel_download` / `retry_download` | 按任务 id 取消 / 重试 |
 | `export_download_urls` | v2.4 新增：URL 导出成本地清单——`.txt` 一行一条（`wget -i` / `aria2c -i` / 下载管理器直喂）+ 自包含 `.html` 索引页；`urls` 收 URL 字符串或 `search_granules` 返回的 granule 行，`fmt` 可选 txt/html/both |
@@ -30,12 +30,15 @@ drawer that slides out from the right edge of the GUI.
 Earthdata 凭据（GUI 登录一次会持久化到 `~/.netrc`（Windows `_netrc`），
 CLI 用 `d3ltool login`）。
 **用户名/密码永远不会作为工具参数**出现在对话或 MCP 消息里。
+GLASS 档案（glass.hku.hk）是公开目录（v2.5）：GLASS 检索与下载全程不需要
+任何凭据，混合批次才要求先登录 Earthdata。
 清单导出 / `open_download_page` 涉及浏览器会话（v2.4 的浏览器辅助下载）：
 浏览器侧凭据由浏览器自身持有，本工具完全不经手。
 
 Search is anonymous; download and `point_timeseries` tools reuse the
-Earthdata sign-in persisted on this machine. Passwords are never tool
-parameters.
+Earthdata sign-in persisted on this machine (the GLASS archive is public —
+its search and downloads need no credentials at all). Passwords are never
+tool parameters.
 
 ## 方式一：MCP 服务器
 
@@ -107,7 +110,9 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 `point_to_tile → search_granules → start_download → download_status`），或
 “给我禹城站（36.83N, 116.57E）2009 年 MOD13Q1 的 NDVI 时间序列”（→ `point_timeseries`），
 或“检索结果里的 30 个文件导成 wget 清单”（→ `export_download_urls`；
-`open_download_page` 直接弹浏览器索引页，v2.4 浏览器辅助下载）。
+`open_download_page` 直接弹浏览器索引页，v2.4 浏览器辅助下载），或
+“把 2018 年 8-12 月上海（h28v05）的 GLASS LAI 下下来”——一句话检索并免登录
+下载 `LAI_MODIS_250M`（v2.5 GLASS 路由）。
 
 ## 方式二：软件内 AI 助手
 

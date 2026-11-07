@@ -7,9 +7,16 @@
 
 [English](README.md)
 
+[![GLASS engine: glass.sqdaitools](https://img.shields.io/badge/GLASS%20engine-glass.sqdaitools%20v0.1.0-2ea44f)](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
+
 D3L Tool v2 是一个免费开源的 NASA 卫星数据**检索与下载**工具：登录 → 检索 → 下载全流程在软件内完成，
 基于 NASA 官方 [earthaccess](https://earthaccess.readthedocs.io/) 与 CMR 检索服务重构，
-v2.3 起还支持单像元时间序列采样与软件内绘图（OPeNDAP 直采）——
+v2.3 起还支持单像元时间序列采样与软件内绘图（OPeNDAP 直采）。
+**GLASS 数据支持（v2.5.0）**：公开的 **GLASS**（Global Land Surface Satellite）
+档案也纳入同一流程——免登录；GLASS 检索/下载模块以作者的 R 包
+[glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
+（[文档](https://giserdaishaoqing.github.io/glass.sqdaitools/)，v0.1.0）为骨架：
+D3L Tool 管"找和下"，后处理在 R 侧完成——两个项目配套使用。
 不再需要去 NASA 网站创建订单，也彻底告别浏览器模拟。
 
 ## 特性
@@ -17,6 +24,13 @@ v2.3 起还支持单像元时间序列采样与软件内绘图（OPeNDAP 直采�
 - **内置检索**：按产品、时间范围、MODIS/VIIRS 正弦瓦片（可点击的 36×18 瓦片地图）或经纬度范围检索，
   检索不需要登录
 - **产品覆盖**：MODIS、VIIRS（LAADS DAAC）、MERRA-2（GES DISC），也可输入任意 CMR short_name
+- **GLASS 数据源**（v2.5.0 新增）：检索并下载 GLASS（Global Land Surface Satellite）
+  产品体系——公开 [glass.hku.hk](https://glass.hku.hk) 档案的 130+ 个变体，
+  无需 Earthdata 登录。检索引擎以作者的 R 包
+  [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
+  v0.1.0 为骨架（归档扫描变体清单、瓦片定位、合成 DOY 展开、核验过滤）；
+  填充值处理、瓦片镶嵌、重投影裁剪与时序合成仍在 R 侧完成——
+  见下文[「GLASS 支持与 glass.sqdaitools」](#glass-支持与-glasssqdaitoolsv250)
 - **健壮下载**：多线程队列、分块进度、HTTP 断点续传、失败自动重试、文件大小校验
 - **MCP 服务器**（v2.1 新增）：`d3ltool-mcp` 把检索/瓦片换算/下载暴露为
   [MCP 工具](docs/mcp.md)，Claude Desktop、Cursor、ZCode 等 AI 客户端可直接调用
@@ -63,14 +77,51 @@ d3ltool login
 d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
 d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data
 d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40
+d3ltool search LAI_MODIS_250M --start 2018-08-01 --end 2018-12-31 --tile h28v05   # GLASS，免登录
 ```
+
+### GLASS 支持与 glass.sqdaitools（v2.5.0）
+
+GLASS 模块以作者的 R 包
+[glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
+（[文档](https://giserdaishaoqing.github.io/glass.sqdaitools/)，v0.1.0）为骨架：
+归档扫描得到的变体清单（130+ 个产品×来源×分辨率，其中 5 个经真实 granule
+核验）、正弦瓦片定位、合成 DOY 展开与核验产品过滤均移植自它。两个项目
+**配套使用**、分工明确：
+
+| | 负责 |
+|---|---|
+| **D3LTool**（GUI / CLI / MCP） | GLASS 产品检索与批量下载——断点续传、大小校验、免登录（公开档案） |
+| **R：glass.sqdaitools** | 填充值/比例因子处理、多瓦片镶嵌、重投影与 ROI 裁剪、时间合成（基于 `terra`） |
+
+D3LTool 下载好的文件在 R 中做后处理：
+
+```r
+# R >= 4.1；重依赖 terra / sf
+devtools::install_github("GISerDaiShaoqing/glass.sqdaitools")
+glass.sqdaitools::glass_process(files, roi = my_roi,
+                                product = "LAI_MODIS_250M",
+                                fun = "mean", outfile = "lai_2023_mean.tif")
+```
+
+![对内置 AI 助手说一句"帮我下载厦门市 2024-10-23 的 GLASS 的 EVI 数据"——
+`list_products` 定变体、`search_granules` 按 bbox 检索、`start_download`
+免登录下载，三个文件全部完成；后续镶嵌/裁剪/合成在 R 中用
+glass.sqdaitools 完成](images/GlassDownload.png)
+
+版本兼容：D3L Tool **2.5.0** ↔ glass.sqdaitools **≥ 0.1.0**——后续若有
+API 变更会在两边的 release notes 同步声明。
+GLASS 数据来自 GLASS 产品团队（[glass.hku.hk](https://glass.hku.hk)），
+使用请遵守其引用政策。
 
 ### MCP / AI 助手
 
 两条通道共用同一套工具：`check_auth` / `list_products` / `point_to_tile` /
 `tile_bounds` / `search_granules` / `start_download` / `download_status` /
-`cancel_download` / `retry_download`。密码永远不会作为工具参数——下载复用本机
-已登录的 Earthdata 凭据。
+`cancel_download` / `retry_download`，另有 `point_timeseries` /
+`plot_timeseries`（v2.3）与浏览器辅助下载的 `export_download_urls` /
+`open_download_page`（v2.4）。密码永远不会作为工具参数——下载复用本机
+已登录的 Earthdata 凭据（GLASS 公开档案 URL 无需登录）。
 
 ```bash
 python -m pip install "d3ltool[mcp]"   # 然后把 MCP 客户端指向 d3ltool-mcp
@@ -101,12 +152,38 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 
 - v1.0（2018）作者：戴劭勍；v2.0 基于
   [earthaccess](https://earthaccess.readthedocs.io/) / CMR 重构
+- GLASS 数据由 GLASS 产品团队（[glass.hku.hk](https://glass.hku.hk)）生产，
+  使用请遵守其引用政策；GLASS 模块（v2.5）移植自作者的
+  [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools) R 包
 - 使用 [MIT 许可](https://mit-license.org/)发布
 - 有问题欢迎[提交 issue](https://github.com/GISerDaiShaoqing/D3LTool/issues)
   或联系 dsq1993qingge@163.com
 
 ## 更新日志
 
+- **2026-11 v2.5.0** — 新增 **GLASS** 数据源：软件现在也能检索并下载 GLASS
+  产品体系——130+ 个产品×来源×分辨率变体，由公开
+  [glass.hku.hk](https://glass.hku.hk) 档案以纯 HTML 目录列表提供
+  （不走 CMR、无需 Earthdata 登录）。产品目录新增 **GLASS** 组，收录完整
+  变体清单（5 个已核验变体排前：LAI/NDVI/EVI MODIS 250m、FVC 500m、Ta 逐日）；
+  GLASS 变体 id 自动路由到新的档案检索——日期范围展开为合成 DOY 文件夹，
+  复用同一张正弦瓦片地图与瓦片换算，bbox 与正弦网格的相交用解析法精确判定
+  （与作者的 [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
+  R 包一致；极冠行退化为整行纳入）。下载复用现有引擎——公开 URL 免登录，
+  GUI 与 `start_download` 对全 GLASS 批次跳过 Earthdata 闸门——v2.4 的
+  清单导出/浏览器辅助下载对 GLASS 原样可用。未核验合成周期的 skeleton
+  变体会直接从档案自身推导年份/DOY 文件夹；registry 骨架无法刻画的布局
+  （气候态根目录、已下线的目录）会给出明确报错而不是静默空表。
+  MCP/AI：同样 13 个工具自动覆盖 GLASS（`list_products(group='GLASS')`，
+  结果上限 80 行），软件内助手的系统提示词注明免登录路线。GLASS 引擎以作者的
+  R 包
+  [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
+  v0.1.0（[文档](https://giserdaishaoqing.github.io/glass.sqdaitools/)）为骨架——
+  Python 侧 registry 由其数据集生成（`tools_gen_glass_registry.py`）；
+  版本兼容 D3L Tool 2.5.0 ↔ glass.sqdaitools ≥ 0.1.0（API 变更在两边
+  release notes 同步声明）。检索下载在 D3LTool，R 包保留后处理
+  （填充值/镶嵌/裁剪/合成）——见[「GLASS 支持与 glass.sqdaitools」](#glass-支持与-glasssqdaitoolsv250)；
+  GLASS 数据来自 GLASS 产品团队（glass.hku.hk），使用请遵守其引用政策
 - **2026-11 v2.4.0** — 新增**浏览器辅助下载**（v1.0 2018 浏览器自动化的现代、
   零依赖嗣法）：结果表加**「导出下载清单」**（勾选的粒子 URL 导成 `.txt`——一行一个
   地址，`wget -i` / `aria2c -i` / 下载管理器直接吃——外加一张自包含 `.html`

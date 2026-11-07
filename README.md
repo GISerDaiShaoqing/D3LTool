@@ -7,17 +7,33 @@
 
 [中文说明](READMEcn.md)
 
+[![GLASS engine: glass.sqdaitools](https://img.shields.io/badge/GLASS%20engine-glass.sqdaitools%20v0.1.0-2ea44f)](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
+
 D3L Tool v2 is a free & open-source tool to **search and download** NASA Earth science data —
 the whole workflow (login → search → download) inside one app, built on NASA's official
 [earthaccess](https://earthaccess.readthedocs.io/) library and the CMR search service —
 and, since v2.3, to sample a pixel's time series over OPeNDAP and plot it in-app.
-No more manual order creation, no more browser automation.
+**GLASS support (v2.5.0)**: the public **GLASS** (Global Land Surface Satellite)
+archive joins the same workflow — no sign-in — with the GLASS engine ported from
+the author's R package
+[glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
+([docs](https://giserdaishaoqing.github.io/glass.sqdaitools/), v0.1.0):
+D3LTool finds & downloads, the R package does the post-processing — use the
+two as a matched pair. No more manual order creation, no more browser automation.
 
 ## Features
 
 - **Built-in search**: by product, date range, MODIS/VIIRS sinusoidal tile (clickable 36×18 tile map)
   or bounding box — search works without an Earthdata login
-- **Coverage**: MODIS, VIIRS (LAADS DAAC), MERRA-2 (GES DISC); any CMR short_name works too
+- **Coverage**: MODIS, VIIRS (LAADS DAAC), MERRA-2 (GES DISC) — any CMR short_name works too
+- **GLASS data source** (new in v2.5.0): search & download the GLASS (Global Land
+  Surface Satellite) suite — 130+ variants from the public
+  [glass.hku.hk](https://glass.hku.hk) archive, no Earthdata sign-in. The engine
+  is ported from the author's R package
+  [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
+  v0.1.0 (archive-scan variant registry, tile mapping, composite-DOY listing,
+  verified-product filters); fill-value handling, mosaicking, reprojection and
+  temporal compositing stay in R — see [GLASS support in 2.5.0](#glass-support-in-250)
 - **Robust downloads**: multi-threaded queue, chunked progress, HTTP Range resume,
   automatic retry, size validation
 - **MCP server** (new in v2.1): `d3ltool-mcp` exposes search / tile math / downloads
@@ -67,14 +83,54 @@ d3ltool login
 d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
 d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data
 d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40
+d3ltool search LAI_MODIS_250M --start 2018-08-01 --end 2018-12-31 --tile h28v05   # GLASS, no login
 ```
+
+### GLASS support in 2.5.0
+
+The GLASS module is ported from the author's R package
+[glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
+([docs](https://giserdaishaoqing.github.io/glass.sqdaitools/), v0.1.0):
+the archive-scan variant registry (130+ product × source × resolution
+variants, five of them verified against real granules), the sinusoidal tile
+mapping, the composite-DOY expansion and the verified-product filters all
+come from it. The two projects are a **matched pair** with a clear split:
+
+| | does |
+|---|---|
+| **D3LTool** (GUI / CLI / MCP) | GLASS product discovery & batch download — resumable, size-validated, no sign-in (the archive is public) |
+| **R: glass.sqdaitools** | fill-value & scale-factor handling, multi-tile mosaicking, reprojection & ROI cropping, temporal compositing (`terra`-based) |
+
+Post-process in R whatever D3LTool downloaded:
+
+```r
+# R >= 4.1; heavy deps terra / sf
+devtools::install_github("GISerDaiShaoqing/glass.sqdaitools")
+glass.sqdaitools::glass_process(files, roi = my_roi,
+                                product = "LAI_MODIS_250M",
+                                fun = "mean", outfile = "lai_2023_mean.tif")
+```
+
+![One sentence to the built-in AI assistant — "download GLASS EVI for Xiamen,
+2024-10-23" — resolves the variant via `list_products`, searches by bbox via
+`search_granules` and queues the files via `start_download`, no sign-in
+anywhere; post-process the files in R with glass.sqdaitools](images/GlassDownload.png)
+
+Compatibility: D3L Tool **2.5.0** ↔ glass.sqdaitools **≥ 0.1.0** — breaking
+API changes will be announced in both projects' release notes.
+GLASS data are produced by the GLASS product team
+([glass.hku.hk](https://glass.hku.hk)); please follow their citation policy
+when using the data.
 
 ### MCP / AI Assistant
 
 Both channels share one tool set — `check_auth`, `list_products`, `point_to_tile`,
 `tile_bounds`, `search_granules`, `start_download`, `download_status`,
-`cancel_download`, `retry_download`. Passwords are never tool parameters:
-downloads reuse the Earthdata sign-in persisted on this machine.
+`cancel_download`, `retry_download`, plus `point_timeseries` / `plot_timeseries`
+(v2.3) and the browser-handoff pair `export_download_urls` / `open_download_page`
+(v2.4). Passwords are never tool parameters:
+downloads reuse the Earthdata sign-in persisted on this machine (GLASS archive
+URLs are public and need no sign-in).
 
 ```bash
 python -m pip install "d3ltool[mcp]"   # then point your MCP client at `d3ltool-mcp`
@@ -112,7 +168,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   author  = {Dai, Shaoqing},
   orcid   = {0000-0003-0858-4728},
   title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
-  version = {2.4.0},
+  version = {2.5.0},
   year    = {2026},
   url     = {https://github.com/GISerDaiShaoqing/D3LTool},
 }
@@ -120,6 +176,36 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-11 v2.5.0** — new **GLASS** data source: D3LTool now also searches &
+  downloads the GLASS product suite — 130+ product × source × resolution
+  variants served as plain HTML directory listings from the public
+  [glass.hku.hk](https://glass.hku.hk) archive (no CMR, no Earthdata
+  sign-in). A **GLASS** group joins the product catalog with the full
+  variant registry (the five verified variants first: LAI/NDVI/EVI MODIS
+  250m, FVC 500m, Ta daily); GLASS variant ids route to a new archive
+  search that expands date ranges into composite DOY folders, reuses the
+  same sinusoidal tile map / tile math, and intersects bboxes with the
+  sinusoidal grid analytically (exact like the author's
+  [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
+  R package; polar caps degrade to whole-row inclusion). Downloads ride the
+  existing engine — public URLs need no login, so the GUI and
+  `start_download` skip the Earthdata gate for all-GLASS batches — and the
+  v2.4 export / browser-handoff surfaces work unchanged. Skeleton variants
+  without a verified cadence get their year/DOY folders derived from the
+  archive itself; layouts the registry skeleton cannot model (climatology
+  roots, retired directories) fail with a clear message instead of a
+  silently empty table. MCP/AI: the same 13 tools cover GLASS automatically
+  (`list_products(group='GLASS')`, results capped at 80 rows), and the
+  in-app agent system prompt mentions the no-sign-in route. The GLASS engine
+  is ported from the author's R package
+  [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
+  v0.1.0 ([docs](https://giserdaishaoqing.github.io/glass.sqdaitools/)) — the
+  Python registry is generated from its dataset (`tools_gen_glass_registry.py`);
+  compatibility D3L Tool 2.5.0 ↔ glass.sqdaitools ≥ 0.1.0 (API changes are
+  announced in both release notes). Search & download live in D3LTool, the
+  R package keeps post-processing (fill values / mosaic / crop / compositing) —
+  see [GLASS support in 2.5.0](#glass-support-in-250); GLASS data are courtesy
+  of the GLASS product team (glass.hku.hk), please follow their citation policy
 - **2026-11 v2.4.0** — new **browser-assisted download** hand-off (the modern,
   dependency-free successor of v1.0's 2018 browser automation): the results
   table gains **Export download list** (a `.txt` of the checked granule URLs — one URL
@@ -206,6 +292,10 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 - v1.0 (2018) created by Dai Shaoqing; v2.0 rewritten on top of
   [earthaccess](https://earthaccess.readthedocs.io/) / CMR
+- GLASS data are produced by the GLASS product team
+  ([glass.hku.hk](https://glass.hku.hk)) — please follow their citation
+  policy; the GLASS module (v2.5) is ported from the author's
+  [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools) R package
 - Released under the [MIT license](https://mit-license.org/)
 - Questions? [Submit an issue](https://github.com/GISerDaiShaoqing/D3LTool/issues)
   or contact dsq1993qingge@163.com

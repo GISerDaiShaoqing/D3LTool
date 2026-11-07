@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>D3L Tool of NASA Satellite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="D3LTool —— 免费、双语的 NASA MODIS / VIIRS / MERRA-2 数据检索与下载桌面软件：可点击瓦片地图、断点续传、点位时间序列采样、浏览器辅助下载清单、MCP 服务器与内置 AI 助手。">
+    <meta name="description" content="D3LTool —— 免费、双语的 NASA MODIS / VIIRS / MERRA-2 数据检索与下载桌面软件（v2.5 起覆盖公开 GLASS 档案）：可点击瓦片地图、断点续传、点位时间序列采样、浏览器辅助下载清单、MCP 服务器与内置 AI 助手。">
     <link rel="stylesheet" type="text/css" href="stylesheets/site.css" media="screen">
   </head>
   <body>
@@ -15,6 +15,7 @@
         <nav class="nav">
           <span class="brand">D3LTool</span>
           <a href="https://github.com/GISerDaiShaoqing/D3LTool">GitHub</a>
+          <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools">glass.sqdaitools</a>
           <a href="index.html">English</a>
         </nav>
         <h1>D3LTool</h1>
@@ -22,9 +23,10 @@
         <p class="lede">一款免费的桌面软件，一站式<b>检索与下载</b> NASA MODIS / VIIRS /
         MERRA-2 数据——选产品、选时间、点瓦片、排队下载，全流程不出一个窗口；
         v2.3 起还支持单像元时间序列采样与软件内绘图；v2.4 起导不出时还能把链接
-        清单交给你的浏览器或 wget。</p>
+        清单交给你的浏览器或 wget；v2.5 起公开的 GLASS 档案（glass.hku.hk）也
+        一并覆盖——免登录。</p>
         <div class="badges">
-          <span class="badge">v2.4.0</span>
+          <span class="badge">v2.5.0</span>
           <span class="badge">MIT 协议</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -54,6 +56,16 @@
             <h3>产品全覆盖</h3>
             <p>内置 MODIS、VIIRS（LAADS DAAC）、MERRA-2（GES DISC）产品目录，
             任意 CMR <code>short_name</code> 也支持。</p>
+          </div>
+          <div class="card">
+            <div class="ico">🌏</div>
+            <h3>GLASS 档案</h3>
+            <p>v2.5 新增：检索并下载 GLASS（Global Land Surface Satellite）
+            产品体系——公开 <code>glass.hku.hk</code> 档案的 130+ 个变体，
+            无需 Earthdata 登录。GLASS 引擎以作者的 R 包
+            <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0">glass.sqdaitools</a>
+            v0.1.0（<a href="https://giserdaishaoqing.github.io/glass.sqdaitools/">文档</a>）为骨架：
+            D3L Tool 管找和下，后处理在 R 侧完成——配套使用。</p>
           </div>
           <div class="card">
             <div class="ico">⬇️</div>
@@ -107,6 +119,13 @@
           <figcaption>左侧为检索面板（产品 / 时间 / 可点击瓦片地图），右侧为检索结果
           与实时下载队列；AI 助手从右缘滑出，不影响数据界面。</figcaption>
         </figure>
+        <figure>
+          <img src="images/GlassDownload.png" alt="AI 助手下载 GLASS 数据" class="shot">
+          <figcaption>“帮我下载厦门市 2024-10-23 的 GLASS 的 EVI 数据”——对 AI 助手
+          一句话：<code>list_products</code> 定变体、<code>search_granules</code>
+          按 bbox 检索、<code>start_download</code> 免登录下载；后续镶嵌/裁剪/
+          合成在 R 中用 glass.sqdaitools 完成。</figcaption>
+        </figure>
       </section>
 
       <section id="guide">
@@ -143,7 +162,8 @@
         <p>左侧选产品组与产品（或“custom”输入任意 CMR <code>short_name</code>），
         可选版本（留空取最新）与起止日期；区域可以直接在正弦瓦片地图上点选（可多选，
         或输入 <code>h04v03</code>，或用经纬度定位），MERRA-2 这类数据也可输入范围框。
-        点红色 <b>Search</b> 按钮，结果出现在右上表格。</p>
+        <b>GLASS</b> 组（v2.5）收录公开 glass.hku.hk 档案的 130+ 个变体——GLASS
+        检索全程不需要登录。点红色 <b>Search</b> 按钮，结果出现在右上表格。</p>
 
         <h3 class="sub">下载</h3>
         <p>在结果表勾选文件，点<b>“加入下载队列”</b>。任务表实时显示每个文件的进度
@@ -152,7 +172,7 @@
 
         <h3 class="sub">浏览器辅助下载</h3>
         <p>某个下载反复失败（部分代理会被 401/403 拦）时，勾选对应行点
-        <b>“导出清单”</b>（<b>“在浏览器打开”</b>直接弹出 <code>.html</code>
+        <b>“导出下载清单”</b>（<b>“在浏览器打开”</b>直接弹出 <code>.html</code>
         索引页）：让你已登录的浏览器或 DownThemAll 类扩展去拉文件，<code>.txt</code>
         清单也能喂给 <code>wget -i</code> / <code>aria2c -i</code>。MCP 工具
         <code>export_download_urls</code> / <code>open_download_page</code>
@@ -162,7 +182,25 @@
 pip install d3ltool
 d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
 d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data
-d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40</pre>
+d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40
+d3ltool search LAI_MODIS_250M --start 2018-08-01 --end 2018-12-31 --tile h28v05   # GLASS，免登录</pre>
+
+        <h3 class="sub">GLASS + R 后处理</h3>
+        <p>GLASS 模块（v2.5）以作者的 R 包
+        <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0">glass.sqdaitools</a>
+        v0.1.0（<a href="https://giserdaishaoqing.github.io/glass.sqdaitools/">文档</a>）为骨架——
+        两个项目<b>配套使用</b>：D3L Tool 负责产品检索与断点续传、大小校验的
+        批量下载（免登录，公开档案）；填充值/比例因子处理、多瓦片镶嵌、
+        重投影与时间合成在 R 中用 <code>glass.sqdaitools</code> 完成：</p>
+        <pre class="term"><span class="c"># R &gt;= 4.1；重依赖 terra / sf</span>
+devtools::install_github("GISerDaiShaoqing/glass.sqdaitools")
+glass.sqdaitools::glass_process(files, roi = my_roi,
+                                product = "LAI_MODIS_250M",
+                                fun = "mean", outfile = "lai_mean.tif")</pre>
+        <p>版本兼容：D3L Tool 2.5.0 ↔ glass.sqdaitools ≥ 0.1.0（API 变更在
+        两边 release notes 同步声明）。GLASS 数据由 GLASS 产品团队
+        （<a href="https://glass.hku.hk">glass.hku.hk</a>）生产，使用请遵守
+        其引用政策。</p>
 
         <h3 class="sub">时间序列</h3>
         <p>点开右缘的<b>时间序列</b>抽屉，选产品与图层，输入经纬度与起止日期，
@@ -207,6 +245,10 @@ d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 4
           <a href="http://www.pyinstaller.org/">www.pyinstaller.org</a></p>
           <p>v1.0（2018，浏览器模拟方案）基于 tkinter、selenium 与 Tristan Quaife
           的 laads-data-download.py 构建，已停止维护并归档于仓库历史。</p>
+          <p>GLASS 数据由 GLASS 产品团队（<a href="https://glass.hku.hk">glass.hku.hk</a>）
+          生产，使用请遵守其引用政策；GLASS 模块（v2.5）移植自作者的
+          <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools">glass.sqdaitools</a>
+          R 包。</p>
           <p>开发过程得到 Tristan Quaife、MorvanZhou 与 NASA 的帮助，特别感谢
           GeoDa。</p>
         </div>

@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QDialog, QFileDialog, QFrame, QLabel,
                                QMainWindow, QMessageBox, QSizePolicy,
                                QSplitter, QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, auth, config, engine, i18n, links, search, tools
+from .. import __version__, auth, config, engine, glass, i18n, links, search, tools
 from .. import APP_NAME
 from .bridge import EngineBridge
 from .login_dialog import LoginDialog
@@ -455,7 +455,10 @@ class MainWindow(QMainWindow):
         if not items:
             QMessageBox.information(self, i18n.tr("info_title"), i18n.tr("msg_enqueue_none"))
             return
-        if not self._ensure_logged_in():
+        # GLASS 档案公开——全 GLASS 批次跳过 Earthdata 闸门；
+        # 批次里只要混有 NASA 条目，仍照旧弹一次登录。
+        if not all(glass.is_glass_url(it.get("url", "")) for it in items) \
+                and not self._ensure_logged_in():
             return
         self.engine.dest_dir = Path(self.config["download_dir"])
         self.engine.max_workers = int(self.config.get("max_workers", 3))

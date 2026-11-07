@@ -17,7 +17,7 @@ import types
 import typing
 from pathlib import Path
 
-from . import auth, config, engine, links, products, search
+from . import auth, config, engine, glass, links, products, search
 from .tiles import lonlat_to_tile, parse_tile, tile_bounds_lonlat, tile_name
 
 # ---------------------------------------------------------------- registry
@@ -227,17 +227,23 @@ def check_auth() -> dict:
 @tool(
     "list_products",
     "List the curated product catalog: MODIS Terra/Aqua/Combined, VIIRS "
-    "(incl. nighttime lights) and MERRA-2, with short_name, version hint and "
-    "a short description. `group` filters by substring (e.g. 'VIIRS', 'MODIS', 'MERRA').",
-    "列出内置产品目录（按组筛选，含 short_name/版本/说明）",
+    "(incl. nighttime lights), MERRA-2, and GLASS (public glass.hku.hk "
+    "archive; 130+ variant ids like LAI_MODIS_250M), with short_name, "
+    "version hint and a short description. `group` filters by substring "
+    "(e.g. 'VIIRS', 'MODIS', 'MERRA', 'GLASS'); output is capped at 80 rows.",
+    "列出内置产品目录（按组筛选，含 short_name/版本/说明；GLASS 为公开档案变体）",
 )
 def list_products(group: str = "") -> dict:
     needle = (group or "").strip().lower()
     out = []
+    hidden = 0
     for gname, items in products.GROUPS:
         if needle and needle not in gname.lower():
             continue
         for short_name, version, desc_zh, desc_en in items:
+            if len(out) >= 80:      # keep tool results inside the model budget
+                hidden += 1
+                continue
             out.append({
                 "group": gname,
                 "short_name": short_name,
@@ -245,7 +251,11 @@ def list_products(group: str = "") -> dict:
                 "description_zh": desc_zh,
                 "description_en": desc_en,
             })
-    return {"count": len(out), "products": out}
+    res = {"count": len(out), "products": out}
+    if hidden:
+        res["hint"] = (f"{hidden} more catalog rows hidden (cap 80) — narrow "
+                       "with group= or search a known variant directly")
+    return res
 
 
 @tool(
@@ -281,12 +291,17 @@ def tile_bounds(h: int, v: int) -> dict:
 
 @tool(
     "search_granules",
-    "Search CMR for data granules of one product by short_name and time range "
-    "(YYYY-MM-DD, inclusive). tiles (e.g. 'h04v03') filter MODIS/VIIRS "
-    "sinusoidal products only; bbox (west,south,east,north degrees) suits "
-    "MERRA-2 and global products. Returns each granule's filename, date, tile, "
-    "size and HTTPS download URL. Anonymous access is allowed.",
-    "按产品与时间检索 granule（可按瓦片/范围过滤），返回文件名、日期、大小与下载地址",
+    "Search for data granules of one product by short_name / variant id and "
+    "time range (YYYY-MM-DD, inclusive). NASA products (MODIS/VIIRS/MERRA-2) "
+    "go through CMR anonymously; GLASS variant ids (group 'GLASS' in "
+    "list_products, e.g. LAI_MODIS_250M) go through the public glass.hku.hk "
+    "archive — no sign-in, and file sizes are only known at download time. "
+    "tiles (e.g. 'h04v03') filter MODIS/VIIRS-grid products only; bbox "
+    "(west,south,east,north degrees) suits MERRA-2, GLASS and global "
+    "products. Returns each granule's filename, date, tile, size and HTTPS "
+    "download URL.",
+    "按产品与时间检索 granule（可按瓦片/范围过滤；GLASS 变体走公开档案、无需登录），"
+    "返回文件名、日期、大小与下载地址",
 )
 def search_granules(short_name: str, start: str, end: str, version: str = "",
                     tiles: list = None, bbox: list = None, limit: int = 10) -> dict:
@@ -462,20 +477,24 @@ def plot_timeseries(series_id: str, title: str = "") -> dict:
 @tool(
     "start_download",
     "Queue HTTPS file URLs (as returned by search_granules) for download with "
-    "resume support. Requires a previous Earthdata sign-in on this machine. "
+    "resume support. NASA data requires a previous Earthdata sign-in on this "
+    "machine; GLASS archive URLs are public and download without any sign-in. "
     "Returns immediately with task ids; poll download_status for progress. "
     "dest = target folder (default: the app's configured download folder).",
-    "把文件 URL 加入下载队列（支持断点续传），立即返回任务 id；用 download_status 查询进度",
+    "把文件 URL 加入下载队列（支持断点续传），立即返回任务 id；用 download_status 查询进度。"
+    "NASA 数据需先登录 Earthdata，GLASS 公开档案无需登录",
 )
 def start_download(urls: list, dest: str = "") -> dict:
     urls = [str(u).strip() for u in (urls or []) if str(u).strip()]
     if not urls:
         return {"error": "no urls given"}
-    if not auth.is_authenticated() and not auth.try_restore_session():
+    if not all(glass.is_glass_url(u) for u in urls) \
+            and not auth.is_authenticated() and not auth.try_restore_session():
         return {
             "error": "not_authenticated",
             "hint": "downloads need Earthdata sign-in; the user must sign in "
-                    "once in the D3LTool GUI or run `d3ltool login` first",
+                    "once in the D3LTool GUI or run `d3ltool login` first "
+                    "(GLASS archive URLs are public and need no sign-in)",
         }
     eng = _get_engine(dest)
     items = []

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>D3L Tool of NASA Satellite</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="D3LTool — a free bilingual desktop app to search and download NASA MODIS / VIIRS / MERRA-2 data, with a clickable tile map, resumable downloads, point time-series sampling, browser-assisted download lists, an MCP server and a built-in AI assistant.">
+    <meta name="description" content="D3LTool — a free bilingual desktop app to search and download NASA MODIS / VIIRS / MERRA-2 data plus the public GLASS archive, with a clickable tile map, resumable downloads, point time-series sampling, browser-assisted download lists, an MCP server and a built-in AI assistant.">
     <link rel="stylesheet" type="text/css" href="stylesheets/site.css" media="screen">
   </head>
   <body>
@@ -15,6 +15,7 @@
         <nav class="nav">
           <span class="brand">D3LTool</span>
           <a href="https://github.com/GISerDaiShaoqing/D3LTool">GitHub</a>
+          <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools">glass.sqdaitools</a>
           <a href="index-cn.html">中文</a>
         </nav>
         <h1>D3LTool</h1>
@@ -23,9 +24,10 @@
         NASA MODIS / VIIRS / MERRA-2 data — product, date, tiles and download
         queue, the whole workflow in one window. Since v2.3 it also samples and
         plots a pixel's time series right in the app; since v2.4 failing
-        downloads can hand a link list to your own browser or wget.</p>
+        downloads can hand a link list to your own browser or wget; since v2.5
+        the public GLASS archive (glass.hku.hk) is covered too — no sign-in.</p>
         <div class="badges">
-          <span class="badge">v2.4.0</span>
+          <span class="badge">v2.5.0</span>
           <span class="badge">MIT License</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -56,6 +58,18 @@
             <h3>Full coverage</h3>
             <p>MODIS, VIIRS (LAADS DAAC) and MERRA-2 (GES DISC) with a curated
             catalog — and any CMR <code>short_name</code> works too.</p>
+          </div>
+          <div class="card">
+            <div class="ico">🌏</div>
+            <h3>GLASS archive</h3>
+            <p>Since v2.5, search &amp; download the GLASS (Global Land Surface
+            Satellite) suite — 130+ variants from the public
+            <code>glass.hku.hk</code> archive, no Earthdata sign-in. The GLASS
+            engine is ported from the author's R package
+            <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0">glass.sqdaitools</a>
+            v0.1.0 (<a href="https://giserdaishaoqing.github.io/glass.sqdaitools/">docs</a>):
+            D3LTool finds &amp; downloads, the R package does the post-processing —
+            a matched pair.</p>
           </div>
           <div class="card">
             <div class="ico">⬇️</div>
@@ -114,6 +128,14 @@
           map), search results and the live download queue on the right; the AI
           assistant slides out from the right edge.</figcaption>
         </figure>
+        <figure>
+          <img src="images/GlassDownload.png" alt="GLASS download via the AI assistant" class="shot">
+          <figcaption>“帮我下载厦门市 2024-10-23 的 GLASS 的 EVI 数据” — one sentence
+          to the AI assistant: it resolves the variant (<code>list_products</code>),
+          searches by bbox (<code>search_granules</code>) and queues the files
+          (<code>start_download</code>) — no sign-in anywhere; mosaic / crop /
+          composite the files in R with glass.sqdaitools.</figcaption>
+        </figure>
       </section>
 
       <section id="guide">
@@ -154,7 +176,9 @@
         <code>short_name</code>), optional version (blank = latest) and start/end
         dates. For the area, click tiles on the sinusoidal map (multi-select, or
         type <code>h04v03</code>, or use the lat/lon locator) — or enter a
-        bounding box for MERRA-2 style data. Hit the red <b>Search</b> button and
+        bounding box for MERRA-2 style data. The <b>GLASS</b> group (v2.5)
+        lists 130+ variants from the public glass.hku.hk archive — GLASS
+        searches never ask for a login. Hit the red <b>Search</b> button and
         results appear in the top-right table.</p>
 
         <h3 class="sub">Download</h3>
@@ -166,7 +190,7 @@
 
         <h3 class="sub">Browser hand-off</h3>
         <p>When a download keeps failing (some proxies trigger 401/403),
-        select the rows and use <b>“Export links”</b> (<b>“Open in browser”</b>
+        select the rows and use <b>“Export download list”</b> (<b>“Open in browser”</b>
         pops the <code>.html</code> index): your signed-in browser or a
         DownThemAll-style extension fetches the files — the <code>.txt</code>
         list also feeds <code>wget -i</code> / <code>aria2c -i</code>. The MCP
@@ -177,7 +201,27 @@
 pip install d3ltool
 d3ltool search VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03
 d3ltool download VNP46A1 --start 2020-03-01 --end 2020-03-31 --tile h04v03 --dest D:/data
-d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40</pre>
+d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 40
+d3ltool search LAI_MODIS_250M --start 2018-08-01 --end 2018-12-31 --tile h28v05   # GLASS, no login</pre>
+
+        <h3 class="sub">GLASS + R post-processing</h3>
+        <p>The GLASS module (v2.5) is ported from the author's R package
+        <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0">glass.sqdaitools</a>
+        v0.1.0 (<a href="https://giserdaishaoqing.github.io/glass.sqdaitools/">docs</a>) —
+        a <b>matched pair</b>: D3LTool covers product discovery and resumable,
+        size-validated batch download (no sign-in; the archive is public), while
+        fill-value &amp; scale-factor handling, multi-tile mosaicking,
+        reprojection and temporal compositing run in R with
+        <code>glass.sqdaitools</code>:</p>
+        <pre class="term"><span class="c"># R &gt;= 4.1; heavy deps terra / sf</span>
+devtools::install_github("GISerDaiShaoqing/glass.sqdaitools")
+glass.sqdaitools::glass_process(files, roi = my_roi,
+                                product = "LAI_MODIS_250M",
+                                fun = "mean", outfile = "lai_mean.tif")</pre>
+        <p>Compatibility: D3L Tool 2.5.0 ↔ glass.sqdaitools ≥ 0.1.0 (API changes
+        are announced in both release notes). GLASS data are produced by the
+        GLASS product team (<a href="https://glass.hku.hk">glass.hku.hk</a>) —
+        please follow their citation policy.</p>
 
         <h3 class="sub">Time series</h3>
         <p>Open the right-edge <b>time-series</b> drawer, pick a product and
@@ -231,6 +275,11 @@ d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 4
           <p>v1.0 (2018, browser automation) was built on tkinter, selenium and
           Tristan Quaife's laads-data-download.py; it is no longer maintained and
           stays in the repository history.</p>
+          <p>GLASS data are produced by the GLASS product team
+          (<a href="https://glass.hku.hk">glass.hku.hk</a>) — please follow
+          their citation policy. The GLASS module (v2.5) is ported from the
+          author's <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools">glass.sqdaitools</a>
+          R package.</p>
           <p>The development of D3L Tool has been supported by Tristan Quaife,
           MorvanZhou and NASA. Special thanks for GeoDa.</p>
         </div>

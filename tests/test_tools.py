@@ -132,12 +132,21 @@ def test_check_auth_signed_in(monkeypatch):
 
 def test_list_products_all_and_filtered():
     out = tools.list_products()
-    assert out["count"] == 27          # 8 Terra + 4 Aqua + 4 Combined + 4 VIIRS + 7 MERRA-2
-    assert all(p["short_name"] and p["version"] for p in out["products"])
+    assert out["count"] == 80          # capped: the GLASS group alone has 133
+    assert "hint" in out
+    nasa = [p for p in out["products"] if p["group"] != "GLASS"]
+    assert all(p["short_name"] and p["version"] for p in nasa)
 
     viirs = tools.list_products(group="VIIRS")
     assert viirs["count"] == 4
     assert {p["short_name"] for p in viirs["products"]} >= {"VNP46A1", "VNP46A2"}
+
+    glass = tools.list_products(group="GLASS")
+    assert glass["count"] == 80        # 133 variants, capped like the full list
+    # verified variants first (registry sort), and exactly 5 carry the mark
+    assert glass["products"][0]["short_name"] == "EVI_MODIS_250M"
+    assert sum(1 for p in glass["products"]
+               if "（已核验）" in p["description_zh"]) == 5
 
     assert tools.list_products(group="no-such-group")["count"] == 0
 
@@ -382,9 +391,59 @@ def test_start_download_requires_auth(monkeypatch):
     _signed_out(monkeypatch)
     out = tools.start_download(urls=["https://example.com/a.h5"])
     assert out["error"] == "not_authenticated"
-    assert "hint" in out
+    assert "GLASS" in out["hint"]      # points the model at the public route
 
     assert tools.start_download(urls=[])["error"] == "no urls given"
+
+
+# ------------------------------------------------------- GLASS (v2.5, public)
+
+def test_search_granules_routes_glass_variants(monkeypatch):
+    import d3ltool.glass as glass
+
+    monkeypatch.setattr(glass, "search", lambda *a, **k: [{
+        "url": "https://glass.hku.hk/archive/LAI/MODIS/250M/2018/217/"
+               "GLASS01D01.V60.A2018217.h28v05.2022013.hdf",
+        "filename": "GLASS01D01.V60.A2018217.h28v05.2022013.hdf",
+        "date": "2018-08-05", "tile": "h28v05", "size_mb": 0.0,
+        "product": "LAI_MODIS_250M"}])
+    out = tools.search_granules("LAI_MODIS_250M", "2018-08-01", "2018-08-31",
+                                tiles=["h28v05"], limit=5)
+    assert out["count"] == 1
+    row = out["granules"][0]
+    assert row["tile"] == "h28v05" and row["size_mb"] == 0.0
+    assert row["url"].startswith("https://glass.hku.hk/")
+
+
+def test_start_download_glass_skips_auth_gate(monkeypatch):
+    """全 GLASS 批次在未登录机器上照常入队（公开档案，凭据不过 MCP）。"""
+    import types as _types
+
+    _signed_out(monkeypatch)
+    added = []
+
+    class FakeEngine:
+        dest_dir = "/tmp/dest"
+
+        def add(self, url, filename=None, size_hint=0):
+            added.append((url, filename))
+            return _types.SimpleNamespace(id=len(added), filename=filename)
+
+    monkeypatch.setattr(tools, "_get_engine", lambda dest="": FakeEngine())
+    out = tools.start_download(
+        urls=["https://glass.hku.hk/archive/AGB/0.05D/GLASS_AGB_5km_Y1992.tif"])
+    assert out["count"] == 1
+    assert added == [("https://glass.hku.hk/archive/AGB/0.05D/"
+                      "GLASS_AGB_5km_Y1992.tif", None)]
+
+
+def test_start_download_mixed_batch_still_needs_signin(monkeypatch):
+    _signed_out(monkeypatch)
+    out = tools.start_download(urls=[
+        "https://glass.hku.hk/archive/AGB/0.05D/GLASS_AGB_5km_Y1992.tif",
+        "https://ladsweb.modaps.eosdis.nasa.gov/allData/61/MOD13Q1/a.hdf",
+    ])
+    assert out["error"] == "not_authenticated"
 
 
 def test_start_download_queues_and_completes(tmp_path, monkeypatch, range_server):

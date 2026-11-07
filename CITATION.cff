@@ -8,8 +8,8 @@ authors:
     given-names: Shaoqing
     orcid: "https://orcid.org/0000-0003-0858-4728"
     email: dsq1993qingge@163.com
-version: 2.4.0
-date-released: "2026-11-02"
+version: 2.5.0
+date-released: "2026-11-07"
 license: MIT
 repository-code: "https://github.com/GISerDaiShaoqing/D3LTool"
 url: "https://gisersqdai.top/D3LTool/"
@@ -30,7 +30,10 @@ abstract: >-
   OPeNDAP and renders them as in-app charts. Since v2.4 granule download
   lists can also be exported (plain .txt for wget/aria2/download managers,
   or .html index pages) so a logged-in browser can batch-fetch files when
-  direct downloads fail. It is designed for
+  direct downloads fail. Since v2.5 it additionally covers the GLASS product
+  suite (130+ variants from the public glass.hku.hk archive — no sign-in
+  required), sharing the same tile map, download queue and export surfaces
+  with the NASA sources. It is designed for
   remote-sensing practitioners who do not write code and for users in
   network-constrained environments.
 keywords:
@@ -38,6 +41,7 @@ keywords:
   - MODIS
   - VIIRS
   - MERRA-2
+  - GLASS
   - remote sensing
   - Earthdata
   - LAADS

@@ -148,3 +148,49 @@ def test_parse_tiles_and_bbox():
         search.parse_bbox("120, 20, 100, 40")   # west >= east
     with pytest.raises(ValueError):
         search.parse_tiles("h99v99")
+
+
+# ----------------------------------------------------- GLASS row dicts (v2.5)
+
+GLASS_ROW = {
+    "url": "https://glass.hku.hk/archive/LAI/MODIS/250M/2018/217/"
+           "GLASS01D01.V60.A2018217.h28v05.2022013.hdf",
+    "filename": "GLASS01D01.V60.A2018217.h28v05.2022013.hdf",
+    "date": "2018-08-05",
+    "tile": "h28v05",
+    "size_mb": 0.0,
+    "product": "LAI_MODIS_250M",
+}
+
+
+def test_glass_row_dicts_flow_through_accessors():
+    """GLASS search returns plain row dicts; the same accessors that read
+    earthaccess granules must read them unchanged (results table & tools
+    never learn the difference)."""
+    assert search.granule_filename(GLASS_ROW) == GLASS_ROW["filename"]
+    assert search.granule_date(GLASS_ROW) == "2018-08-05"
+    assert search.granule_tile(GLASS_ROW) == "h28v05"
+    assert search.granule_links(GLASS_ROW) == [GLASS_ROW["url"]]
+    assert search.granule_size_mb(GLASS_ROW) == 0.0
+    assert search.granule_name(GLASS_ROW) == GLASS_ROW["filename"]
+
+
+def test_run_search_routes_glass_variants(monkeypatch):
+    import d3ltool.glass as glass
+
+    seen = {}
+
+    def fake_glass_search(short_name, start, end, tiles=None, bbox=None,
+                          max_results=200):
+        seen.update(short_name=short_name, start=start, tiles=tiles,
+                    bbox=bbox, max_results=max_results)
+        return [dict(GLASS_ROW)]
+
+    monkeypatch.setattr(glass, "search", fake_glass_search)
+    p = SearchParams(short_name="lai_modis_250m", start="2018-08-01",
+                     end="2018-08-31", tiles=["h28v05"], max_results=5)
+    rows = search.run_search(p)
+    assert seen == {"short_name": "lai_modis_250m", "start": "2018-08-01",
+                    "tiles": ["h28v05"], "bbox": None, "max_results": 5}
+    assert rows[0]["filename"] == GLASS_ROW["filename"]
+    assert search.granule_tile(rows[0]) == "h28v05"

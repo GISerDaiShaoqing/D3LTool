@@ -33,7 +33,16 @@ def build_query(p: SearchParams) -> dict:
 
 
 def run_search(p: SearchParams, searcher=None) -> list:
-    """Execute the search. `searcher` is injectable for tests."""
+    """Execute the search. `searcher` is injectable for tests.
+
+    GLASS variants route to the public glass.hku.hk directory search
+    (d3ltool.glass) instead of CMR — same row dicts downstream, but plain
+    dicts rather than earthaccess granules."""
+    if is_glass_variant(p.short_name):
+        from . import glass
+
+        return glass.search(p.short_name, p.start, p.end, tiles=p.tiles,
+                            bbox=p.bbox, max_results=p.max_results)
     if searcher is None:
         import earthaccess
         searcher = earthaccess.search_data
@@ -94,7 +103,23 @@ def parse_bbox(text: str):
     return (w, s, e, n)
 
 
+def is_glass_variant(short_name: str) -> bool:
+    """GLASS variant ids route to the public glass.hku.hk search, not CMR."""
+    from . import glass
+
+    return glass.is_glass_variant(short_name)
+
+
+def _is_row(g) -> bool:
+    """GLASS search results are plain row dicts {url, filename, ...};
+    CMR granules are earthaccess objects or UMM dicts carrying umm/meta."""
+    return isinstance(g, dict) and "url" in g \
+        and "umm" not in g and "meta" not in g
+
+
 def granule_name(g) -> str:
+    if _is_row(g):
+        return str(g.get("filename") or "")
     try:
         return g["meta"]["native-id"]
     except (KeyError, TypeError, IndexError):
@@ -102,6 +127,8 @@ def granule_name(g) -> str:
 
 
 def granule_date(g) -> str:
+    if _is_row(g):
+        return str(g.get("date") or "")
     try:
         return str(g["umm"]["TemporalExtent"]["RangeDateTime"]["BeginningDateTime"])[:10]
     except (KeyError, TypeError, IndexError):
@@ -110,6 +137,11 @@ def granule_date(g) -> str:
 
 def granule_size_mb(g) -> float:
     """Size in MB. earthaccess <0.19 exposes size() as a method, >=0.19 as property."""
+    if _is_row(g):
+        try:
+            return round(float(g.get("size_mb") or 0), 1)
+        except (TypeError, ValueError):
+            return 0.0
     val = None
     try:
         val = g.size()
@@ -128,6 +160,8 @@ def granule_size_mb(g) -> float:
 
 def granule_links(g) -> list:
     """HTTPS GET DATA links (never s3:// or OPeNDAP), in metadata order."""
+    if _is_row(g):
+        return [g["url"]] if g.get("url") else []
     out = []
     try:
         for r in g["umm"].get("RelatedUrls", []):
@@ -145,6 +179,8 @@ def granule_links(g) -> list:
 
 
 def granule_filename(g) -> str:
+    if _is_row(g):
+        return str(g.get("filename") or "granule")
     links = granule_links(g)
     if links:
         base = links[0].split("?")[0].rstrip("/").rsplit("/", 1)[-1]
@@ -155,6 +191,8 @@ def granule_filename(g) -> str:
 
 
 def granule_tile(g) -> str:
+    if _is_row(g):
+        return str(g.get("tile") or "")
     for source in (granule_filename(g), granule_name(g)):
         m = re.search(r"[hH]\d{2}[vV]\d{2}", source)
         if m:

@@ -547,3 +547,50 @@ def test_tile_map_has_no_stripes_outside_bands(tmp_path, monkeypatch):
         for x in range(int(edge) + 4, min(int(edge) + 44, CANVAS_W)):
             assert img.pixelColor(x, v * TILE_H + 6).name() == "#f4f7fb", \
                 f"stripe pixel outside row {v}'s band at x={x}"
+
+
+def test_search_panel_has_glass_group(tmp_path, monkeypatch):
+    """GLASS 组出现在组下拉里：切换后产品下拉是变体 id（已核验排前），
+    组名经 products.GROUPS 自动带出，无需专门 UI 代码。"""
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        sp = window.search_panel
+        idx = sp.group_combo.findText("GLASS")
+        assert idx >= 0
+        sp.group_combo.setCurrentIndex(idx)
+        assert sp.product_combo.currentText() == "EVI_MODIS_250M"
+        names = [sp.product_combo.itemText(i)
+                 for i in range(sp.product_combo.count())]
+        assert "LAI_MODIS_250M" in names and "AGB_0.05D" in names
+    finally:
+        window.close()
+
+
+def test_glass_batch_enqueues_without_login(tmp_path, monkeypatch):
+    """全 GLASS 批次跳过 Earthdata 闸门直接入队；混入 NASA 条目则照旧
+    先过登录闸（公开档案不需要凭据，NASA 数据需要）。"""
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        gate_calls = []
+        monkeypatch.setattr(window, "_ensure_logged_in",
+                            lambda: gate_calls.append(1) or False)
+        added = []
+        monkeypatch.setattr(
+            window.engine, "add",
+            lambda url, filename=None, size_hint=0: added.append(url))
+
+        glass_row = {
+            "url": "https://glass.hku.hk/archive/AGB/0.05D/"
+                   "GLASS_AGB_5km_Y1992.tif",
+            "filename": "GLASS_AGB_5km_Y1992.tif", "size_bytes": 0}
+        nasa_row = {"url": "https://ladsweb.modaps.eosdis.nasa.gov/a.hdf",
+                    "filename": "a.hdf", "size_bytes": 0}
+
+        window._enqueue([glass_row])
+        assert not gate_calls and added == [glass_row["url"]]
+
+        window._enqueue([glass_row, nasa_row])
+        assert len(gate_calls) == 1          # mixed batch asks for login once
+        assert len(added) == 1               # gate said no -> nothing queued
+    finally:
+        window.close()

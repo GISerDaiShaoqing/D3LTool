@@ -153,7 +153,8 @@ STRINGS = {
                                "NASA OPeNDAP 采样单像元序列（MODIS/VIIRS/MERRA-2，无需下载整景"
                                "文件），返回点列与 series_id；在软件内接着调 plot_timeseries"
                                "(series_id) 即可把序列画进时间序列抽屉。"
-                               "2) 检索下载——search_granules 检索 granule、start_download 提交"
+                               "2) 检索下载——search_granules 检索 granule（NASA 数据走 CMR；"
+                               "GLASS 变体走公开档案、无需登录）、start_download 提交"
                                "下载队列、download_status/cancel_download/retry_download 管理"
                                "任务。"
                                "3) 辅助——check_auth 查登录、list_products 查产品目录、"
@@ -201,7 +202,7 @@ STRINGS = {
         "settings_proxy": "代理（留空不使用，如 http://127.0.0.1:7890 或 socks5://...）",
         "settings_saved": "设置已保存",
         "about_text": "D3L Tool of NASA Satellite\n\n"
-                      "NASA MODIS / VIIRS / MERRA-2 数据检索与下载工具，附点位时间序列采样\n\n"
+                      "NASA MODIS / VIIRS / MERRA-2 数据检索与下载工具（v2.5 起另支持 GLASS 公开档案），附点位时间序列采样\n\n"
                       "v2.0 © 2026 GLM-5.3-Flash 基于 earthaccess / CMR 重构 · \n\n"
                       "v1.0 © 2018 戴劭勍 (dsq1993qingge@163.com)\n\n"
                       "官网: https://gisersqdai.top/D3LTool/",
@@ -388,7 +389,9 @@ STRINGS = {
                                "the points plus a series_id; inside the desktop app follow "
                                "with plot_timeseries(series_id) to draw it in the "
                                "time-series drawer. 2) search & download — search_granules "
-                               "(CMR search), start_download (queue, asks confirmation), "
+                               "(CMR for NASA data; GLASS variants hit the public "
+                               "glass.hku.hk archive, no sign-in needed), start_download "
+                               "(queue, asks confirmation), "
                                "download_status / cancel_download / retry_download. "
                                "3) helpers — check_auth (sign-in state), list_products "
                                "(catalog), point_to_tile / tile_bounds (tile math). "
@@ -447,7 +450,7 @@ STRINGS = {
         "settings_proxy": "Proxy (blank = none, e.g. http://127.0.0.1:7890 or socks5://...)",
         "settings_saved": "Settings saved",
         "about_text": "D3L Tool of NASA Satellite\n\n"
-                      "Search & download NASA MODIS / VIIRS / MERRA-2 data, plus point time-series sampling\n\n"
+                      "Search & download NASA MODIS / VIIRS / MERRA-2 data (plus the public GLASS archive since v2.5), plus point time-series sampling\n\n"
                       "v2.0 © 2026 GLM-5.3-Flash Rebuilt on earthaccess / CMR · \n\n"
                       "v1.0 © 2018 Dai Shaoqing (dsq1993qingge@163.com)\n\n"
                       "Website: https://gisersqdai.top/D3LTool/",

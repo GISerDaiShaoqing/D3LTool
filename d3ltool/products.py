@@ -45,6 +45,31 @@ GROUPS = [
 GROUP_CUSTOM = "custom"
 
 
+def _glass_group():
+    """The GLASS group is generated from d3ltool/glass_registry.py (which is
+    generated from the author's glass.sqdaitools R package) — verified
+    variants first.  These ids route to the public glass.hku.hk directory
+    search, not CMR, and never need an Earthdata sign-in."""
+    from . import glass_registry as gr
+
+    items = []
+    for v in sorted(gr.VARIANTS.values(),
+                    key=lambda v: (not v["verified"], v["variant_id"])):
+        if v["temporal_res"]:
+            res_zh = res_en = v["temporal_res"]
+        elif v["layout"] == "flat":
+            res_zh, res_en = "无时间维（固定层）", "no time dimension (static layer)"
+        else:
+            res_zh, res_en = "合成周期未核验", "cadence unverified"
+        zh = f"{v['long_name']}，{res_zh}" + ("（已核验）" if v["verified"] else "")
+        en = f"{v['long_name']}, {res_en}" + (" (verified)" if v["verified"] else "")
+        items.append((v["variant_id"], v["version"] or "", zh, en))
+    return ("GLASS", items)
+
+
+GROUPS.append(_glass_group())
+
+
 def find_product(short_name: str):
     short = short_name.strip().upper()
     for _, items in GROUPS:
