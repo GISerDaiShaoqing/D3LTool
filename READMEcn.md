@@ -33,7 +33,8 @@ D3L Tool 管"找和下"，后处理在 R 侧完成——两个项目配套使用
   见下文[「GLASS 支持与 glass.sqdaitools」](#glass-支持与-glasssqdaitoolsv250)
 - **健壮下载**：多线程队列、分块进度、HTTP 断点续传、失败自动重试、文件大小校验
 - **MCP 服务器**（v2.1 新增）：`d3ltool-mcp` 把检索/瓦片换算/下载暴露为
-  [MCP 工具](docs/mcp.md)，Claude Desktop、Cursor、ZCode 等 AI 客户端可直接调用
+  [MCP 工具](docs/mcp.md)，Claude Desktop、Claude Code、Codex、Cursor、
+  OpenCode、Qoder、ZCode 等 AI 客户端可直接调用
 - **AI 助手**（v2.1 新增，v2.2 改版）：主窗口右缘滑出的悬浮抽屉，数据界面完全
   不受影响；⚙ 弹出式设置接入任意 OpenAI 兼容 API Key（DeepSeek / Qwen / Kimi /
   智谱 / OpenAI / Ollama…），自然语言直接完成检索与下载；聊天区可自定义背景图；
@@ -127,7 +128,8 @@ GLASS 数据来自 GLASS 产品团队（[glass.hku.hk](https://glass.hku.hk)）�
 python -m pip install "d3ltool[mcp]"   # 然后把 MCP 客户端指向 d3ltool-mcp
 ```
 
-Claude Desktop / Cursor / ZCode 配置与软件内 AI 助手的用法见 [docs/mcp.md](docs/mcp.md)。
+Claude Desktop / Claude Code / Codex / Cursor / OpenCode / Qoder / ZCode
+配置与软件内 AI 助手的用法见 [docs/mcp.md](docs/mcp.md)。
 
 ## 独立安装包 / Release
 
@@ -231,4 +233,4 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 - **2026-09 v2.0.3** — 产品目录窗口（按卫星浏览产品/版本/说明、可筛选、双击选用）；CI 因 GitHub 退役 macos-13 Intel runner 改为仅 Apple Silicon 构建（Intel Mac 用户用 `pip install d3ltool`）
 - **2026-09 v2.0.2** — Earthdata 登录彻底修复：适配 earthaccess 0.19 认证单例、启动时自动从本机 netrc 恢复会话、登录失败提示精准化（401/网络/账号受限）
 - **2026-09 v2.0.0** — 全新重构：earthaccess/CMR 检索、瓦片地图、断点续传、PySide6 双语界面、跨平台
-- 2018-04-27 v1.0 — 首个版本（浏览器模拟订单下载）
+- **2018-04-27 v1.0** — 首个版本（浏览器模拟订单下载）

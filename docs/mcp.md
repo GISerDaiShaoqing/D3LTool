@@ -2,7 +2,8 @@
 
 自 v2.1.0 起，D3LTool 有两条 AI 通道，共用同一套工具：
 
-1. **MCP 服务器**（`d3ltool-mcp`）—— 供 Claude Desktop、Cursor、ZCode 等外部 AI 客户端调用；
+1. **MCP 服务器**（`d3ltool-mcp`）—— 供 Claude Desktop、Claude Code、Codex、
+   Cursor、OpenCode、Qoder、ZCode 等外部 AI 客户端调用；
 2. **软件内 AI 助手**（GUI 右缘滑出的“AI 助手”抽屉）—— 自带 API Key 的 OpenAI 兼容 agent，不出软件即可对话完成任务。
 
 Since v2.1.0, D3LTool exposes one shared tool set over **two channels**:
@@ -85,6 +86,23 @@ JSON-RPC 走 stdio，服务器不监听任何端口。
 ### Cursor
 
 `~/.cursor/mcp.json` 内容同上（`mcpServers` 结构一致）。
+
+### Claude Code / Codex 等 CLI 客户端
+
+Claude Code 一条命令注册（`-s user` 对全局生效，默认仅当前项目）：
+
+```bash
+claude mcp add d3ltool -s user -- d3ltool-mcp
+```
+
+Codex 写进 `~/.codex/config.toml`：
+
+```toml
+[mcp_servers.d3ltool]
+command = "d3ltool-mcp"
+```
+
+使用官方发行包时同样把命令/`command` 换成 `D3LToolMCP(.exe)` 的绝对路径。
 
 ### ZCode / 其他支持 MCP 的客户端
 

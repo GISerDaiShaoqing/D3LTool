@@ -80,7 +80,8 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
   the GUI, so scripted pipelines and the GUI stay in feature parity;
 - **AI-native access**: since v2.1 the same core capabilities are exposed
   through a Model Context Protocol (MCP) server (`d3ltool-mcp`, thirteen tools
-  over stdio) so AI assistants such as Claude Desktop, Cursor or ZCode can
+  over stdio) so AI assistants such as Claude Desktop, Claude Code, Codex,
+  Cursor, OpenCode, Qoder or ZCode can
   search and download data on the user's behalf, and through a built-in
   conversational assistant drawer in the GUI that accepts any OpenAI-compatible
   provider key and can plot fetched time series directly in the app;

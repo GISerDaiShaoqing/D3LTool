@@ -37,7 +37,8 @@ two as a matched pair. No more manual order creation, no more browser automation
 - **Robust downloads**: multi-threaded queue, chunked progress, HTTP Range resume,
   automatic retry, size validation
 - **MCP server** (new in v2.1): `d3ltool-mcp` exposes search / tile math / downloads
-  as [MCP tools](docs/mcp.md) for Claude Desktop, Cursor, ZCode and other AI clients
+  as [MCP tools](docs/mcp.md) for Claude Desktop, Claude Code, Codex, Cursor,
+  OpenCode, Qoder, ZCode and other AI clients
 - **AI Assistant drawer** (new in v2.1, redesigned in v2.2): a right-edge
   slide-out panel over the main window — plug any OpenAI-compatible API key
   into the ⚙ popup settings and drive search & download with plain language
@@ -136,7 +137,8 @@ URLs are public and need no sign-in).
 python -m pip install "d3ltool[mcp]"   # then point your MCP client at `d3ltool-mcp`
 ```
 
-Client wiring (Claude Desktop / Cursor / ZCode) and the in-app AI Assistant
+Client wiring (Claude Desktop / Claude Code / Codex / Cursor / OpenCode /
+Qoder / ZCode) and the in-app AI Assistant
 guide live in [docs/mcp.md](docs/mcp.md).
 
 ## Standalone builds / Release
@@ -284,9 +286,9 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 - **2026-09 v2.0.2** — reliable Earthdata login: adapts to the earthaccess 0.19 auth
   singleton, session auto-restored from the local netrc file at startup, precise
   login diagnostics (401 / network / blocked account)
-- 2026-09 v2.0.0 — full rewrite: earthaccess/CMR search, tile map, resumable downloads,
+- **2026-09 v2.0.0** — full rewrite: earthaccess/CMR search, tile map, resumable downloads,
   PySide6 bilingual UI, cross-platform
-- 2018-04-27 v1.0 — first release (browser automation order downloads)
+- **2018-04-27 v1.0** — first release (browser automation order downloads)
 
 ## Credits & License
 

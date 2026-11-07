@@ -103,7 +103,8 @@ d3ltool search M2T1NXSLV --start 2019-08-01 --end 2019-08-31 --bbox 100 20 120 4
 软件附带 `d3ltool-mcp` 命令（或安装包中的 `D3LToolMCP` 程序），通过
 MCP（Model Context Protocol）把检索、瓦片换算、点位时间序列采样、绘图、
 下载排队、清单导出等 13 个工具暴露给
-Claude Desktop、Cursor、ZCode 等 AI 客户端，使外部 AI 助手可以直接下达
+Claude Desktop、Claude Code、Codex、Cursor、OpenCode、Qoder、ZCode 等
+AI 客户端，使外部 AI 助手可以直接下达
 数据检索与下载指令；密码同样不作为工具参数，下载复用本机已登录凭据。
 客户端配置示例见仓库 `docs/mcp.md`。
 
