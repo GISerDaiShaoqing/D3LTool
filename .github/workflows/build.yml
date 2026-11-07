@@ -20,10 +20,13 @@ jobs:
       matrix:
         include:
           - os: windows-latest      # x64 -> D3LToolNASA.exe
-          - os: macos-14            # Apple Silicon -> D3LToolNASA.app
+          - os: macos-15            # Apple Silicon -> D3LToolNASA.app
           - os: ubuntu-latest       # x64 -> D3LToolNASA (linux binary)
         # Intel macOS (macos-13) dropped: GitHub retired that runner image and
-        # jobs queued forever. Intel-Mac users: `pip install d3ltool` (pure
+        # jobs queued forever. macos-14 followed on 2026-11-02 — jobs get
+        # rejected at provisioning ("configuration 'macos-14-arm64-us-default'
+        # is not supported"); v2.4.0 was its last successful build.
+        # Intel-Mac users: `pip install d3ltool` (pure
         # Python + Qt wheels for x86_64) or build from source on the machine.
     runs-on: ${{ matrix.os }}
 
