@@ -228,10 +228,11 @@ def check_auth() -> dict:
     "list_products",
     "List the curated product catalog: MODIS Terra/Aqua/Combined, VIIRS "
     "(incl. nighttime lights), MERRA-2, and GLASS (public glass.hku.hk "
-    "archive; 130+ variant ids like LAI_MODIS_250M), with short_name, "
-    "version hint and a short description. `group` filters by substring "
-    "(e.g. 'VIIRS', 'MODIS', 'MERRA', 'GLASS'); output is capped at 80 rows.",
-    "列出内置产品目录（按组筛选，含 short_name/版本/说明；GLASS 为公开档案变体）",
+    "archive; 133 variant ids like LAI_MODIS_250M, 131 verified against "
+    "real granules), with short_name, version hint and a short "
+    "description. `group` filters by substring (e.g. 'VIIRS', 'MODIS', "
+    "'MERRA', 'GLASS'); output is capped at 80 rows.",
+    "列出内置产品目录（按组筛选，含 short_name/版本/说明；GLASS 为公开档案变体，133 个中 131 个已核验）",
 )
 def list_products(group: str = "") -> dict:
     needle = (group or "").strip().lower()
@@ -296,12 +297,14 @@ def tile_bounds(h: int, v: int) -> dict:
     "go through CMR anonymously; GLASS variant ids (group 'GLASS' in "
     "list_products, e.g. LAI_MODIS_250M) go through the public glass.hku.hk "
     "archive — no sign-in, and file sizes are only known at download time. "
-    "tiles (e.g. 'h04v03') filter MODIS/VIIRS-grid products only; bbox "
-    "(west,south,east,north degrees) suits MERRA-2, GLASS and global "
-    "products. Returns each granule's filename, date, tile, size and HTTPS "
-    "download URL.",
-    "按产品与时间检索 granule（可按瓦片/范围过滤；GLASS 变体走公开档案、无需登录），"
-    "返回文件名、日期、大小与下载地址",
+    "GLASS static collections (KGClim/AGB, no time dimension) ignore "
+    "start/end; GLASS global CMG variants carry no tile id, so tiles/bbox "
+    "are ignored for them. tiles (e.g. 'h04v03') filter MODIS/VIIRS-grid "
+    "products only; bbox (west,south,east,north degrees) suits MERRA-2 and "
+    "tiled GLASS. Returns each granule's filename, date, tile, size and "
+    "HTTPS download URL.",
+    "按产品与时间检索 granule（可按瓦片/范围过滤；GLASS 变体走公开档案、无需登录，"
+    "静态集免日期、全球 CMG 免瓦片），返回文件名、日期、大小与下载地址",
 )
 def search_granules(short_name: str, start: str, end: str, version: str = "",
                     tiles: list = None, bbox: list = None, limit: int = 10) -> dict:

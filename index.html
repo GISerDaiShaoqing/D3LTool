@@ -27,7 +27,7 @@
         downloads can hand a link list to your own browser or wget; since v2.5
         the public GLASS archive (glass.hku.hk) is covered too — no sign-in.</p>
         <div class="badges">
-          <span class="badge">v2.5.0</span>
+          <span class="badge">v2.6.0</span>
           <span class="badge">MIT License</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -62,9 +62,11 @@
           <div class="card">
             <div class="ico">🌏</div>
             <h3>GLASS archive</h3>
-            <p>Since v2.5, search &amp; download the GLASS (Global Land Surface
-            Satellite) suite — 130+ variants from the public
-            <code>glass.hku.hk</code> archive, no Earthdata sign-in. The GLASS
+            <p>Since v2.5, upgraded in v2.6: search &amp; download the GLASS (Global
+            Land Surface Satellite) suite — 133 variants (131 verified against
+            real granules) from the public <code>glass.hku.hk</code> archive, no
+            Earthdata sign-in; all four archive layouts, global CMG products
+            need no tiles, static collections need no dates. The GLASS
             engine is ported from the author's R package
             <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0">glass.sqdaitools</a>
             v0.1.0 (<a href="https://giserdaishaoqing.github.io/glass.sqdaitools/">docs</a>):
@@ -176,9 +178,10 @@
         <code>short_name</code>), optional version (blank = latest) and start/end
         dates. For the area, click tiles on the sinusoidal map (multi-select, or
         type <code>h04v03</code>, or use the lat/lon locator) — or enter a
-        bounding box for MERRA-2 style data. The <b>GLASS</b> group (v2.5)
-        lists 130+ variants from the public glass.hku.hk archive — GLASS
-        searches never ask for a login. Hit the red <b>Search</b> button and
+        bounding box for MERRA-2 style data. The <b>GLASS</b> group (v2.6)
+        lists 133 variants (131 verified) from the public glass.hku.hk archive
+        across four archive layouts — static collections need no dates, global
+        CMG products need no tiles — and GLASS searches never ask for a login. Hit the red <b>Search</b> button and
         results appear in the top-right table.</p>
 
         <h3 class="sub">Download</h3>
@@ -218,7 +221,14 @@ devtools::install_github("GISerDaiShaoqing/glass.sqdaitools")
 glass.sqdaitools::glass_process(files, roi = my_roi,
                                 product = "LAI_MODIS_250M",
                                 fun = "mean", outfile = "lai_mean.tif")</pre>
-        <p>Compatibility: D3L Tool 2.5.0 ↔ glass.sqdaitools ≥ 0.1.0 (API changes
+        <p>Upgraded in v2.6: the fully verified 131/133 registry, all four
+        archive layouts (composite folders, static collections, year folders,
+        <code>YYYYDDD</code> day folders), global CMG tile immunity,
+        per-variant data-file extensions from the verification log, and the
+        measured glass.hku.hk politeness policy for directory listings
+        (8/24/72&nbsp;s backoff + cooldown retry, ≥1.2&nbsp;s between
+        listings).</p>
+        <p>Compatibility: D3L Tool 2.6.0 ↔ glass.sqdaitools ≥ 0.1.0 (API changes
         are announced in both release notes). GLASS data are produced by the
         GLASS product team (<a href="https://glass.hku.hk">glass.hku.hk</a>) —
         please follow their citation policy.</p>

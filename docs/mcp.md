@@ -15,10 +15,10 @@ drawer that slides out from the right edge of the GUI.
 | 工具 | 作用 |
 | --- | --- |
 | `check_auth` | 查询本机 Earthdata 登录状态 |
-| `list_products` | 内置产品目录（MODIS / VIIRS / MERRA-2 / GLASS，按组筛选；输出上限 80 行并附 hint） |
+| `list_products` | 内置产品目录（MODIS / VIIRS / MERRA-2 / GLASS，按组筛选；GLASS 133 个变体、131 个已核验；输出上限 80 行并附 hint） |
 | `point_to_tile` | 经纬度 → 正弦瓦片 (h, v) 及范围 |
 | `tile_bounds` | h/v → 瓦片地理范围 |
-| `search_granules` | 检索：short_name + 时间 + 瓦片/范围，返回文件名/日期/大小/下载地址。NASA 产品走 CMR；**GLASS 变体 id**（`list_products(group='GLASS')`，如 `LAI_MODIS_250M`，v2.5 新增）走公开 glass.hku.hk 档案目录列表——免登录，日期范围展开为合成 DOY 文件夹，bbox 按正弦网格精确求交 |
+| `search_granules` | 检索：short_name + 时间 + 瓦片/范围，返回文件名/日期/大小/下载地址。NASA 产品走 CMR；**GLASS 变体 id**（`list_products(group='GLASS')`，如 `LAI_MODIS_250M`，v2.5 新增）走公开 glass.hku.hk 档案目录列表——免登录，四种归档布局全覆盖（v2.6：合成 DOY 目录 / 静态文件集 / 年目录 / `YYYYDDD` 日目录），静态集（KGClim/AGB）**免日期**，全球 CMG 变体（文件名无 `h##v##`）**瓦片/范围框无效**，bbox 按正弦网格精确求交 |
 | `point_timeseries` | 点位时间序列：经纬度 + 产品 + 时间段 → LAADS/云 OPeNDAP 直采像素（MERRA-2 逐小时），返回点列与统计，并附 `series_id`；`product` 须为 CMR 真实 short_name（NDVI/EVI 用 MOD13Q1/MYD13Q1），`layer` 支持简称（'NDVI' 即可命中 `_250m_16_days_NDVI`）或留空自动选层（简称需 ≥3 字符，过短会被拒绝并列出可用图层）；数值为原生单位，结果带 `units`（T2M 为开尔文，°C = K − 273.15）；超出工具结果预算的长序列会自适应压缩点列、`series_id` 保持在前且统计覆盖完整序列 |
 | `plot_timeseries` | 把 `series_id` 对应的序列画进软件时间序列图表（仅软件内 AI 助手可用；MCP 环境返回 not_in_gui） |
 | `start_download` | 把 URL 加入下载队列（断点续传），返回任务 id。NASA 数据需本机已登录 Earthdata；GLASS 公开档案 URL 无需任何登录 |

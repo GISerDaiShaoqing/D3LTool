@@ -13,7 +13,7 @@ D3L Tool v2 is a free & open-source tool to **search and download** NASA Earth s
 the whole workflow (login → search → download) inside one app, built on NASA's official
 [earthaccess](https://earthaccess.readthedocs.io/) library and the CMR search service —
 and, since v2.3, to sample a pixel's time series over OPeNDAP and plot it in-app.
-**GLASS support (v2.5.0)**: the public **GLASS** (Global Land Surface Satellite)
+**GLASS support (since v2.5.0)**: the public **GLASS** (Global Land Surface Satellite)
 archive joins the same workflow — no sign-in — with the GLASS engine ported from
 the author's R package
 [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
@@ -26,9 +26,11 @@ two as a matched pair. No more manual order creation, no more browser automation
 - **Built-in search**: by product, date range, MODIS/VIIRS sinusoidal tile (clickable 36×18 tile map)
   or bounding box — search works without an Earthdata login
 - **Coverage**: MODIS, VIIRS (LAADS DAAC), MERRA-2 (GES DISC) — any CMR short_name works too
-- **GLASS data source** (new in v2.5.0): search & download the GLASS (Global Land
-  Surface Satellite) suite — 130+ variants from the public
-  [glass.hku.hk](https://glass.hku.hk) archive, no Earthdata sign-in. The engine
+- **GLASS data source** (new in v2.5.0, upgraded in v2.6.0): search & download the
+  GLASS (Global Land Surface Satellite) suite — 133 variants (131 verified against
+  real granules) from the public [glass.hku.hk](https://glass.hku.hk) archive, no
+  Earthdata sign-in; all four archive layouts covered, global CMG products need no
+  tiles, static collections need no dates. The engine
   is ported from the author's R package
   [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
   v0.1.0 (archive-scan variant registry, tile mapping, composite-DOY listing,
@@ -92,8 +94,8 @@ d3ltool search LAI_MODIS_250M --start 2018-08-01 --end 2018-12-31 --tile h28v05 
 The GLASS module is ported from the author's R package
 [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
 ([docs](https://giserdaishaoqing.github.io/glass.sqdaitools/), v0.1.0):
-the archive-scan variant registry (130+ product × source × resolution
-variants, five of them verified against real granules), the sinusoidal tile
+the archive-scan variant registry (133 product × source × resolution
+variants, 131 of them verified against real granules), the sinusoidal tile
 mapping, the composite-DOY expansion and the verified-product filters all
 come from it. The two projects are a **matched pair** with a clear split:
 
@@ -117,7 +119,20 @@ glass.sqdaitools::glass_process(files, roi = my_roi,
 `search_granules` and queues the files via `start_download`, no sign-in
 anywhere; post-process the files in R with glass.sqdaitools](images/GlassDownload.png)
 
-Compatibility: D3L Tool **2.5.0** ↔ glass.sqdaitools **≥ 0.1.0** — breaking
+**Upgraded in v2.6.0**: the registry now matches glass.sqdaitools' fully
+verified 131/133 catalog, and every archive layout is handled — `year_doy`
+composite folders, `flat` static file collections (KGClim/AGB: no dates
+needed — the GUI disables them, the CLI makes them optional), `year_files`
+year folders (BBE/TPSCE: files filtered by the `A{yyyy}{ddd}` name token,
+cadence-less ones listed whole per year) and `year_yyyddd` day folders
+(AWGF_LST: 7-digit `YYYYDDD`). Global CMG products (no `h##v##` in filenames)
+ignore tiles/bbox entirely, and the per-variant data-file extension comes
+from the verification log (`.hdf`/`.tif`/`.nc`/`.dat`). Directory listings
+follow the measured glass.hku.hk politeness policy: exponential backoff
+8/24/72 s plus a 15 s-cooldown final retry, ≥1.2 s between listings, and one
+listing per year folder however long the date range.
+
+Compatibility: D3L Tool **2.6.0** ↔ glass.sqdaitools **≥ 0.1.0** — breaking
 API changes will be announced in both projects' release notes.
 GLASS data are produced by the GLASS product team
 ([glass.hku.hk](https://glass.hku.hk)); please follow their citation policy
@@ -170,7 +185,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   author  = {Dai, Shaoqing},
   orcid   = {0000-0003-0858-4728},
   title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
-  version = {2.5.0},
+  version = {2.6.0},
   year    = {2026},
   url     = {https://github.com/GISerDaiShaoqing/D3LTool},
 }
@@ -178,6 +193,26 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-11 v2.6.0** — GLASS module aligned with glass.sqdaitools' fully
+  verified registry (131 of 133 variants measured against real granules):
+  all four archive layouts are now covered — `year_doy` composite folders,
+  `flat` static file collections (KGClim/AGB; dates not needed — the GUI
+  disables them, the CLI makes them optional), `year_files` year folders
+  (BBE/TPSCE; files filtered by the `A{yyyy}{ddd}` token, cadence-less ones
+  listed whole per year) and `year_yyyddd` day folders (AWGF_LST). Global
+  CMG products (filenames without `h##v##`) ignore tiles/bbox entirely — no
+  more zero-hit searches from tiled assumptions; the per-variant data-file
+  extension (`.hdf`/`.tif`/`.nc`/`.dat`) now comes from the verification
+  log's real granule samples. Directory listings honor the measured
+  glass.hku.hk politeness policy: exponential backoff 8/24/72 s plus a 15 s
+  cooldown final retry, ≥1.2 s between any two listings, and one listing per
+  year folder however long the range (memoized fetch — a full year of daily
+  BBE was 366 listings before, 1 now). Product descriptions flag multi-band
+  Albedo (pick the subdataset in R) and BBE's flipped archive scale_factor
+  (×10000 — corrected in R). Registry regeneration joins the R package's
+  verify log via `tools_gen_glass_registry.py`. Verified end-to-end live on
+  all four layouts (LAI 2018-08 h25v05; KGClim 14 tifs; BBE 1982-01-01..03;
+  AWGF_LST 48 files on 2021-06-30)
 - **2026-11 v2.5.0** — new **GLASS** data source: D3LTool now also searches &
   downloads the GLASS product suite — 130+ product × source × resolution
   variants served as plain HTML directory listings from the public

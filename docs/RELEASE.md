@@ -42,10 +42,10 @@
 
 ## 2. "活数字"来源（禁止手数）
 
-- **MCP/AI 工具数** = `len(d3ltool.tools.REGISTRY)`（当前 11）。
+- **MCP/AI 工具数** = `len(d3ltool.tools.REGISTRY)`（当前 13）。
   引用处：README.md、READMEcn.md、index.html、index-cn.html、paper/paper.md、
   user_manual §4.6、docs/mcp.md。
-- **pytest 测试数** = 全量 `python -m pytest tests/ -q` 末行 passed 数（当前 116）。
+- **pytest 测试数** = 全量 `python -m pytest tests/ -q` 末行 passed 数（当前 177）。
   引用处：paper/paper.md、docs/submission_checklist.md。
 - **版本号**以 `d3ltool/__init__.py` 的 `__version__` 为准，pyproject.toml 与
   CITATION.cff 必须与它一致。
@@ -81,8 +81,8 @@ grep -n 'version = "' pyproject.toml && grep -n '__version__' d3ltool/__init__.p
   && grep -n '^version:' CITATION.cff && grep -n 'badge">v' index.html index-cn.html
 
 # ② 上一版本号残留（应无输出；模式按"上一个版本号"滚动更新）
-grep -rn "v2\.2\.0\|V2\.0\.2\|v2\.0\.3" README.md READMEcn.md index.html index-cn.html \
-  docs/*.md docs/copyright/*.md paper/paper.md CITATION.cff | grep -v "Changelog\|变更记录\|v2\.0\.3+"
+grep -rn "v2\.5\.0\|V2\.5\.0" README.md READMEcn.md index.html index-cn.html \
+  docs/*.md docs/copyright/*.md paper/paper.md CITATION.cff | grep -v "更新日志\|Changelog\|变更记录"
 
 # ③ 工具数与测试数
 python -c "import d3ltool.tools as t; print(len(t.REGISTRY))"

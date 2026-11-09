@@ -49,7 +49,9 @@ def _glass_group():
     """The GLASS group is generated from d3ltool/glass_registry.py (which is
     generated from the author's glass.sqdaitools R package) — verified
     variants first.  These ids route to the public glass.hku.hk directory
-    search, not CMR, and never need an Earthdata sign-in."""
+    search, not CMR, and never need an Earthdata sign-in.  Static file
+    collections (flat) have no time dimension; global CMG products carry no
+    tile fragment in their filenames, so tiles never apply to them."""
     from . import glass_registry as gr
 
     items = []
@@ -59,10 +61,23 @@ def _glass_group():
             res_zh = res_en = v["temporal_res"]
         elif v["layout"] == "flat":
             res_zh, res_en = "无时间维（固定层）", "no time dimension (static layer)"
+        elif v["layout"] == "year_files":
+            res_zh, res_en = "按年归档（无合成周期）", "annual files (no composites)"
         else:
             res_zh, res_en = "合成周期未核验", "cadence unverified"
-        zh = f"{v['long_name']}，{res_zh}" + ("（已核验）" if v["verified"] else "")
-        en = f"{v['long_name']}, {res_en}" + (" (verified)" if v["verified"] else "")
+        extra_zh = extra_en = ""
+        if v["product"] == "Albedo":
+            extra_zh = "；多波段 BSA/WSA，后处理在 R 包中选子数据集"
+            extra_en = "; multi-band BSA/WSA — pick the subdataset in the R package"
+        elif v["product"] == "BBE":
+            # the archive's scale_factor attribute points the wrong way
+            # (×10000); processing belongs to the R package, which corrects it
+            extra_zh = "；归档 scale 标注方向反（×10000），修正交给 R 包"
+            extra_en = "; archive scale_factor is flipped (×10000) — the R package corrects it"
+        zh = (f"{v['long_name']}，{res_zh}" + extra_zh
+              + ("（已核验）" if v["verified"] else ""))
+        en = (f"{v['long_name']}, {res_en}" + extra_en
+              + (" (verified)" if v["verified"] else ""))
         items.append((v["variant_id"], v["version"] or "", zh, en))
     return ("GLASS", items)
 

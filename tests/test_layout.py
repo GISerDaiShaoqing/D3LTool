@@ -558,10 +558,50 @@ def test_search_panel_has_glass_group(tmp_path, monkeypatch):
         idx = sp.group_combo.findText("GLASS")
         assert idx >= 0
         sp.group_combo.setCurrentIndex(idx)
-        assert sp.product_combo.currentText() == "EVI_MODIS_250M"
+        assert sp.product_combo.currentText() == "AGB_0.01D_V02"
         names = [sp.product_combo.itemText(i)
                  for i in range(sp.product_combo.count())]
         assert "LAI_MODIS_250M" in names and "AGB_0.05D" in names
+    finally:
+        window.close()
+
+
+def test_search_panel_glass_hints(tmp_path, monkeypatch):
+    """GLASS 布局联动：flat 静态集禁用日期并提示，全球 CMG 提示免瓦片，
+    分瓦片变体与 NASA 产品无提示。"""
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        sp = window.search_panel
+
+        def pick(short_name):
+            # 可编辑 QComboBox 的 setCurrentText 只改行编辑文本、不触发
+            # currentIndexChanged——走 findData/setCurrentIndex 才是真实联动
+            idx = sp.product_combo.findData(short_name)
+            assert idx >= 0, short_name
+            sp.product_combo.setCurrentIndex(idx)
+            sp._update_glass_hint()
+
+        gidx = sp.group_combo.findText("GLASS")
+        assert gidx >= 0
+        sp.group_combo.setCurrentIndex(gidx)
+
+        pick("LAI_MODIS_250M")
+        assert sp.glass_hint.isHidden()
+        assert sp.start_edit.isEnabled() and sp.end_edit.isEnabled()
+
+        pick("KGClim_KGClim_V1_historical_1981_2010")
+        assert not sp.glass_hint.isHidden()
+        assert not sp.start_edit.isEnabled() and not sp.end_edit.isEnabled()
+
+        pick("AWGF_LST_ABI_CMG_005deg")
+        assert not sp.glass_hint.isHidden()
+        assert sp.start_edit.isEnabled()
+
+        midx = sp.group_combo.findText("MODIS Terra")
+        sp.group_combo.setCurrentIndex(midx)
+        pick("MOD13Q1")
+        assert sp.glass_hint.isHidden()
+        assert sp.start_edit.isEnabled() and sp.end_edit.isEnabled()
     finally:
         window.close()
 

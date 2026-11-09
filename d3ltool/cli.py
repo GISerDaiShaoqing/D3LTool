@@ -8,7 +8,7 @@ import argparse
 import getpass
 import sys
 
-from . import __version__, auth, config, engine, search
+from . import __version__, auth, config, engine, glass, search
 
 
 def _setup_stdout():
@@ -20,9 +20,11 @@ def _setup_stdout():
 
 
 def _add_search_args(p):
-    p.add_argument("short_name", help="CMR short name, e.g. VNP46A1 / MOD13Q1 / M2T1NXSLV")
-    p.add_argument("--start", required=True, help="start date YYYY-MM-DD")
-    p.add_argument("--end", required=True, help="end date YYYY-MM-DD")
+    p.add_argument("short_name", help="CMR short name, e.g. VNP46A1 / MOD13Q1 / M2T1NXSLV; "
+                   "GLASS variant ids like LAI_MODIS_250M also work")
+    p.add_argument("--start", default="", help="start date YYYY-MM-DD "
+                   "(optional for GLASS static collections, e.g. KGClim/AGB)")
+    p.add_argument("--end", default="", help="end date YYYY-MM-DD (same rule)")
     p.add_argument("--tile", action="append", default=[],
                    help="MODIS/VIIRS tile like h04v03 (repeatable)")
     p.add_argument("--bbox", nargs="+", default=[],
@@ -33,6 +35,14 @@ def _add_search_args(p):
 
 
 def _params_from_args(args):
+    if not args.start or not args.end:
+        # GLASS static collections (flat layout) have no time dimension —
+        # the search lists the whole folder regardless of dates.
+        if not (glass.is_glass_variant(args.short_name)
+                and glass.get_variant(args.short_name).get("layout") == "flat"):
+            raise SystemExit(
+                "--start/--end are required for this product (only GLASS "
+                "static collections like KGClim/AGB can omit them)")
     tiles = []
     for t in args.tile:
         tiles.extend(search.parse_tiles(t))

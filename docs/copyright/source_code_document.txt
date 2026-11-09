@@ -1,15 +1,15 @@
 ====================================================================================================
-D3L Tool of NASA Satellite V2.5.0  软件著作权登记  源程序文档
-开发语言: Python 3.10+    生成日期: 2026-11-07    代码总行数: 9038
+D3L Tool of NASA Satellite V2.6.0  软件著作权登记  源程序文档
+开发语言: Python 3.10+    生成日期: 2026-11-09    代码总行数: 9508
 ====================================================================================================
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 1 页 / 共 182 页
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 1 页 / 共 191 页
 ====================================================================================================
 # ===== 文件: d3ltool/__init__.py =====
 # -*- coding: utf-8 -*-
 """D3L Tool of NASA Satellite v2 — search & download NASA Earth science data."""
 
-__version__ = "2.5.0"
+__version__ = "2.6.0"
 APP_NAME = "D3L Tool of NASA Satellite"
 # ===== 文件: d3ltool/__main__.py =====
 # -*- coding: utf-8 -*-
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     sys.exit(run_gui())
 # ===== 文件: d3ltool/auth.py =====
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 2 页 / 共 182 页
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 2 页 / 共 191 页
 ====================================================================================================
 # -*- coding: utf-8 -*-
 """Earthdata Login via earthaccess. Search needs no auth; downloads do."""
@@ -109,7 +109,7 @@ def is_authenticated() -> bool:
     try:
         return bool(singleton.authenticated)
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 3 页 / 共 182 页
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 3 页 / 共 191 页
 ====================================================================================================
     except Exception:
         return False
@@ -162,7 +162,7 @@ def _call_login(**kwargs):
         return earthaccess.login(**kwargs)
 
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 4 页 / 共 182 页
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 4 页 / 共 191 页
 ====================================================================================================
 
 def _urs_probe(username: str, password: str) -> str:
@@ -215,7 +215,7 @@ def login(username: str, password: str, persist: bool = True) -> str:
 
     result = None
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 5 页 / 共 182 页
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 5 页 / 共 191 页
 ====================================================================================================
     error_text = ""
     for attempt in ({"strategy": "environment", "persist": persist}, {"persist": persist}):
@@ -268,7 +268,7 @@ def _persist_to_netrc(username: str, password: str) -> bool:
     (Windows name `_netrc`, or the path from the NETRC environment variable).
     """
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 6 页 / 共 182 页
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 6 页 / 共 191 页
 ====================================================================================================
     singleton = _auth_singleton()
     if singleton is not None:
@@ -321,7 +321,7 @@ def new_download_session():
                 try:
                     session = singleton.get_session()
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 7 页 / 共 182 页
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 7 页 / 共 191 页
 ====================================================================================================
                 except Exception:
                     session = None
@@ -353,7 +353,7 @@ import argparse
 import getpass
 import sys
 
-from . import __version__, auth, config, engine, search
+from . import __version__, auth, config, engine, glass, search
 
 
 def _setup_stdout():
@@ -365,22 +365,32 @@ def _setup_stdout():
 
 
 def _add_search_args(p):
-    p.add_argument("short_name", help="CMR short name, e.g. VNP46A1 / MOD13Q1 / M2T1NXSLV")
-    p.add_argument("--start", required=True, help="start date YYYY-MM-DD")
-    p.add_argument("--end", required=True, help="end date YYYY-MM-DD")
+    p.add_argument("short_name", help="CMR short name, e.g. VNP46A1 / MOD13Q1 / M2T1NXSLV; "
+                   "GLASS variant ids like LAI_MODIS_250M also work")
+    p.add_argument("--start", default="", help="start date YYYY-MM-DD "
+                   "(optional for GLASS static collections, e.g. KGClim/AGB)")
+    p.add_argument("--end", default="", help="end date YYYY-MM-DD (same rule)")
     p.add_argument("--tile", action="append", default=[],
                    help="MODIS/VIIRS tile like h04v03 (repeatable)")
     p.add_argument("--bbox", nargs="+", default=[],
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 8 页 / 共 191 页
+====================================================================================================
                    help="bounding box: west,south,east,north (for MERRA-2 etc.); "
                         "spaces or commas both fine, e.g. --bbox 100 20 120 40")
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 8 页 / 共 182 页
-====================================================================================================
     p.add_argument("--version", default="", help="CMR version, e.g. 6.1 (optional)")
     p.add_argument("--limit", type=int, default=200, help="max granules (default 200)")
 
 
 def _params_from_args(args):
+    if not args.start or not args.end:
+        # GLASS static collections (flat layout) have no time dimension —
+        # the search lists the whole folder regardless of dates.
+        if not (glass.is_glass_variant(args.short_name)
+                and glass.get_variant(args.short_name).get("layout") == "flat"):
+            raise SystemExit(
+                "--start/--end are required for this product (only GLASS "
+                "static collections like KGClim/AGB can omit them)")
     tiles = []
     for t in args.tile:
         tiles.extend(search.parse_tiles(t))
@@ -416,6 +426,9 @@ def _cmd_login(_args):
 
 def _cmd_search(args):
     granules = search.run_search(_params_from_args(args))
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 9 页 / 共 191 页
+====================================================================================================
     _print_results(granules)
     return 0
 
@@ -426,9 +439,6 @@ def _cmd_download(args):
             print("not signed in; downloading requires Earthdata login")
             return _cmd_login(args)
         print("not signed in (no tty). Run `d3ltool login` first.", file=sys.stderr)
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 9 页 / 共 182 页
-====================================================================================================
         return 2
 
     params = _params_from_args(args)
@@ -470,6 +480,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
     print("done.")
     return 0
 
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 10 页 / 共 191 页
+====================================================================================================
+
 
 def _cmd_gui(_args):
     from .app import run_gui
@@ -479,9 +492,6 @@ def _cmd_gui(_args):
 def main(argv=None) -> int:
     _setup_stdout()
     parser = argparse.ArgumentParser(
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 10 页 / 共 182 页
-====================================================================================================
         prog="d3ltool",
         description=f"D3L Tool of NASA Satellite v{__version__} — "
                     "search & download MODIS/VIIRS/MERRA-2 data. "
@@ -522,6 +532,9 @@ if __name__ == "__main__":
 """User settings persisted as JSON in ~/.d3ltool/config.json."""
 
 import json
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 11 页 / 共 191 页
+====================================================================================================
 from pathlib import Path
 
 CONFIG_DIR = Path.home() / ".d3ltool"
@@ -532,9 +545,6 @@ DEFAULTS = {
     "download_dir": str(Path.home() / "Downloads"),
     "max_workers": 3,
     "proxy_url": "",
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 11 页 / 共 182 页
-====================================================================================================
     "username": "",
     # AI Assistant (any OpenAI-compatible provider); key stays on this machine
     "ai_base_url": "",
@@ -575,6 +585,9 @@ def update_config(**kw) -> dict:
 Pure Python (no Qt). The GUI/CLI wrap it and render the callbacks.
 """
 
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 12 页 / 共 191 页
+====================================================================================================
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -585,9 +598,6 @@ from urllib.parse import unquote
 import requests
 
 CHUNK_SIZE = 256 * 1024
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 12 页 / 共 182 页
-====================================================================================================
 MAX_ATTEMPTS = 4
 
 STATES = ("pending", "running", "done", "skipped", "failed", "paused", "canceled")
@@ -628,6 +638,9 @@ class DownloadEngine:
         self.on_event = on_event or (lambda item, event, payload: None)
         self.items = {}
         self._next_id = 1
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 13 页 / 共 191 页
+====================================================================================================
         self._pool = None
         self._futures = {}
         self._control = {}
@@ -638,9 +651,6 @@ class DownloadEngine:
 
     # ------------------------------------------------------------------ public
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 13 页 / 共 182 页
-====================================================================================================
     def add(self, url, filename=None, size_hint=0) -> DownloadItem:
         filename = filename or filename_from_url(url)
         dest = self.dest_dir / filename
@@ -681,6 +691,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
                 return
             self._control[item_id] = {"pause": False, "cancel": False}
             item.state = "pending"
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 14 页 / 共 191 页
+====================================================================================================
             item.message = ""
         self._emit(item, "status", {})
         self._ensure_pool()
@@ -691,9 +704,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
     def clear_finished(self) -> None:
         with self._lock:
             finished = [i for i, it in list(self.items.items())
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 14 页 / 共 182 页
-====================================================================================================
                         if it.state in ("done", "skipped", "failed", "canceled")]
             for i in finished:
                 it = self.items.pop(i)
@@ -735,6 +745,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         except Exception:
             pass
 
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 15 页 / 共 191 页
+====================================================================================================
+
     def _set_state(self, item, state, message):
         item.state = state
         item.message = message
@@ -744,9 +757,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
 
     def _run(self, item):
         ctrl = self._control[item.id]
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 15 页 / 共 182 页
-====================================================================================================
         attempt = 0
         while True:
             if ctrl["cancel"]:
@@ -787,6 +797,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         except requests.RequestException:
             pass
         if not remote_size and item.total:
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 16 页 / 共 191 页
+====================================================================================================
             remote_size = int(item.total)
         item.total = remote_size
 
@@ -797,9 +810,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
                 return
             dest.unlink()   # incomplete or corrupt: start over
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 16 页 / 共 182 页
-====================================================================================================
         offset = part.stat().st_size if part.exists() else 0
         if remote_size and offset > remote_size:
             offset = 0
@@ -840,6 +850,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
                 for chunk in resp.iter_content(chunk_size=CHUNK_SIZE):
                     if ctrl["cancel"]:
                         raise _Canceled()
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 17 页 / 共 191 页
+====================================================================================================
                     if ctrl["pause"]:
                         raise _Paused()
                     if not chunk:
@@ -850,9 +863,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
                     if now - last_t >= 0.4:
                         item.speed = (item.downloaded - last_b) / (now - last_t)
                         last_t, last_b = now, item.downloaded
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 17 页 / 共 182 页
-====================================================================================================
                         self._emit(item, "progress", {})
 
         if remote_size and item.downloaded != remote_size:
@@ -878,6 +888,7 @@ in the R package on purpose: two packages, one lifecycle.
 
 import math
 import re
+import time
 from datetime import date, timedelta
 from html.parser import HTMLParser
 from urllib.parse import unquote, urlsplit
@@ -892,7 +903,21 @@ GLASS_HOST = "glass.hku.hk"
 USER_AGENT = (f"D3LTool/{__version__} (GLASS archive search; "
               "+https://github.com/GISerDaiShaoqing/D3LTool)")
 
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 18 页 / 共 191 页
+====================================================================================================
 _TILE_FN_RE = re.compile(r"h[0-9]{2}v[0-9]{2}", re.IGNORECASE)
+_ATOK_RE = re.compile(r"A[0-9]{7}")   # A{yyyy}{ddd} composite token (year_files)
+
+# glass.hku.hk rate-limits bursts of directory listings (requests fail or
+# time out).  Measured politeness policy from the glass.sqdaitools engine:
+# exponential backoff retries (8/24/72s) plus a final attempt after a 15s
+# cooldown, and at least ~1.2s between any two directory fetches.
+# Tests shrink these to zero — patch the module constants, not time.sleep.
+LISTING_BACKOFFS = (8.0, 24.0, 72.0)
+LISTING_COOLDOWN = 15.0
+LISTING_MIN_INTERVAL = 1.2
+_LAST_LISTING = [0.0]   # monotonic timestamp of the last listing fetch
 
 
 class GlassError(ValueError):
@@ -903,9 +928,6 @@ class GlassError(ValueError):
 
 def is_glass_variant(short_name: str) -> bool:
     """True if the name is a GLASS variant id (case-insensitive)."""
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 18 页 / 共 182 页
-====================================================================================================
     return (short_name or "").strip().lower() in VARIANTS
 
 
@@ -934,6 +956,9 @@ def doys(v: dict, start: str, end: str, mode: str = "span") -> list:
     """Port of the R glass_doys(): expand a date range into composite
     (year, doy) folder keys with the variant's cadence.  "span" (default)
     keeps every composite whose interval [begin, begin+cadence-1] intersects
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 19 页 / 共 191 页
+====================================================================================================
     the range; "start" keeps composites beginning inside the range.  Folder
     start DOYs cap at 365 like the R original (leap years keep folder 365).
     Unknown cadence raises GlassError — search() falls back to a
@@ -941,7 +966,8 @@ def doys(v: dict, start: str, end: str, mode: str = "span") -> list:
     cad = v.get("cadence_days")
     if not cad:
         raise GlassError(f"cadence unknown for variant {v['variant_id']}; "
-                         "date search needs a verified variant")
+                         "composite folders are derived from the archive "
+                         "instead")
     d0, d1 = _date_range(start, end)
     out = []
     for year in range(d0.year, d1.year + 1):
@@ -955,37 +981,58 @@ def doys(v: dict, start: str, end: str, mode: str = "span") -> list:
 
 
 def doys_from_listing(v: dict, start: str, end: str, session=None) -> list:
-    """Skeleton variants carry no verified cadence: derive the (year, doy)
+    """Variants without a verified cadence: derive the folders from the
+    archive itself and keep those starting inside the range — the R
+    package's legacy "start" mode, layout-aware:
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 19 页 / 共 182 页
-====================================================================================================
-    folders from the archive itself (list url_root for years, each year for
-    DOY folders) and keep the folders starting inside the range — the R
-    package's legacy "start" mode.  Variants whose root holds no year
-    folders at all (climatology files, nested resolutions, retired dirs)
-    raise GlassError — the registry skeleton does not model those layouts."""
+    - year_doy: ``{root}/{year}/{ddd}/`` folders (3-digit DOY dirs),
+    - year_yyyddd: ``{root}/{year}/{YYYYDDD}/`` folders (7-digit dirs),
+    - year_files: granules sit directly under ``{year}/`` — cadence-less
+      annual collections have no DOY semantics, so one (year, None) pair
+      per year in range; the year folder is listed whole.
+
+    Variants whose root holds no year folders at all (climatology files,
+    nested resolutions, retired dirs) raise GlassError."""
     d0, d1 = _date_range(start, end)
     session = session or _get_session()
+    root = v["url_root"]
     try:
-        years = _dir_names(v["url_root"], r"^\d{4}$", session)
+        years = _dir_names(root, r"^\d{4}$", session)
     except FileNotFoundError:
         raise GlassError(
-            f"archive folder not found (404): {v['url_root']} — the variant "
+            f"archive folder not found (404): {root} — the variant "
             "exists in the registry but not on the archive") from None
     if not years:
         raise GlassError(
-            f"no year folders under {v['url_root']} — the archive layout of "
+            f"no year folders under {root} — the archive layout of "
             f"{v['variant_id']} is not year/composite based; browse it "
             "directly or use the glass.sqdaitools R package")
     out = []
+    layout = v.get("layout")
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 20 页 / 共 191 页
+====================================================================================================
+    if layout == "year_files":
+        for yname in years:
+            year = int(yname)
+            if d0.year <= year <= d1.year:
+                out.append((year, None))
+        return out
+    doy_pat = r"^\d{7}$" if layout == "year_yyyddd" else r"^\d{3}$"
     for yname in years:
         year = int(yname)
         if year < d0.year or year > d1.year:
             continue
-        for dname in _dir_names(f"{v['url_root']}{year}/", r"^\d{3}$", session):
-            begin = date(year, 1, 1) + timedelta(days=int(dname) - 1)
+        for dname in _dir_names(f"{root}{year}/", doy_pat, session):
+            if layout == "year_yyyddd":
+                if int(dname[:4]) != year:
+                    continue
+                doy = int(dname[4:])
+            else:
+                doy = int(dname)
+            begin = date(year, 1, 1) + timedelta(days=doy - 1)
             if d0 <= begin <= d1:
-                out.append((year, int(dname)))
+                out.append((year, doy))
     return out
 
 
@@ -1009,15 +1056,15 @@ def _dir_names(url: str, pattern: str, session) -> list:
 
 # ------------------------------------------------------------------ tiles
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 20 页 / 共 182 页
-====================================================================================================
 def tiles_for_bbox(west: float, south: float, east: float, north: float) -> list:
     """Exact bbox -> [(h, v)] on the sinusoidal grid — the Python twin of the
     R package's glass_tiles_for_bbox().  Tiles are exact rectangles in
     sinusoidal space, so the bbox intersects a tile iff their latitude bands
     overlap and the bbox longitude interval overlaps the tile's longitude
     interval at some latitude inside that overlap.  Both inequalities are
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 21 页 / 共 191 页
+====================================================================================================
     monotone in |lat| (a tile's edges move outward as cos(lat) shrinks), so
     evaluating each at its analytically hardest latitude inside the overlap
     is exact — no polygon library needed.  Rows reaching into the polar caps
@@ -1063,14 +1110,14 @@ def tiles_for_bbox(west: float, south: float, east: float, north: float) -> list
     return out
 
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 21 页 / 共 182 页
-====================================================================================================
-
 # ---------------------------------------------------------------- listing
 
 class _HrefParser(HTMLParser):
     def __init__(self):
         super().__init__()
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 22 页 / 共 191 页
+====================================================================================================
         self.hrefs = []
 
     def handle_starttag(self, tag, attrs):
@@ -1089,15 +1136,21 @@ def _ext_pattern(ext: str) -> "re.Pattern":
 
 
 def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
-               ext: str = "hdf", session=None) -> list:
+               ext=None, session=None, fetch=None) -> list:
     """One directory listing — port of the R glass_list_files(): the variant
     folder's <a href>s, subdirectories dropped, filtered by extension (an
-    'hdf' match also keeps '.hdf.xml' sidecars; ext=None keeps every file,
-    used for flat static products), by tile fragment and — for verified
-    variants — by the GLASS product code prefix (drops misplaced files).
-    A missing folder raises FileNotFoundError (the cadence math names
-    composite folders the archive never filled)."""
+    hdf match also keeps '.hdf.xml' sidecars), by tile fragment — only for
+    tiled products, global CMG filenames carry no h##v## — and, for verified
+    variants, by the registry's real GLASS code prefix (GHOSE03G01 for BBE,
+    not every family starts with "GLASS").  year_files variants additionally
+    filter by the A{yyyy}{ddd} composite token in the filename when a doy is
+    given.  ext=None uses the variant's registry ext (from the R package's
+    verified granule samples: .hdf / .tif / .nc / .dat); a missing folder
+    raises FileNotFoundError (the cadence math names composite folders the
+    archive never filled).  `fetch` lets search() memoize directory pages —
+    a year_files year folder would otherwise be re-listed once per day."""
     session = session or _get_session()
+    fetch = fetch or _fetch_hrefs
     root = v["url_root"]
     layout = v.get("layout")
     if layout == "flat":
@@ -1107,17 +1160,31 @@ def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
             raise GlassError(f"{v['variant_id']} is a year_doy variant: "
                              "year and doy are required")
         folder = f"{root}{int(year)}/{int(doy):03d}/"
+    elif layout == "year_files":
+        if not year:
+            raise GlassError(f"{v['variant_id']} is a year_files variant: "
+                             "year is required")
+        folder = f"{root}{int(year)}/"
+    elif layout == "year_yyyddd":
+        if not year or not doy:
+            raise GlassError(f"{v['variant_id']} is a year_yyyddd variant: "
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 23 页 / 共 191 页
+====================================================================================================
+                             "year and doy are required")
+        folder = f"{root}{int(year)}/{int(year)}{int(doy):03d}/"
     else:
         raise GlassError(f"unknown layout {layout!r} for {v['variant_id']}")
 
+    if ext is None:
+        ext = v.get("ext") or "hdf"
     pat = _ext_pattern(ext) if ext else None
     want = {str(t).lower() for t in (tiles or [])}
+    if want and not v.get("tiled", True):
+        want = set()    # global CMG products: tile filtering must not apply
     code = v.get("code")
     out = []
-    for href in _fetch_hrefs(folder, session):
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 22 页 / 共 182 页
-====================================================================================================
+    for href in fetch(folder, session):
         if href.endswith("/"):
             continue
         filename = unquote(href.split("?")[0].rsplit("/", 1)[-1])
@@ -1126,13 +1193,23 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
             continue
         if want and (not m or m.group(0).lower() not in want):
             continue
+        if layout == "year_files" and doy and \
+                f"A{int(year)}{int(doy):03d}" not in filename:
+            continue
         if v.get("verified") and code and not filename.startswith(code):
             continue
+        f_year, f_doy = year, doy
+        if layout == "year_files":
+            tok = _ATOK_RE.search(filename)
+            if tok:
+                f_year, f_doy = int(tok.group(0)[1:5]), int(tok.group(0)[5:8])
+            else:
+                f_year, f_doy = int(year), None   # annual file, no composite token
         out.append({
             "filename": filename,
             "url": href if href.startswith("http") else folder + href,
-            "year": int(year) if year else None,
-            "doy": int(doy) if doy else None,
+            "year": int(f_year) if f_year else None,
+            "doy": int(f_doy) if f_doy else None,
             "tile": m.group(0).lower() if m else "",
             "ext": filename.rsplit(".", 1)[-1].lower(),
         })
@@ -1144,11 +1221,20 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
 def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
            max_results: int = 200) -> list:
     """GLASS archive search.  Returns the row dicts the CMR path's accessor
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 24 页 / 共 191 页
+====================================================================================================
     functions understand: {url, filename, date, tile, size_mb, size_bytes,
     product}.  size is 0 — directory listings carry no sizes; the download
-    engine HEADs every file anyway.  Variants without a verified cadence get
-    their folders derived from the archive itself (doys_from_listing)."""
+    engine HEADs every file anyway.  All four archive layouts are handled:
+    year_doy (composite folders), flat (static file collections — dates
+    ignored), year_files (granules under {year}/, cadence ones filtered by
+    the A{yyyy}{ddd} token) and year_yyyddd (7-digit YYYYDDD day folders).
+    Variants without a verified cadence get their folders derived from the
+    archive itself (doys_from_listing).  Tile filtering only applies to
+    tiled products; global CMG variants ignore tiles/bbox entirely."""
     v = get_variant(short_name)
+    layout = v.get("layout")
     want = {str(t).lower() for t in (tiles or [])}
     if bbox:
         west, south, east, north = (float(x) for x in bbox)
@@ -1156,11 +1242,14 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
             want.add(_tiles.tile_name(h, vv))
 
     session = _get_session()
-    if v.get("layout") == "flat":
-        pairs = [(None, None)]
-        ext = None            # static products carry any extension (AGB is .tif)
+    if layout == "flat":
+        pairs = [(None, None)]   # static collection: dates play no role
+    elif layout == "year_files" and not v.get("cadence_days"):
+        # cadence-less annual collections (TPSCE, AWGF_LST_GHA-LST): one
+        # listing per year inside the range, no composite filter
+        d0, d1 = _date_range(start, end)
+        pairs = [(y, None) for y in range(d0.year, d1.year + 1)]
     else:
-        ext = "hdf"           # composite products are HDF, like the R default
         try:
             pairs = doys(v, start, end)
         except GlassError:
@@ -1168,14 +1257,31 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
 
     rows = []
     errors = []
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 23 页 / 共 182 页
-====================================================================================================
     missing = 0
+    # Memoized directory fetches: a year_files year folder holds every
+    # composite of the year, so a multi-day range would re-list the same
+    # page once per day — the server politely declines that kind of burst.
+    memo = {}
+
+    def _memo_fetch(url, _session):
+        if url not in memo:
+            try:
+                memo[url] = _fetch_hrefs(url, _session)
+            except Exception as exc:
+                memo[url] = exc
+                raise
+        val = memo[url]
+        if isinstance(val, Exception):
+            raise val
+        return val
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 25 页 / 共 191 页
+====================================================================================================
+
     for year, doy in pairs:
         try:
-            files = list_files(v, year=year, doy=doy, tiles=want, ext=ext,
-                               session=session)
+            files = list_files(v, year=year, doy=doy, tiles=want,
+                               session=session, fetch=_memo_fetch)
         except FileNotFoundError:
             missing += 1   # sparse composite: the cadence math names folders the archive never filled
             continue
@@ -1183,10 +1289,17 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
             errors.append(f"{year or ''}/{doy or ''}: {exc}")
             continue
         for f in files:
+            fy, fd = f["year"], f["doy"]
+            if fy and fd:
+                date_s = _doy_date(fy, fd).isoformat()
+            elif fy:
+                date_s = str(fy)   # annual file without a composite token
+            else:
+                date_s = ""        # flat static layer: no date at all
             rows.append({
                 "url": f["url"],
                 "filename": f["filename"],
-                "date": _doy_date(year, doy).isoformat() if year else "",
+                "date": date_s,
                 "tile": f["tile"],
                 "size_mb": 0.0,
                 "size_bytes": 0,
@@ -1195,9 +1308,28 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
             if len(rows) >= max_results:
                 return rows
     if not rows and missing and missing == len(pairs):
+        # Two very different causes share this symptom: the requested range
+        # sits beyond the archive's observed coverage (the GUI default dates
+        # are "recent" — GLASS archives lag years behind), or the archive
+        # layout really does differ from the registry. The registry carries
+        # observed start/end years, so tell them apart.
+        if layout == "flat":
+            raise GlassError(
+                f"GLASS archive folder not found (404): {v['url_root']} — "
+                "the variant exists in the registry but not on the archive")
+        sy, ey = v.get("start_year"), v.get("end_year")
+        if sy and ey and all(y is not None and not (sy <= y <= ey)
+                             for y, _ in pairs):
+            raise GlassError(
+                f"GLASS archive coverage for {v['variant_id']} observed "
+                f"{sy}-{ey}; the requested range {start}..{end} has no "
+                "composite folders yet — pick an earlier period")
         raise GlassError(
             f"no archive folder found for {v['variant_id']} (all {missing} "
             "listing URLs returned 404 — the archive layout may differ from "
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 26 页 / 共 191 页
+====================================================================================================
             "the registry)")
     if not rows and errors:
         raise RuntimeError("GLASS archive unreachable: " + errors[0])
@@ -1221,9 +1353,6 @@ def _get_session():
         from . import auth
 
         s = requests.Session()
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 24 页 / 共 182 页
-====================================================================================================
         s.headers["User-Agent"] = USER_AGENT
         auth._apply_configured_proxy(s)
         _SESSION = s
@@ -1231,26 +1360,51 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
 
 
 def _fetch_hrefs(url: str, session) -> list:
-    """All <a href> values of a directory page.  404 becomes
-    FileNotFoundError (a normal sparse-folder condition for the search
-    loop); any other HTTP or connection error raises."""
-    resp = session.get(url, timeout=30)
-    if resp.status_code == 404:
-        raise FileNotFoundError(url)
-    resp.raise_for_status()
-    parser = _HrefParser()
-    parser.feed(resp.text)
-    parser.close()
-    return parser.hrefs
+    """All <a href> values of a directory page, with the glass.hku.hk
+    politeness policy: consecutive directory fetches are spaced at least
+    LISTING_MIN_INTERVAL apart, and transient failures (timeouts, HTTP
+    429/5xx — the server's way of rate-limiting) retry on the measured
+    exponential backoff 8/24/72s plus one final attempt after a 15s
+    cooldown.  404 is never retried: it becomes FileNotFoundError, a normal
+    sparse-folder condition for the search loop."""
+    waits = (0.0,) + tuple(LISTING_BACKOFFS) + (LISTING_COOLDOWN,)
+    last_exc = None
+    for wait in waits:
+        if wait:
+            time.sleep(wait)
+        gap = LISTING_MIN_INTERVAL - (time.monotonic() - _LAST_LISTING[0])
+        if gap > 0:
+            time.sleep(gap)
+        try:
+            resp = session.get(url, timeout=30)
+            _LAST_LISTING[0] = time.monotonic()
+            if resp.status_code == 404:
+                raise FileNotFoundError(url)
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 27 页 / 共 191 页
+====================================================================================================
+            resp.raise_for_status()
+            parser = _HrefParser()
+            parser.feed(resp.text)
+            parser.close()
+            return parser.hrefs
+        except requests.RequestException as exc:
+            _LAST_LISTING[0] = time.monotonic()
+            last_exc = exc
+    raise last_exc
 # ===== 文件: d3ltool/glass_registry.py =====
 # -*- coding: utf-8 -*-
 """GLASS product registry — generated data, do not edit by hand.
 
 Source: the glass.sqdaitools R package (same author), whose
 data-raw/build_registry.R derives the variants from a directory scan
-of https://glass.hku.hk/archive/ ; five variants carry verified
-naming/cadence metadata, the rest are unverified skeletons.
+of https://glass.hku.hk/archive/ ; 131 of 133 variants carry
+verified naming/cadence metadata.  ``ext``/``tiled`` are derived
+from the package's data-raw/verify_batch_log.csv (real granule
+samples: AWGF is .tif, BBE is .hdf, TPSCE is .dat; global CMG
+products carry no h##v## tile fragment).
 Regenerate: python tools_gen_glass_registry.py <glass_products.csv>
+[<verify_batch_log.csv>]
 (that script has the Rscript export one-liner in its docstring).
 
 Band metadata (fill/scale/valid range) deliberately stays in the R
@@ -1264,22 +1418,24 @@ VARIANTS = {
         "long_name": 'Global Forest Aboveground Biomass (AGB)',
         "source": '0.01D',
         "res": 'V02',
-        "layout": 'year_doy',
+        "layout": 'flat',
         "start_year": None,
         "end_year": None,
         "cadence_days": None,
         "temporal_res": None,
         "version": None,
         "code": None,
-        "verified": False,
+        "verified": True,
         "url_root": 'https://glass.hku.hk/archive/AGB/0.01D/V02/',
+        "ext": 'tif',
+        "tiled": False,
     },
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 25 页 / 共 182 页
-====================================================================================================
     "agb_0.05d": {
         "variant_id": 'AGB_0.05D',
         "product": 'AGB',
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 28 页 / 共 191 页
+====================================================================================================
         "long_name": 'Global Forest Aboveground Biomass (AGB)',
         "source": '0.05D',
         "res": None,
@@ -1290,8 +1446,10 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         "temporal_res": None,
         "version": None,
         "code": None,
-        "verified": False,
+        "verified": True,
         "url_root": 'https://glass.hku.hk/archive/AGB/0.05D/',
+        "ext": 'tif',
+        "tiled": False,
     },
     "agb_0.05d_old": {
         "variant_id": 'AGB_0.05D_old',
@@ -1306,8 +1464,10 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         "temporal_res": None,
         "version": None,
         "code": None,
-        "verified": False,
+        "verified": True,
         "url_root": 'https://glass.hku.hk/archive/AGB/0.05D_old/',
+        "ext": 'tif',
+        "tiled": False,
     },
     "agb_1km_v01": {
         "variant_id": 'AGB_1KM_V01',
@@ -1315,34 +1475,38 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         "long_name": 'Global Forest Aboveground Biomass (AGB)',
         "source": '1KM',
         "res": 'V01',
-        "layout": 'year_doy',
+        "layout": 'flat',
         "start_year": None,
         "end_year": None,
         "cadence_days": None,
         "temporal_res": None,
         "version": None,
         "code": None,
-        "verified": False,
+        "verified": True,
         "url_root": 'https://glass.hku.hk/archive/AGB/1KM/V01/',
+        "ext": 'tif',
+        "tiled": False,
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 29 页 / 共 191 页
+====================================================================================================
     },
     "albedo_abi_0_05d": {
         "variant_id": 'Albedo_ABI_0_05D',
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 26 页 / 共 182 页
-====================================================================================================
         "product": 'Albedo',
         "long_name": 'Broadband Albedo (Albedo)',
         "source": 'ABI',
         "res": '0.05D',
-        "layout": 'year_doy',
+        "layout": 'flat',
         "start_year": None,
         "end_year": None,
         "cadence_days": None,
         "temporal_res": None,
         "version": None,
         "code": None,
-        "verified": False,
+        "verified": True,
         "url_root": 'https://glass.hku.hk/archive/Albedo/ABI/0.05D/',
+        "ext": 'nc',
+        "tiled": False,
     },
     "albedo_abi_0_5d": {
         "variant_id": 'Albedo_ABI_0_5D',
@@ -1350,15 +1514,17 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         "long_name": 'Broadband Albedo (Albedo)',
         "source": 'ABI',
         "res": '0.5D',
-        "layout": 'year_doy',
+        "layout": 'flat',
         "start_year": None,
         "end_year": None,
         "cadence_days": None,
         "temporal_res": None,
         "version": None,
         "code": None,
-        "verified": False,
+        "verified": True,
         "url_root": 'https://glass.hku.hk/archive/Albedo/ABI/0.5D/',
+        "ext": 'nc',
+        "tiled": False,
     },
     "albedo_abi_500m": {
         "variant_id": 'Albedo_ABI_500M',
@@ -1366,34 +1532,38 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         "long_name": 'Broadband Albedo (Albedo)',
         "source": 'ABI',
         "res": '500M',
-        "layout": 'year_doy',
+        "layout": 'flat',
         "start_year": None,
         "end_year": None,
         "cadence_days": None,
         "temporal_res": None,
         "version": None,
         "code": None,
-        "verified": False,
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 30 页 / 共 191 页
+====================================================================================================
+        "verified": True,
         "url_root": 'https://glass.hku.hk/archive/Albedo/ABI/500M/',
+        "ext": 'nc',
+        "tiled": True,
     },
     "albedo_abi_landcover_climatology": {
         "variant_id": 'Albedo_ABI_landcover_climatology',
         "product": 'Albedo',
         "long_name": 'Broadband Albedo (Albedo)',
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 27 页 / 共 182 页
-====================================================================================================
         "source": 'ABI',
         "res": 'landcover_climatology',
-        "layout": 'year_doy',
+        "layout": 'flat',
         "start_year": None,
         "end_year": None,
         "cadence_days": None,
         "temporal_res": None,
         "version": None,
         "code": None,
-        "verified": False,
+        "verified": True,
         "url_root": 'https://glass.hku.hk/archive/Albedo/ABI/landcover_climatology/',
+        "ext": 'nc',
+        "tiled": False,
     },
     "albedo_avhrr_0_5d": {
         "variant_id": 'Albedo_AVHRR_0_5D',
@@ -1402,14 +1572,16 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         "source": 'AVHRR',
         "res": '0.5D',
         "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
+        "start_year": 1981,
+        "end_year": 2023,
         "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
+        "temporal_res": 'yearly',
+        "version": 'V40',
+        "code": 'GLASS02G02',
+        "verified": True,
         "url_root": 'https://glass.hku.hk/archive/Albedo/AVHRR/0.5D/',
+        "ext": 'hdf',
+        "tiled": False,
     },
     "albedo_mix_0_05d": {
         "variant_id": 'Albedo_MIX_0_05D',
@@ -1418,197 +1590,11 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         "source": 'MIX',
         "res": '0.05D',
         "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/Albedo/MIX/0.05D/',
-    },
-    "albedo_mix_0_5d": {
-        "variant_id": 'Albedo_MIX_0_5D',
-        "product": 'Albedo',
-        "long_name": 'Broadband Albedo (Albedo)',
-        "source": 'MIX',
-        "res": '0.5D',
+        "start_year": 1981,
+        "end_year": 2024,
 
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 28 页 / 共 182 页
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 162 页 / 共 191 页
 ====================================================================================================
-        "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/Albedo/MIX/0.5D/',
-    },
-    "albedo_modis_0_5d": {
-        "variant_id": 'Albedo_MODIS_0_5D',
-        "product": 'Albedo',
-        "long_name": 'Broadband Albedo (Albedo)',
-        "source": 'MODIS',
-        "res": '0.5D',
-        "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/Albedo/MODIS/0.5D/',
-    },
-    "albedo_modis_250m": {
-        "variant_id": 'Albedo_MODIS_250M',
-        "product": 'Albedo',
-        "long_name": 'Broadband Albedo (Albedo)',
-        "source": 'MODIS',
-        "res": '250M',
-        "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/Albedo/MODIS/250M/',
-    },
-    "albedo_modis_500m": {
-        "variant_id": 'Albedo_MODIS_500M',
-        "product": 'Albedo',
-        "long_name": 'Broadband Albedo (Albedo)',
-        "source": 'MODIS',
-        "res": '500M',
-        "layout": 'year_doy',
-        "start_year": None,
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 29 页 / 共 182 页
-====================================================================================================
-        "end_year": None,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/Albedo/MODIS/500M/',
-    },
-    "awgf_lst_abi_2km": {
-        "variant_id": 'AWGF_LST_ABI_2km',
-        "product": 'AWGF_LST',
-        "long_name": 'All-Weather/Gap-free Land Surface Temperature (AWGF LST)',
-        "source": 'ABI',
-        "res": '2km',
-        "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/AWGF_LST/ABI/2km/',
-    },
-    "awgf_lst_abi_cmg_002deg": {
-        "variant_id": 'AWGF_LST_ABI_CMG_002deg',
-        "product": 'AWGF_LST',
-        "long_name": 'All-Weather/Gap-free Land Surface Temperature (AWGF LST)',
-        "source": 'ABI',
-        "res": 'CMG_002deg',
-        "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/AWGF_LST/ABI/CMG_002deg/',
-    },
-    "awgf_lst_abi_cmg_005deg": {
-        "variant_id": 'AWGF_LST_ABI_CMG_005deg',
-        "product": 'AWGF_LST',
-        "long_name": 'All-Weather/Gap-free Land Surface Temperature (AWGF LST)',
-        "source": 'ABI',
-        "res": 'CMG_005deg',
-        "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
-        "cadence_days": None,
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 30 页 / 共 182 页
-====================================================================================================
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/AWGF_LST/ABI/CMG_005deg/',
-    },
-    "awgf_lst_gha-lst": {
-        "variant_id": 'AWGF_LST_GHA-LST',
-        "product": 'AWGF_LST',
-        "long_name": 'All-Weather/Gap-free Land Surface Temperature (AWGF LST)',
-        "source": 'GHA-LST',
-        "res": None,
-        "layout": 'year_doy',
-        "start_year": 2011,
-        "end_year": 2025,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/AWGF_LST/GHA-LST/',
-    },
-    "bbe_avhrr_0_05d": {
-        "variant_id": 'BBE_AVHRR_0_05D',
-        "product": 'BBE',
-        "long_name": 'Broadband Emissivity (BBE)',
-        "source": 'AVHRR',
-        "res": '0.05D',
-        "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-        "code": None,
-        "verified": False,
-        "url_root": 'https://glass.hku.hk/archive/BBE/AVHRR/0.05D/',
-    },
-    "bbe_avhrr_0_1d": {
-        "variant_id": 'BBE_AVHRR_0_1D',
-        "product": 'BBE',
-        "long_name": 'Broadband Emissivity (BBE)',
-        "source": 'AVHRR',
-        "res": '0.1D',
-        "layout": 'year_doy',
-        "start_year": None,
-        "end_year": None,
-        "cadence_days": None,
-        "temporal_res": None,
-        "version": None,
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 153 页 / 共 182 页
-====================================================================================================
-    def _checked_items(self) -> list:
-        rows = []
-        for row in range(self.table.rowCount()):
-            item = self.table.item(row, COL_CHECK)
-            if item is None or item.checkState() != Qt.CheckState.Checked:
-                continue
-            g = self._granules[row]
-            links = search.granule_links(g)
-            if not links:
-                continue
-            size_mb = search.granule_size_mb(g)
-            rows.append({
-                "url": links[0],
-                "filename": search.granule_filename(g),
                 "date": search.granule_date(g),
                 "size_bytes": int(size_mb * 1024 * 1024) if size_mb else 0,
             })
@@ -1640,14 +1626,11 @@ from PySide6.QtWidgets import (QComboBox, QDateEdit, QFormLayout, QGridLayout,
                                QPushButton, QScrollArea, QSpinBox,
                                QVBoxLayout, QWidget)
 
-from .. import i18n, products, search
+from .. import glass, i18n, products, search
 from .tile_map import TileMap
 
 CUSTOM_LABEL_ZH = "自定义产品 / Custom"
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 154 页 / 共 182 页
-====================================================================================================
 
 class SearchPanel(QWidget):
     search_requested = Signal(object)   # SearchParams
@@ -1662,6 +1645,9 @@ class SearchPanel(QWidget):
         body = QWidget()
         body.setObjectName("searchPanelBody")
         root = QVBoxLayout(body)
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 163 页 / 共 191 页
+====================================================================================================
         root.setContentsMargins(9, 9, 9, 9)
 
         scroll = QScrollArea()
@@ -1684,6 +1670,8 @@ class SearchPanel(QWidget):
         self.product_combo = QComboBox()
         self.product_combo.setEditable(True)
         self.product_combo.currentIndexChanged.connect(self._on_product_changed)
+        self.product_combo.lineEdit().textEdited.connect(
+            lambda _t: self._update_glass_hint())
 
         product_row = QHBoxLayout()
         product_row.addWidget(self.product_combo, 1)
@@ -1698,9 +1686,6 @@ class SearchPanel(QWidget):
 
         form.addRow(i18n.tr("label_product_group"), self.group_combo)
         form.addRow(i18n.tr("label_product"), product_row)
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 155 页 / 共 182 页
-====================================================================================================
         form.addRow(i18n.tr("label_version"), self.version_edit)
         root.addWidget(prod_box)
 
@@ -1713,9 +1698,21 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         for w in (self.start_edit, self.end_edit):
             w.setCalendarPopup(True)
             w.setDisplayFormat("yyyy-MM-dd")
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 164 页 / 共 191 页
+====================================================================================================
         tform.addRow(i18n.tr("label_start"), self.start_edit)
         tform.addRow(i18n.tr("label_end"), self.end_edit)
         root.addWidget(time_box)
+
+        # GLASS layout hint (static collection / global CMG) — hidden for
+        # non-GLASS products; flat variants also disable the date fields.
+        self.glass_hint = QLabel("")
+        self.glass_hint.setWordWrap(True)
+        self.glass_hint.setObjectName("glassHint")
+        self.glass_hint.setStyleSheet("color: #888;")
+        self.glass_hint.hide()
+        root.addWidget(self.glass_hint)
 
         # ---- area group
         area_box = QGroupBox(i18n.tr("group_area"))
@@ -1751,12 +1748,12 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         self.bbox_edit.setPlaceholderText("100, 20, 120, 40")
         bbox_label = QLabel(i18n.tr("label_bbox"))
         bbox_label.setToolTip(i18n.tr("label_bbox_tip"))
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 156 页 / 共 182 页
-====================================================================================================
         agrid.addWidget(bbox_label, 3, 0, 1, 3)
         agrid.addWidget(self.bbox_edit, 4, 0, 1, 3)
         root.addWidget(area_box)
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 165 页 / 共 191 页
+====================================================================================================
         root.addStretch(1)
 
         # ---- options + search button: pinned below the scroll area so the
@@ -1804,12 +1801,12 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
             self.version_edit.setText(version)
 
     def _on_group_changed(self, index):
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 157 页 / 共 182 页
-====================================================================================================
         text = self.group_combo.currentText()
         self._custom_mode = text == CUSTOM_LABEL_ZH
         self.product_combo.clear()
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 166 页 / 共 191 页
+====================================================================================================
         if self._custom_mode:
             self.version_edit.clear()
             return
@@ -1822,6 +1819,29 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
     def _on_product_changed(self, index):
         short = self.current_short_name()
         self.version_edit.setText(products.version_hint(short))
+        self._update_glass_hint()
+
+    def _update_glass_hint(self):
+        """GLASS variant-dependent affordances: static collections (flat)
+        have no time dimension — disable the date fields and say so; global
+        CMG products never carry tile fragments — tell the user tiles are
+        pointless there."""
+        hint = ""
+        flat = False
+        try:
+            if glass.is_glass_variant(self.current_short_name()):
+                v = glass.get_variant(self.current_short_name())
+                if v.get("layout") == "flat":
+                    flat = True
+                    hint = i18n.tr("glass_hint_flat")
+                elif not v.get("tiled", True):
+                    hint = i18n.tr("glass_hint_cmg")
+        except glass.GlassError:
+            pass   # not a GLASS id (or malformed) — no hint, dates stay on
+        self.glass_hint.setText(hint)
+        self.glass_hint.setVisible(bool(hint))
+        for w in (self.start_edit, self.end_edit):
+            w.setEnabled(not flat)
 
     def _on_map_changed(self):
         self.tile_edit.setText(", ".join(self.tile_map.selected_tiles()))
@@ -1837,6 +1857,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
             lon = float(self.lon_edit.text())
             lat = float(self.lat_edit.text())
         except ValueError:
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 167 页 / 共 191 页
+====================================================================================================
             return
         self.tile_map.select_lonlat(lon, lat)
         self.tile_edit.setText(", ".join(self.tile_map.selected_tiles()))
@@ -1857,9 +1880,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
 
     def set_searching(self, busy: bool) -> None:
         self.search_btn.setEnabled(not busy)
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 158 页 / 共 182 页
-====================================================================================================
         self.search_btn.setText(i18n.tr("btn_cancel_search") if busy else i18n.tr("btn_search"))
 
     def build_params(self):
@@ -1891,6 +1911,9 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFileDialog,
 
 from .. import i18n
 
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 168 页 / 共 191 页
+====================================================================================================
+
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None, config=None, on_save=None):
@@ -1910,9 +1933,6 @@ class SettingsDialog(QDialog):
         dir_row.addWidget(self.dir_edit)
         dir_row.addWidget(browse)
         form.addRow(i18n.tr("settings_download_dir"), dir_row)
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 159 页 / 共 182 页
-====================================================================================================
 
         self.workers_spin = QSpinBox()
         self.workers_spin.setRange(1, 8)
@@ -1944,6 +1964,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         if path:
             self.dir_edit.setText(path)
 
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 169 页 / 共 191 页
+====================================================================================================
+
     def _save(self):
         values = {
             "download_dir": self.dir_edit.text().strip() or self._config.get("download_dir", ""),
@@ -1963,9 +1986,6 @@ from PySide6.QtWidgets import (QHBoxLayout, QMessageBox, QProgressBar,
                                QPushButton, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 160 页 / 共 182 页
-====================================================================================================
 from .. import i18n
 
 COL_FILE, COL_STATE, COL_PROGRESS, COL_SPEED, COL_SIZE = range(5)
@@ -1996,6 +2016,9 @@ class TaskTable(QWidget):
     def __init__(self, engine=None, parent=None):
         super().__init__(parent)
         self.engine = engine
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 170 页 / 共 191 页
+====================================================================================================
         self._rows = {}       # item_id -> row index
 
         layout = QVBoxLayout(self)
@@ -2016,9 +2039,6 @@ class TaskTable(QWidget):
 
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels([
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 161 页 / 共 182 页
-====================================================================================================
             i18n.tr("tasks_col_file"),
             i18n.tr("tasks_col_state"),
             i18n.tr("tasks_col_progress"),
@@ -2049,6 +2069,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         self.engine = engine
 
     def on_status(self, item_id: int) -> None:
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 171 页 / 共 191 页
+====================================================================================================
         item = self.engine.items.get(item_id) if self.engine else None
         if item is None:
             return
@@ -2069,9 +2092,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         state_item = self.table.item(row, COL_STATE)
         state_item.setText(i18n.tr(f"state_{item.state}"))
         state_item.setForeground(Qt.GlobalColor.white if item.state in ("done", "failed") else Qt.GlobalColor.black)
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 162 页 / 共 182 页
-====================================================================================================
         color = STATE_COLORS.get(item.state, "#444444")
         from PySide6.QtGui import QColor
         state_item.setForeground(QColor(color))
@@ -2102,6 +2122,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         else:
             size_item.setText(_fmt_bytes(item.downloaded))
 
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 172 页 / 共 191 页
+====================================================================================================
     def on_progress(self, item_id: int) -> None:
         self.on_status(item_id)
 
@@ -2122,9 +2145,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         if row < 0:
             return None
         for item_id, r in self._rows.items():
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 163 页 / 共 182 页
-====================================================================================================
             if r == row:
                 return item_id
         return None
@@ -2155,6 +2175,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
 
     def _export_failed_links(self) -> None:
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 173 页 / 共 191 页
+====================================================================================================
         """「导出失败清单」只取失败任务：下一次检索会把结果表覆盖掉，
         而失败 URL 在任务表里一直活着——这是跨检索生存的 401/403 救援线。"""
         if self.engine is None:
@@ -2175,9 +2198,6 @@ QSS = """
 QMainWindow, QDialog {
     background: #f5f7fa;
 }
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 164 页 / 共 182 页
-====================================================================================================
 QWidget {
     color: #1f2937;
     font-size: 13px;
@@ -2208,6 +2228,9 @@ QMenu::item {
     border-radius: 6px;
     color: #1f2937;
 }
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 174 页 / 共 191 页
+====================================================================================================
 QMenu::item:selected {
     background: #fdeceb;
     color: #b02a20;
@@ -2228,9 +2251,6 @@ QToolBar {
     border-bottom: 1px solid #e3e8ef;
     padding: 4px 8px;
     spacing: 6px;
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 165 页 / 共 182 页
-====================================================================================================
 }
 QToolBar QToolButton {
     padding: 5px 12px;
@@ -2261,6 +2281,9 @@ QGroupBox::title {
     top: 1px;
     padding: 0 5px;
     color: #123252;
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 175 页 / 共 191 页
+====================================================================================================
     background: #f5f7fa;
 }
 
@@ -2281,9 +2304,6 @@ QComboBox::drop-down, QDateEdit::drop-down {
     width: 22px;
 }
 QSpinBox::up-button, QSpinBox::down-button {
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 166 页 / 共 182 页
-====================================================================================================
     border: none;
     background: transparent;
     width: 16px;
@@ -2314,6 +2334,9 @@ QPushButton:disabled {
 }
 QPushButton#accentButton {
     background: #d6372a;
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 176 页 / 共 191 页
+====================================================================================================
     border: 1px solid #d6372a;
     color: #ffffff;
     font-weight: 600;
@@ -2334,9 +2357,6 @@ QPushButton#accentButton:disabled {
     color: #ffffff;
 }
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 167 页 / 共 182 页
-====================================================================================================
 /* ---------- tables ---------- */
 QTableWidget {
     background: #ffffff;
@@ -2367,6 +2387,9 @@ QTableCornerButton::section {
 /* ---------- progress bar ---------- */
 QProgressBar {
     background: #e9edf3;
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 177 页 / 共 191 页
+====================================================================================================
     border: none;
     border-radius: 6px;
     min-height: 12px;
@@ -2387,9 +2410,6 @@ QScrollBar:vertical {
     width: 10px;
     margin: 2px;
 }
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 168 页 / 共 182 页
-====================================================================================================
 QScrollBar::handle:vertical {
     background: #c7cfda;
     border-radius: 5px;
@@ -2420,6 +2440,9 @@ QSplitter::handle:horizontal {
 }
 QSplitter::handle:hover {
     background: #e3e8ef;
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 178 页 / 共 191 页
+====================================================================================================
     border-radius: 2px;
 }
 QScrollArea#searchPanelScroll {
@@ -2440,9 +2463,6 @@ QToolTip {
 /* ---------- edge drawers (AI assistant + time series) ---------- */
 QFrame#agentDrawer, QFrame#tsDrawer {
     background: #ffffff;
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 169 页 / 共 182 页
-====================================================================================================
     border-left: 1px solid #d0d7de;
     border-top-left-radius: 8px;
     border-bottom-left-radius: 8px;
@@ -2473,6 +2493,9 @@ QLabel#agentProgress {
 }
 QToolButton#agentTabButton, QToolButton#tsTabButton {
     background: #24292e;
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 179 页 / 共 191 页
+====================================================================================================
     color: #ffffff;
     border: none;
     border-radius: 7px;
@@ -2493,9 +2516,6 @@ QLabel#tsStatus[state="error"] {
 """
 
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 170 页 / 共 182 页
-====================================================================================================
 def apply_theme(app) -> None:
     """Fusion style + brand stylesheet + platform CJK-friendly font."""
     import sys
@@ -2527,6 +2547,9 @@ CANVAS_W = tiles.N_COLS * TILE_W    # 324
 CANVAS_H = tiles.N_ROWS * TILE_H    # 234
 
 
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 180 页 / 共 191 页
+====================================================================================================
+
 class TileMap(QWidget):
     tiles_changed = Signal()
 
@@ -2546,9 +2569,6 @@ class TileMap(QWidget):
         if self._selected:
             self._selected.clear()
             self.tiles_changed.emit()
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 171 页 / 共 182 页
-====================================================================================================
         self.update()
 
     def select_lonlat(self, lon: float, lat: float) -> None:
@@ -2580,6 +2600,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
             self.tiles_changed.emit()
             self.update()
 
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 181 页 / 共 191 页
+====================================================================================================
+
     def mouseMoveEvent(self, event) -> None:
         cell = self._cell_at(event.position().x(), event.position().y())
         if cell != self._hover:
@@ -2599,9 +2622,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor("#f4f7fb"))
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 172 页 / 共 182 页
-====================================================================================================
         cx = CANVAS_W / 2.0
 
         for v in range(tiles.N_ROWS):
@@ -2632,6 +2652,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
                 painter.fillRect(rect, QColor(30, 120, 220, 200))
         if self._hover is not None:
             rect = self._cell_rect(*self._hover)
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 182 页 / 共 191 页
+====================================================================================================
             if rect is not None:
                 painter.setPen(QPen(QColor("#e05500"), 2))
                 painter.drawRect(rect)
@@ -2652,9 +2675,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
     def _cell_at(self, px, py):
         v = int(py // TILE_H)
         if not (0 <= v < tiles.N_ROWS):
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 173 页 / 共 182 页
-====================================================================================================
             return None
         frac = tiles.row_width_fraction(v)
         band_half = frac * CANVAS_W / 2.0
@@ -2686,6 +2706,9 @@ from PySide6.QtWidgets import (QComboBox, QCompleter, QDateEdit, QFileDialog,
                                QHBoxLayout, QLabel, QLineEdit, QPushButton,
                                QVBoxLayout, QWidget)
 
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 183 页 / 共 191 页
+====================================================================================================
+
 from .. import i18n
 from .. import timeseries as tsl
 
@@ -2705,9 +2728,6 @@ class _ThreadAdapter:
     def stage(self, key, **kw):
         self._thread.stage.emit(i18n.tr(key, **kw))
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 174 页 / 共 182 页
-====================================================================================================
     def layers(self, layers):
         self._thread.layers_ready.emit(layers)
 
@@ -2738,6 +2758,9 @@ class TimeSeriesThread(QThread):
                 start=self._args["start"], end=self._args["end"],
                 layer_hint=self._args.get("layer_hint", ""),
                 should_stop=self._stop_event.is_set,
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 184 页 / 共 191 页
+====================================================================================================
                 adapter=_ThreadAdapter(self))
             if self._stop_event.is_set():
                 raise tsl.StopRequested("stopped by user")
@@ -2758,9 +2781,6 @@ class TimeSeriesPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("tsPanel")
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 175 页 / 共 182 页
-====================================================================================================
         self._thread = None
         self.last_points = None       # [(iso_date, value)] after a plot
         self._meta = None             # context of the last plot (for export)
@@ -2791,6 +2811,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.product_combo.setCompleter(completer)
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 185 页 / 共 191 页
+====================================================================================================
         for name in SEED_PRODUCTS:
             self.product_combo.addItem(name)
         self.product_combo.setCurrentText("")
@@ -2811,9 +2834,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         self.start_edit = QDateEdit()
         self.start_edit.setCalendarPopup(True)
         self.start_edit.setDisplayFormat("yyyy-MM-dd")
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 176 页 / 共 182 页
-====================================================================================================
         self.start_edit.setDate(QDate.currentDate().addDays(-365))
         dates_row.addWidget(self.start_edit, 1)
         dates_row.addWidget(QLabel(i18n.tr("label_end")))
@@ -2844,6 +2864,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         self.stop_btn.clicked.connect(self._stop)
         self.export_btn = QPushButton(i18n.tr("ts_export"))
         self.export_btn.clicked.connect(self._export)
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 186 页 / 共 191 页
+====================================================================================================
         self.clear_btn = QPushButton(i18n.tr("ts_clear"))
         self.clear_btn.clicked.connect(self._clear_chart)
         btn_row.addWidget(self.plot_btn, 1)
@@ -2864,9 +2887,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         self.chart.setMargins(QMargins(0, 0, 0, 0))
         self.chart_view = QChartView(self.chart)
         self.chart_view.setObjectName("tsChart")
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 177 页 / 共 182 页
-====================================================================================================
         self.chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.chart_view.setMinimumHeight(160)
         root.addWidget(self.chart_view, 1)
@@ -2897,6 +2917,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         if start > end:
             self._status(i18n.tr("ts_bad_dates"), error=True)
             return
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 187 页 / 共 191 页
+====================================================================================================
         product = self._typed_product()
         if not product:
             self._status(i18n.tr("ts_need_fields",
@@ -2917,9 +2940,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         self._thread.series_ready.connect(self._on_series_ready)
         self._thread.stage.connect(self._status)
         self._thread.failed.connect(self._on_failed)
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 178 页 / 共 182 页
-====================================================================================================
         self._thread.finished_turn.connect(self._on_finished)
         self._thread.start()
 
@@ -2950,6 +2970,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         if current:
             index = self.layer_combo.findData(current)
             if index >= 0:
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 188 页 / 共 191 页
+====================================================================================================
                 self.layer_combo.setCurrentIndex(index)
 
     def _on_series_ready(self, payload):
@@ -2970,9 +2993,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
             self._status(i18n.tr(
                 "ts_done", n=len(points), source=source, layer=layer,
                 start=points[0][0], end=points[-1][0]))
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 179 页 / 共 182 页
-====================================================================================================
         else:
             self._status(i18n.tr("ts_no_data"), error=True)
 
@@ -3003,6 +3023,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
     # -------------------------------------------------------------- export
 
     def _ask_save_path(self):
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 189 页 / 共 191 页
+====================================================================================================
         """Dialog seam (tests replace this)."""
         meta = self._meta or {}
         suggested = "timeseries.csv"
@@ -3023,9 +3046,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         self.write_csv(path)
         self._status(i18n.tr("ts_exported", path=path))
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 180 页 / 共 182 页
-====================================================================================================
     def write_csv(self, path):
         """date/value CSV with a commented metadata header (utf-8-sig so
         Excel opens Chinese text correctly; '# ' lines are pandas-safe)."""
@@ -3056,6 +3076,9 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         for axis in self.chart.axes():    # removeAllSeries keeps old axes,
             self.chart.removeAxis(axis)   # so labels pile up on every re-plot
         self.last_points = [list(p) for p in (points or [])]
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 190 页 / 共 191 页
+====================================================================================================
         if not points:
             return
         series = QLineSeries()
@@ -3076,9 +3099,6 @@ D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    �
         pen.setWidthF(1.8)
         series.setPen(pen)
 
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 181 页 / 共 182 页
-====================================================================================================
         x_axis = QDateTimeAxis()
         span_days = times[0].secsTo(times[-1]) // 86400
         x_axis.setFormat("yyyy-MM-dd" if span_days <= 120 else "yyyy-MM")
@@ -3109,6 +3129,9 @@ import sys
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 if sys.stderr is None:
+
+D3L Tool of NASA Satellite V2.6.0    源程序（前30页+后30页节选）    第 191 页 / 共 191 页
+====================================================================================================
     sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
 
@@ -3129,9 +3152,6 @@ def smoke() -> int:
     except Exception:
         pass
     return 0
-
-D3L Tool of NASA Satellite V2.5.0    源程序（前30页+后30页节选）    第 182 页 / 共 182 页
-====================================================================================================
 
 
 if __name__ == "__main__":

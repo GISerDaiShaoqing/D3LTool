@@ -45,9 +45,9 @@ automation and was itself an early answer to the closure of the LAADS FTP server
 Since v2.3 the app can also sample the point time series of any MODIS/VIIRS or
 MERRA-2 layer directly over NASA's OPeNDAP services and plot it in-app — a
 lightweight revival of the MODIS Web Service that NASA retired. Since v2.5 the
-public GLASS product suite (130+ variants served as directory listings by the
-glass.hku.hk archive) joins the same search-and-download workflow, needing no
-sign-in at all.
+public GLASS product suite (133 variants — 131 verified against real granules —
+served as directory listings by the glass.hku.hk archive) joins the same
+search-and-download workflow, needing no sign-in at all.
 
 # Statement of need
 
@@ -92,10 +92,14 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
   managers) and a self-contained HTML index page for a logged-in browser,
   giving a rescue line when transport-level 401/403 blocks the built-in
   downloader;
-- **GLASS coverage** (since v2.5): the public GLASS product suite — 130+
-  product/source/resolution variants from the glass.hku.hk archive, served as
-  plain directory listings — is searchable and downloadable without any
-  sign-in, reusing the same tile map, download engine and export surfaces;
+- **GLASS coverage** (since v2.5, upgraded in v2.6): the public GLASS product
+  suite — 133 product/source/resolution variants (131 verified against real
+  granules) from the glass.hku.hk archive, served as plain directory listings
+  across all four archive layouts (composite folders, static file collections,
+  year folders, `YYYYDDD` day folders) — is searchable and downloadable without
+  any sign-in, reusing the same tile map, download engine and export surfaces;
+  global CMG products ignore tiles, static collections need no dates, and
+  directory listings follow a measured rate-limit politeness policy;
   post-processing (mosaic/crop/scaling) pairs with the author's companion
   R package `glass.sqdaitools`.
 
@@ -113,8 +117,9 @@ The package separates concerns into a GUI-independent core and a thin GUI layer:
 `readable_granule_name`, bounding-box filters, and a client-side tile filter
 fallback) over `earthaccess.search_data`, routing GLASS variant ids to
 `glass.py`, which searches the public GLASS archive's HTML directory tree
-(generated variant registry, composite-DOY expansion, and an exact analytic
-bbox-to-sinusoidal-tile intersection); `engine.py` is a pure-Python,
+(layout-aware URL construction across the archive's four layouts, a
+registry generated from the R package's verified catalog, composite-DOY
+expansion, and an exact analytic bbox-to-sinusoidal-tile intersection); `engine.py` is a pure-Python,
 Qt-free download engine providing a thread pool, chunked HTTP transfer,
 `Range`-based resume with `.part` files, retry with backoff, and event
 callbacks that a thin Qt bridge forwards to the UI; `auth.py` wraps
@@ -136,7 +141,7 @@ tile map, results and task tables, a slide-out assistant drawer and a
 time-series panel sharing the main engine, settings (download directory,
 worker count, proxy) and a
 language switcher; all strings live in a single i18n module. The test suite
-(166 pytest tests at submission time) covers the tile math, configuration
+(177 pytest tests at submission time) covers the tile math, configuration
 handling, search query construction and version fallbacks, the
 resume/retry engine against a local Range-capable HTTP server, the tool
 registry and agent loop with a local streaming-HTTP fake, an end-to-end

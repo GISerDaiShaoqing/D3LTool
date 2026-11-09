@@ -26,7 +26,7 @@
         清单交给你的浏览器或 wget；v2.5 起公开的 GLASS 档案（glass.hku.hk）也
         一并覆盖——免登录。</p>
         <div class="badges">
-          <span class="badge">v2.5.0</span>
+          <span class="badge">v2.6.0</span>
           <span class="badge">MIT 协议</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -60,9 +60,10 @@
           <div class="card">
             <div class="ico">🌏</div>
             <h3>GLASS 档案</h3>
-            <p>v2.5 新增：检索并下载 GLASS（Global Land Surface Satellite）
-            产品体系——公开 <code>glass.hku.hk</code> 档案的 130+ 个变体，
-            无需 Earthdata 登录。GLASS 引擎以作者的 R 包
+            <p>v2.5 新增、v2.6 全面升级：检索并下载 GLASS（Global Land Surface
+            Satellite）产品体系——公开 <code>glass.hku.hk</code> 档案的 133 个
+            变体（131 个经真实 granule 核验），无需 Earthdata 登录；四种归档
+            布局全覆盖，全球 CMG 免瓦片、静态集免日期。GLASS 引擎以作者的 R 包
             <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0">glass.sqdaitools</a>
             v0.1.0（<a href="https://giserdaishaoqing.github.io/glass.sqdaitools/">文档</a>）为骨架：
             D3L Tool 管找和下，后处理在 R 侧完成——配套使用。</p>
@@ -163,8 +164,9 @@
         <p>左侧选产品组与产品（或“custom”输入任意 CMR <code>short_name</code>），
         可选版本（留空取最新）与起止日期；区域可以直接在正弦瓦片地图上点选（可多选，
         或输入 <code>h04v03</code>，或用经纬度定位），MERRA-2 这类数据也可输入范围框。
-        <b>GLASS</b> 组（v2.5）收录公开 glass.hku.hk 档案的 130+ 个变体——GLASS
-        检索全程不需要登录。点红色 <b>Search</b> 按钮，结果出现在右上表格。</p>
+        <b>GLASS</b> 组（v2.6）收录公开 glass.hku.hk 档案的 133 个变体
+        （131 个已核验），四种归档布局全覆盖——静态集免日期、全球 CMG 免瓦片，
+        GLASS 检索全程不需要登录。点红色 <b>Search</b> 按钮，结果出现在右上表格。</p>
 
         <h3 class="sub">下载</h3>
         <p>在结果表勾选文件，点<b>“加入下载队列”</b>。任务表实时显示每个文件的进度
@@ -198,7 +200,11 @@ devtools::install_github("GISerDaiShaoqing/glass.sqdaitools")
 glass.sqdaitools::glass_process(files, roi = my_roi,
                                 product = "LAI_MODIS_250M",
                                 fun = "mean", outfile = "lai_mean.tif")</pre>
-        <p>版本兼容：D3L Tool 2.5.0 ↔ glass.sqdaitools ≥ 0.1.0（API 变更在
+        <p>v2.6 升级：全量核验的 131/133 登记表、四种归档布局全覆盖（合成
+        目录、静态文件集、年目录、<code>YYYYDDD</code> 日目录）、全球 CMG
+        免瓦片、数据文件扩展名按变体取自核验台账、目录列表遵循实测的
+        glass.hku.hk 礼貌策略（8/24/72s 退避 + 冷却重试、请求间隔 ≥1.2s）。</p>
+        <p>版本兼容：D3L Tool 2.6.0 ↔ glass.sqdaitools ≥ 0.1.0（API 变更在
         两边 release notes 同步声明）。GLASS 数据由 GLASS 产品团队
         （<a href="https://glass.hku.hk">glass.hku.hk</a>）生产，使用请遵守
         其引用政策。</p>

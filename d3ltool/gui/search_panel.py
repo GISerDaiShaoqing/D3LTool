@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QComboBox, QDateEdit, QFormLayout, QGridLayout,
                                QPushButton, QScrollArea, QSpinBox,
                                QVBoxLayout, QWidget)
 
-from .. import i18n, products, search
+from .. import glass, i18n, products, search
 from .tile_map import TileMap
 
 CUSTOM_LABEL_ZH = "自定义产品 / Custom"
@@ -54,6 +54,8 @@ class SearchPanel(QWidget):
         self.product_combo = QComboBox()
         self.product_combo.setEditable(True)
         self.product_combo.currentIndexChanged.connect(self._on_product_changed)
+        self.product_combo.lineEdit().textEdited.connect(
+            lambda _t: self._update_glass_hint())
 
         product_row = QHBoxLayout()
         product_row.addWidget(self.product_combo, 1)
@@ -83,6 +85,15 @@ class SearchPanel(QWidget):
         tform.addRow(i18n.tr("label_start"), self.start_edit)
         tform.addRow(i18n.tr("label_end"), self.end_edit)
         root.addWidget(time_box)
+
+        # GLASS layout hint (static collection / global CMG) — hidden for
+        # non-GLASS products; flat variants also disable the date fields.
+        self.glass_hint = QLabel("")
+        self.glass_hint.setWordWrap(True)
+        self.glass_hint.setObjectName("glassHint")
+        self.glass_hint.setStyleSheet("color: #888;")
+        self.glass_hint.hide()
+        root.addWidget(self.glass_hint)
 
         # ---- area group
         area_box = QGroupBox(i18n.tr("group_area"))
@@ -183,6 +194,29 @@ class SearchPanel(QWidget):
     def _on_product_changed(self, index):
         short = self.current_short_name()
         self.version_edit.setText(products.version_hint(short))
+        self._update_glass_hint()
+
+    def _update_glass_hint(self):
+        """GLASS variant-dependent affordances: static collections (flat)
+        have no time dimension — disable the date fields and say so; global
+        CMG products never carry tile fragments — tell the user tiles are
+        pointless there."""
+        hint = ""
+        flat = False
+        try:
+            if glass.is_glass_variant(self.current_short_name()):
+                v = glass.get_variant(self.current_short_name())
+                if v.get("layout") == "flat":
+                    flat = True
+                    hint = i18n.tr("glass_hint_flat")
+                elif not v.get("tiled", True):
+                    hint = i18n.tr("glass_hint_cmg")
+        except glass.GlassError:
+            pass   # not a GLASS id (or malformed) — no hint, dates stay on
+        self.glass_hint.setText(hint)
+        self.glass_hint.setVisible(bool(hint))
+        for w in (self.start_edit, self.end_edit):
+            w.setEnabled(not flat)
 
     def _on_map_changed(self):
         self.tile_edit.setText(", ".join(self.tile_map.selected_tiles()))

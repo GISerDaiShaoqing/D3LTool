@@ -143,10 +143,11 @@ def test_list_products_all_and_filtered():
 
     glass = tools.list_products(group="GLASS")
     assert glass["count"] == 80        # 133 variants, capped like the full list
-    # verified variants first (registry sort), and exactly 5 carry the mark
-    assert glass["products"][0]["short_name"] == "EVI_MODIS_250M"
+    # verified variants first (registry sort): the first 80 rows are all
+    # verified now — 131 of 133 carry the mark, the 2 skeletons sort last
+    assert glass["products"][0]["short_name"] == "AGB_0.01D_V02"
     assert sum(1 for p in glass["products"]
-               if "（已核验）" in p["description_zh"]) == 5
+               if "（已核验）" in p["description_zh"]) == 80
 
     assert tools.list_products(group="no-such-group")["count"] == 0
 

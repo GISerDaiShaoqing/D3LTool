@@ -15,6 +15,7 @@ in the R package on purpose: two packages, one lifecycle.
 
 import math
 import re
+import time
 from datetime import date, timedelta
 from html.parser import HTMLParser
 from urllib.parse import unquote, urlsplit
@@ -30,6 +31,17 @@ USER_AGENT = (f"D3LTool/{__version__} (GLASS archive search; "
               "+https://github.com/GISerDaiShaoqing/D3LTool)")
 
 _TILE_FN_RE = re.compile(r"h[0-9]{2}v[0-9]{2}", re.IGNORECASE)
+_ATOK_RE = re.compile(r"A[0-9]{7}")   # A{yyyy}{ddd} composite token (year_files)
+
+# glass.hku.hk rate-limits bursts of directory listings (requests fail or
+# time out).  Measured politeness policy from the glass.sqdaitools engine:
+# exponential backoff retries (8/24/72s) plus a final attempt after a 15s
+# cooldown, and at least ~1.2s between any two directory fetches.
+# Tests shrink these to zero — patch the module constants, not time.sleep.
+LISTING_BACKOFFS = (8.0, 24.0, 72.0)
+LISTING_COOLDOWN = 15.0
+LISTING_MIN_INTERVAL = 1.2
+_LAST_LISTING = [0.0]   # monotonic timestamp of the last listing fetch
 
 
 class GlassError(ValueError):
@@ -75,7 +87,8 @@ def doys(v: dict, start: str, end: str, mode: str = "span") -> list:
     cad = v.get("cadence_days")
     if not cad:
         raise GlassError(f"cadence unknown for variant {v['variant_id']}; "
-                         "date search needs a verified variant")
+                         "composite folders are derived from the archive "
+                         "instead")
     d0, d1 = _date_range(start, end)
     out = []
     for year in range(d0.year, d1.year + 1):
@@ -89,34 +102,55 @@ def doys(v: dict, start: str, end: str, mode: str = "span") -> list:
 
 
 def doys_from_listing(v: dict, start: str, end: str, session=None) -> list:
-    """Skeleton variants carry no verified cadence: derive the (year, doy)
-    folders from the archive itself (list url_root for years, each year for
-    DOY folders) and keep the folders starting inside the range — the R
-    package's legacy "start" mode.  Variants whose root holds no year
-    folders at all (climatology files, nested resolutions, retired dirs)
-    raise GlassError — the registry skeleton does not model those layouts."""
+    """Variants without a verified cadence: derive the folders from the
+    archive itself and keep those starting inside the range — the R
+    package's legacy "start" mode, layout-aware:
+
+    - year_doy: ``{root}/{year}/{ddd}/`` folders (3-digit DOY dirs),
+    - year_yyyddd: ``{root}/{year}/{YYYYDDD}/`` folders (7-digit dirs),
+    - year_files: granules sit directly under ``{year}/`` — cadence-less
+      annual collections have no DOY semantics, so one (year, None) pair
+      per year in range; the year folder is listed whole.
+
+    Variants whose root holds no year folders at all (climatology files,
+    nested resolutions, retired dirs) raise GlassError."""
     d0, d1 = _date_range(start, end)
     session = session or _get_session()
+    root = v["url_root"]
     try:
-        years = _dir_names(v["url_root"], r"^\d{4}$", session)
+        years = _dir_names(root, r"^\d{4}$", session)
     except FileNotFoundError:
         raise GlassError(
-            f"archive folder not found (404): {v['url_root']} — the variant "
+            f"archive folder not found (404): {root} — the variant "
             "exists in the registry but not on the archive") from None
     if not years:
         raise GlassError(
-            f"no year folders under {v['url_root']} — the archive layout of "
+            f"no year folders under {root} — the archive layout of "
             f"{v['variant_id']} is not year/composite based; browse it "
             "directly or use the glass.sqdaitools R package")
     out = []
+    layout = v.get("layout")
+    if layout == "year_files":
+        for yname in years:
+            year = int(yname)
+            if d0.year <= year <= d1.year:
+                out.append((year, None))
+        return out
+    doy_pat = r"^\d{7}$" if layout == "year_yyyddd" else r"^\d{3}$"
     for yname in years:
         year = int(yname)
         if year < d0.year or year > d1.year:
             continue
-        for dname in _dir_names(f"{v['url_root']}{year}/", r"^\d{3}$", session):
-            begin = date(year, 1, 1) + timedelta(days=int(dname) - 1)
+        for dname in _dir_names(f"{root}{year}/", doy_pat, session):
+            if layout == "year_yyyddd":
+                if int(dname[:4]) != year:
+                    continue
+                doy = int(dname[4:])
+            else:
+                doy = int(dname)
+            begin = date(year, 1, 1) + timedelta(days=doy - 1)
             if d0 <= begin <= d1:
-                out.append((year, int(dname)))
+                out.append((year, doy))
     return out
 
 
@@ -214,15 +248,21 @@ def _ext_pattern(ext: str) -> "re.Pattern":
 
 
 def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
-               ext: str = "hdf", session=None) -> list:
+               ext=None, session=None, fetch=None) -> list:
     """One directory listing — port of the R glass_list_files(): the variant
     folder's <a href>s, subdirectories dropped, filtered by extension (an
-    'hdf' match also keeps '.hdf.xml' sidecars; ext=None keeps every file,
-    used for flat static products), by tile fragment and — for verified
-    variants — by the GLASS product code prefix (drops misplaced files).
-    A missing folder raises FileNotFoundError (the cadence math names
-    composite folders the archive never filled)."""
+    hdf match also keeps '.hdf.xml' sidecars), by tile fragment — only for
+    tiled products, global CMG filenames carry no h##v## — and, for verified
+    variants, by the registry's real GLASS code prefix (GHOSE03G01 for BBE,
+    not every family starts with "GLASS").  year_files variants additionally
+    filter by the A{yyyy}{ddd} composite token in the filename when a doy is
+    given.  ext=None uses the variant's registry ext (from the R package's
+    verified granule samples: .hdf / .tif / .nc / .dat); a missing folder
+    raises FileNotFoundError (the cadence math names composite folders the
+    archive never filled).  `fetch` lets search() memoize directory pages —
+    a year_files year folder would otherwise be re-listed once per day."""
     session = session or _get_session()
+    fetch = fetch or _fetch_hrefs
     root = v["url_root"]
     layout = v.get("layout")
     if layout == "flat":
@@ -232,14 +272,28 @@ def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
             raise GlassError(f"{v['variant_id']} is a year_doy variant: "
                              "year and doy are required")
         folder = f"{root}{int(year)}/{int(doy):03d}/"
+    elif layout == "year_files":
+        if not year:
+            raise GlassError(f"{v['variant_id']} is a year_files variant: "
+                             "year is required")
+        folder = f"{root}{int(year)}/"
+    elif layout == "year_yyyddd":
+        if not year or not doy:
+            raise GlassError(f"{v['variant_id']} is a year_yyyddd variant: "
+                             "year and doy are required")
+        folder = f"{root}{int(year)}/{int(year)}{int(doy):03d}/"
     else:
         raise GlassError(f"unknown layout {layout!r} for {v['variant_id']}")
 
+    if ext is None:
+        ext = v.get("ext") or "hdf"
     pat = _ext_pattern(ext) if ext else None
     want = {str(t).lower() for t in (tiles or [])}
+    if want and not v.get("tiled", True):
+        want = set()    # global CMG products: tile filtering must not apply
     code = v.get("code")
     out = []
-    for href in _fetch_hrefs(folder, session):
+    for href in fetch(folder, session):
         if href.endswith("/"):
             continue
         filename = unquote(href.split("?")[0].rsplit("/", 1)[-1])
@@ -248,13 +302,23 @@ def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
             continue
         if want and (not m or m.group(0).lower() not in want):
             continue
+        if layout == "year_files" and doy and \
+                f"A{int(year)}{int(doy):03d}" not in filename:
+            continue
         if v.get("verified") and code and not filename.startswith(code):
             continue
+        f_year, f_doy = year, doy
+        if layout == "year_files":
+            tok = _ATOK_RE.search(filename)
+            if tok:
+                f_year, f_doy = int(tok.group(0)[1:5]), int(tok.group(0)[5:8])
+            else:
+                f_year, f_doy = int(year), None   # annual file, no composite token
         out.append({
             "filename": filename,
             "url": href if href.startswith("http") else folder + href,
-            "year": int(year) if year else None,
-            "doy": int(doy) if doy else None,
+            "year": int(f_year) if f_year else None,
+            "doy": int(f_doy) if f_doy else None,
             "tile": m.group(0).lower() if m else "",
             "ext": filename.rsplit(".", 1)[-1].lower(),
         })
@@ -268,9 +332,15 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
     """GLASS archive search.  Returns the row dicts the CMR path's accessor
     functions understand: {url, filename, date, tile, size_mb, size_bytes,
     product}.  size is 0 — directory listings carry no sizes; the download
-    engine HEADs every file anyway.  Variants without a verified cadence get
-    their folders derived from the archive itself (doys_from_listing)."""
+    engine HEADs every file anyway.  All four archive layouts are handled:
+    year_doy (composite folders), flat (static file collections — dates
+    ignored), year_files (granules under {year}/, cadence ones filtered by
+    the A{yyyy}{ddd} token) and year_yyyddd (7-digit YYYYDDD day folders).
+    Variants without a verified cadence get their folders derived from the
+    archive itself (doys_from_listing).  Tile filtering only applies to
+    tiled products; global CMG variants ignore tiles/bbox entirely."""
     v = get_variant(short_name)
+    layout = v.get("layout")
     want = {str(t).lower() for t in (tiles or [])}
     if bbox:
         west, south, east, north = (float(x) for x in bbox)
@@ -278,11 +348,14 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
             want.add(_tiles.tile_name(h, vv))
 
     session = _get_session()
-    if v.get("layout") == "flat":
-        pairs = [(None, None)]
-        ext = None            # static products carry any extension (AGB is .tif)
+    if layout == "flat":
+        pairs = [(None, None)]   # static collection: dates play no role
+    elif layout == "year_files" and not v.get("cadence_days"):
+        # cadence-less annual collections (TPSCE, AWGF_LST_GHA-LST): one
+        # listing per year inside the range, no composite filter
+        d0, d1 = _date_range(start, end)
+        pairs = [(y, None) for y in range(d0.year, d1.year + 1)]
     else:
-        ext = "hdf"           # composite products are HDF, like the R default
         try:
             pairs = doys(v, start, end)
         except GlassError:
@@ -291,10 +364,27 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
     rows = []
     errors = []
     missing = 0
+    # Memoized directory fetches: a year_files year folder holds every
+    # composite of the year, so a multi-day range would re-list the same
+    # page once per day — the server politely declines that kind of burst.
+    memo = {}
+
+    def _memo_fetch(url, _session):
+        if url not in memo:
+            try:
+                memo[url] = _fetch_hrefs(url, _session)
+            except Exception as exc:
+                memo[url] = exc
+                raise
+        val = memo[url]
+        if isinstance(val, Exception):
+            raise val
+        return val
+
     for year, doy in pairs:
         try:
-            files = list_files(v, year=year, doy=doy, tiles=want, ext=ext,
-                               session=session)
+            files = list_files(v, year=year, doy=doy, tiles=want,
+                               session=session, fetch=_memo_fetch)
         except FileNotFoundError:
             missing += 1   # sparse composite: the cadence math names folders the archive never filled
             continue
@@ -302,10 +392,17 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
             errors.append(f"{year or ''}/{doy or ''}: {exc}")
             continue
         for f in files:
+            fy, fd = f["year"], f["doy"]
+            if fy and fd:
+                date_s = _doy_date(fy, fd).isoformat()
+            elif fy:
+                date_s = str(fy)   # annual file without a composite token
+            else:
+                date_s = ""        # flat static layer: no date at all
             rows.append({
                 "url": f["url"],
                 "filename": f["filename"],
-                "date": _doy_date(year, doy).isoformat() if year else "",
+                "date": date_s,
                 "tile": f["tile"],
                 "size_mb": 0.0,
                 "size_bytes": 0,
@@ -317,8 +414,12 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
         # Two very different causes share this symptom: the requested range
         # sits beyond the archive's observed coverage (the GUI default dates
         # are "recent" — GLASS archives lag years behind), or the archive
-        # layout really does differ from the registry skeleton. The registry
-        # carries observed start/end years, so tell them apart.
+        # layout really does differ from the registry. The registry carries
+        # observed start/end years, so tell them apart.
+        if layout == "flat":
+            raise GlassError(
+                f"GLASS archive folder not found (404): {v['url_root']} — "
+                "the variant exists in the registry but not on the archive")
         sy, ey = v.get("start_year"), v.get("end_year")
         if sy and ey and all(y is not None and not (sy <= y <= ey)
                              for y, _ in pairs):
@@ -359,14 +460,32 @@ def _get_session():
 
 
 def _fetch_hrefs(url: str, session) -> list:
-    """All <a href> values of a directory page.  404 becomes
-    FileNotFoundError (a normal sparse-folder condition for the search
-    loop); any other HTTP or connection error raises."""
-    resp = session.get(url, timeout=30)
-    if resp.status_code == 404:
-        raise FileNotFoundError(url)
-    resp.raise_for_status()
-    parser = _HrefParser()
-    parser.feed(resp.text)
-    parser.close()
-    return parser.hrefs
+    """All <a href> values of a directory page, with the glass.hku.hk
+    politeness policy: consecutive directory fetches are spaced at least
+    LISTING_MIN_INTERVAL apart, and transient failures (timeouts, HTTP
+    429/5xx — the server's way of rate-limiting) retry on the measured
+    exponential backoff 8/24/72s plus one final attempt after a 15s
+    cooldown.  404 is never retried: it becomes FileNotFoundError, a normal
+    sparse-folder condition for the search loop."""
+    waits = (0.0,) + tuple(LISTING_BACKOFFS) + (LISTING_COOLDOWN,)
+    last_exc = None
+    for wait in waits:
+        if wait:
+            time.sleep(wait)
+        gap = LISTING_MIN_INTERVAL - (time.monotonic() - _LAST_LISTING[0])
+        if gap > 0:
+            time.sleep(gap)
+        try:
+            resp = session.get(url, timeout=30)
+            _LAST_LISTING[0] = time.monotonic()
+            if resp.status_code == 404:
+                raise FileNotFoundError(url)
+            resp.raise_for_status()
+            parser = _HrefParser()
+            parser.feed(resp.text)
+            parser.close()
+            return parser.hrefs
+        except requests.RequestException as exc:
+            _LAST_LISTING[0] = time.monotonic()
+            last_exc = exc
+    raise last_exc

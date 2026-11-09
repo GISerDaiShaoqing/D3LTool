@@ -68,6 +68,8 @@ STRINGS = {
         "btn_clear_tiles": "清除瓦片",
         "label_bbox": "经纬度范围 bbox（MERRA-2 等）",
         "label_bbox_tip": "格式：左下经度,左下纬度,右上经度,右上纬度，如 100,20,120,40",
+        "glass_hint_flat": "GLASS 静态文件集：无需日期，直接检索即列出全部文件；全球产品无需选瓦片",
+        "glass_hint_cmg": "GLASS 全球 CMG 产品：文件名不含瓦片号，无需选瓦片（选了也会被忽略）",
         "label_limit": "结果上限",
         "btn_search": "检索",
         "btn_cancel_search": "取消检索",
@@ -154,7 +156,8 @@ STRINGS = {
                                "文件），返回点列与 series_id；在软件内接着调 plot_timeseries"
                                "(series_id) 即可把序列画进时间序列抽屉。"
                                "2) 检索下载——search_granules 检索 granule（NASA 数据走 CMR；"
-                               "GLASS 变体走公开档案、无需登录）、start_download 提交"
+                               "GLASS 变体走公开档案、无需登录：静态集免日期、"
+                               "全球 CMG 变体免瓦片）、start_download 提交"
                                "下载队列、download_status/cancel_download/retry_download 管理"
                                "任务。"
                                "3) 辅助——check_auth 查登录、list_products 查产品目录、"
@@ -290,6 +293,8 @@ STRINGS = {
         "btn_clear_tiles": "Clear tiles",
         "label_bbox": "Bounding box (MERRA-2 etc.)",
         "label_bbox_tip": "Format: west,south,east,north, e.g. 100,20,120,40",
+        "glass_hint_flat": "GLASS static file collection: dates not needed — Search lists all files; global products need no tiles",
+        "glass_hint_cmg": "GLASS global CMG product: filenames carry no tile id, no tiles needed (any selection is ignored)",
         "label_limit": "Max results",
         "btn_search": "Search",
         "btn_cancel_search": "Cancel search",
@@ -390,7 +395,9 @@ STRINGS = {
                                "with plot_timeseries(series_id) to draw it in the "
                                "time-series drawer. 2) search & download — search_granules "
                                "(CMR for NASA data; GLASS variants hit the public "
-                               "glass.hku.hk archive, no sign-in needed), start_download "
+                               "glass.hku.hk archive, no sign-in needed — static "
+                               "collections need no dates, global CMG variants "
+                               "ignore tiles), start_download "
                                "(queue, asks confirmation), "
                                "download_status / cancel_download / retry_download. "
                                "3) helpers — check_auth (sign-in state), list_products "

@@ -12,7 +12,7 @@
 D3L Tool v2 是一个免费开源的 NASA 卫星数据**检索与下载**工具：登录 → 检索 → 下载全流程在软件内完成，
 基于 NASA 官方 [earthaccess](https://earthaccess.readthedocs.io/) 与 CMR 检索服务重构，
 v2.3 起还支持单像元时间序列采样与软件内绘图（OPeNDAP 直采）。
-**GLASS 数据支持（v2.5.0）**：公开的 **GLASS**（Global Land Surface Satellite）
+**GLASS 数据支持（v2.5 起提供，v2.6.0 全面升级）**：公开的 **GLASS**（Global Land Surface Satellite）
 档案也纳入同一流程——免登录；GLASS 检索/下载模块以作者的 R 包
 [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
 （[文档](https://giserdaishaoqing.github.io/glass.sqdaitools/)，v0.1.0）为骨架：
@@ -24,9 +24,10 @@ D3L Tool 管"找和下"，后处理在 R 侧完成——两个项目配套使用
 - **内置检索**：按产品、时间范围、MODIS/VIIRS 正弦瓦片（可点击的 36×18 瓦片地图）或经纬度范围检索，
   检索不需要登录
 - **产品覆盖**：MODIS、VIIRS（LAADS DAAC）、MERRA-2（GES DISC），也可输入任意 CMR short_name
-- **GLASS 数据源**（v2.5.0 新增）：检索并下载 GLASS（Global Land Surface Satellite）
-  产品体系——公开 [glass.hku.hk](https://glass.hku.hk) 档案的 130+ 个变体，
-  无需 Earthdata 登录。检索引擎以作者的 R 包
+- **GLASS 数据源**（v2.5.0 新增，v2.6.0 全面升级）：检索并下载 GLASS（Global Land
+  Surface Satellite）产品体系——公开 [glass.hku.hk](https://glass.hku.hk) 档案的
+  133 个变体（131 个经真实 granule 核验），无需 Earthdata 登录；四种归档布局
+  全覆盖，全球 CMG 产品无需选瓦片，静态集无需日期。检索引擎以作者的 R 包
   [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
   v0.1.0 为骨架（归档扫描变体清单、瓦片定位、合成 DOY 展开、核验过滤）；
   填充值处理、瓦片镶嵌、重投影裁剪与时序合成仍在 R 侧完成——
@@ -86,7 +87,7 @@ d3ltool search LAI_MODIS_250M --start 2018-08-01 --end 2018-12-31 --tile h28v05 
 GLASS 模块以作者的 R 包
 [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0)
 （[文档](https://giserdaishaoqing.github.io/glass.sqdaitools/)，v0.1.0）为骨架：
-归档扫描得到的变体清单（130+ 个产品×来源×分辨率，其中 5 个经真实 granule
+归档扫描得到的变体清单（133 个产品×来源×分辨率，其中 131 个经真实 granule
 核验）、正弦瓦片定位、合成 DOY 展开与核验产品过滤均移植自它。两个项目
 **配套使用**、分工明确：
 
@@ -110,7 +111,17 @@ glass.sqdaitools::glass_process(files, roi = my_roi,
 免登录下载，三个文件全部完成；后续镶嵌/裁剪/合成在 R 中用
 glass.sqdaitools 完成](images/GlassDownload.png)
 
-版本兼容：D3L Tool **2.5.0** ↔ glass.sqdaitools **≥ 0.1.0**——后续若有
+**v2.6.0 升级**：登记表对齐 glass.sqdaitools 全量核验版（131/133 实测），
+四种归档布局全覆盖——`year_doy` 合成目录、`flat` 静态文件集（KGClim/AGB：
+无需日期，GUI 自动禁用日期、CLI 改为可选）、`year_files` 年目录（BBE/TPSCE：
+按文件名 `A{yyyy}{ddd}` 片段过滤，无合成周期的按年整列）与 `year_yyyddd`
+日目录（AWGF_LST：7 位 `YYYYDDD`）。全球 CMG 产品（文件名无 `h##v##`）
+对瓦片/范围框完全免疫，数据文件扩展名按变体来自核验台账
+（`.hdf`/`.tif`/`.nc`/`.dat`）。目录列表遵循实测的 glass.hku.hk 礼貌策略：
+8/24/72s 指数退避 + 15s 冷却末次重试、列表请求间隔 ≥1.2s、同一年目录
+无论日期跨度多长只列一次。
+
+版本兼容：D3L Tool **2.6.0** ↔ glass.sqdaitools **≥ 0.1.0**——后续若有
 API 变更会在两边的 release notes 同步声明。
 GLASS 数据来自 GLASS 产品团队（[glass.hku.hk](https://glass.hku.hk)），
 使用请遵守其引用政策。
@@ -163,6 +174,22 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 
 ## 更新日志
 
+- **2026-11 v2.6.0** — GLASS 模块对齐 glass.sqdaitools 全量核验登记表
+  （133 个变体中 131 个经真实 granule 实测）：四种归档布局全覆盖——
+  `year_doy` 合成目录、`flat` 静态文件集（KGClim/AGB；无需日期——GUI
+  自动禁用、CLI 改为可选）、`year_files` 年目录（BBE/TPSCE；按文件名
+  `A{yyyy}{ddd}` 片段过滤，无合成周期的按年整列）与 `year_yyyddd` 日目录
+  （AWGF_LST）。全球 CMG 产品（文件名无 `h##v##`）对瓦片/范围框完全免疫
+  ——不再有"按分瓦片假设检索出零结果"的坑；数据文件扩展名（`.hdf`/`.tif`/
+  `.nc`/`.dat`）按变体取自核验台账的真实 granule 样本。目录列表遵循实测的
+  glass.hku.hk 礼貌策略：8/24/72s 指数退避 + 15s 冷却末次重试、任意两次
+  列表请求间隔 ≥1.2s、同一年目录无论日期跨度只列一次（抓取缓存——此前
+  BBE 一整年逐日要抓 366 次同一页面，现在 1 次）。产品描述标注 Albedo 多
+  波段（后处理在 R 包选子数据集）与 BBE 归档 scale 标注方向反（×10000，
+  由 R 包修正）。登记表再生成支持接入 R 包核验台账
+  （`tools_gen_glass_registry.py`）。四种布局端到端 live 验收通过
+  （LAI 2018-08 h25v05；KGClim 14 个 tif；BBE 1982-01-01~03；AWGF_LST
+  2021-06-30 共 48 个文件）
 - **2026-11 v2.5.0** — 新增 **GLASS** 数据源：软件现在也能检索并下载 GLASS
   产品体系——130+ 个产品×来源×分辨率变体，由公开
   [glass.hku.hk](https://glass.hku.hk) 档案以纯 HTML 目录列表提供
