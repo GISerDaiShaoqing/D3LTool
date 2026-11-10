@@ -129,7 +129,7 @@ Albedo AVHRR/MIX/0.5D、PAR、RN/SM、NDVI/EVI 0.25°、NPP 等）不再迷信
 （A 头优先，其次取文件名中最先出现的日期 token），步长从相邻合成
 起点差反推，span 语义取舍；年内只有一个文件则整年保留。只有子目录的
 静态根（ABI 500M 的 365 个日目录）明确报错而非静默空表。"网站"菜单
-新增 GLASS 产品官网与配套 R 包主页 glass.sqdaitools（其 0.4.0 迭代与本
+新增 GLASS 产品官网与配套 R 包主页 glass.sqdaitools（其 0.5.0 迭代与本
 版本同步）。
 
 版本兼容：D3L Tool **2.7.0** ↔ glass.sqdaitools **≥ 0.1.0**——后续若有
@@ -195,7 +195,7 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
   NDVI 0.25° 尾部的处理日期 "2023068" 不再被误读为 DOY），步长由相邻
   合成起点差反推、按 span 语义取舍；年内只一个文件的整年保留；只有
   子目录的静态根（ABI 500M 的 365 个日目录）明确报错而非静默空表。
-  "网站"菜单新增 GLASS 产品官网与 glass.sqdaitools 主页——与 R 包 0.4.0
+  "网站"菜单新增 GLASS 产品官网与 glass.sqdaitools 主页——与 R 包 0.5.0
   修复轮同步。live 档案验收：`FVC_AVHRR_0_5D` 2018-08-01..09-15 = 恰好
   14 个文件（7 合成 × hdf + hdf.xml）。首个重度场景：`AWGF_LST_ABI_2km`
   跨四年 = 约 1410 个日目录，GLASS 检索因此**可随时取消**（检索按钮兼任

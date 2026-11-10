@@ -143,7 +143,7 @@ consecutive composites, and span semantics decide selection; a year that
 yields a single file keeps it for the whole year. Static roots holding only
 subdirectories fail loudly instead of silently returning an empty table. The
 **Websites** menu now carries the GLASS product site and the companion R
-package's homepage (glass.sqdaitools — its 0.4.0 iteration pairs with this
+package's homepage (glass.sqdaitools — its 0.5.0 iteration pairs with this
 release).
 
 Compatibility: D3L Tool **2.7.0** ↔ glass.sqdaitools **≥ 0.1.0** — breaking
@@ -221,7 +221,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   keeps it for the whole year; static roots holding only subdirectories
   (ABI 500M's 365 day folders) fail loudly instead of silently returning an
   empty table. The **Websites** menu gains the GLASS product site and
-  glass.sqdaitools' homepage — round-tripped with the R package's 0.4.0
+  glass.sqdaitools' homepage — round-tripped with the R package's 0.5.0
   fix. Verified on the live archive: `FVC_AVHRR_0_5D` 2018-08-01..09-15 =
   exactly 14 files (7 composites × hdf + hdf.xml). First real stress case:
   `AWGF_LST_ABI_2km` over four years means ~1410 daily-directory listings,
