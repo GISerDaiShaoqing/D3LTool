@@ -12,7 +12,7 @@
 D3L Tool v2 是一个免费开源的 NASA 卫星数据**检索与下载**工具：登录 → 检索 → 下载全流程在软件内完成，
 基于 NASA 官方 [earthaccess](https://earthaccess.readthedocs.io/) 与 CMR 检索服务重构，
 v2.3 起还支持单像元时间序列采样与软件内绘图（OPeNDAP 直采）。
-**GLASS 数据支持（v2.5 起提供，v2.6.0 全面升级）**：公开的 **GLASS**（Global Land Surface Satellite）
+**GLASS 数据支持（v2.5 起提供，v2.6.0 全面升级，v2.7.0 自适应）**：公开的 **GLASS**（Global Land Surface Satellite）
 档案也纳入同一流程——免登录；GLASS 检索/下载模块以作者的 R 包
 [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
 （[文档](https://giserdaishaoqing.github.io/glass.sqdaitools/)，v0.1.0）为骨架：
@@ -24,7 +24,7 @@ D3L Tool 管"找和下"，后处理在 R 侧完成——两个项目配套使用
 - **内置检索**：按产品、时间范围、MODIS/VIIRS 正弦瓦片（可点击的 36×18 瓦片地图）或经纬度范围检索，
   检索不需要登录
 - **产品覆盖**：MODIS、VIIRS（LAADS DAAC）、MERRA-2（GES DISC），也可输入任意 CMR short_name
-- **GLASS 数据源**（v2.5.0 新增，v2.6.0 全面升级）：检索并下载 GLASS（Global Land
+- **GLASS 数据源**（v2.5.0 新增，v2.6.0 全面升级，v2.7.0 自适应）：检索并下载 GLASS（Global Land
   Surface Satellite）产品体系——公开 [glass.hku.hk](https://glass.hku.hk) 档案的
   133 个变体（131 个经真实 granule 核验），无需 Earthdata 登录；四种归档布局
   全覆盖，全球 CMG 产品无需选瓦片，静态集无需日期。检索引擎以作者的 R 包
@@ -121,7 +121,18 @@ glass.sqdaitools 完成](images/GlassDownload.png)
 8/24/72s 指数退避 + 15s 冷却末次重试、列表请求间隔 ≥1.2s、同一年目录
 无论日期跨度多长只列一次。
 
-版本兼容：D3L Tool **2.6.0** ↔ glass.sqdaitools **≥ 0.1.0**——后续若有
+**v2.7.0 自适应**：登记表中未登记合成周期的约 50 个核验变体（FVC、
+Albedo AVHRR/MIX/0.5D、PAR、RN/SM、NDVI/EVI 0.25°、NPP 等）不再迷信
+`year_doy` 标签——检索按区间逐年只列一次真实目录，直接适配档案实况：
+文件直躺年目录（文件名携带合成码）、`yyyyMM` 月码、或根下套一层版本
+包装目录（NPP 的 `GLASS_NPP_0.05D_V40/`）。合成日期从文件名解析
+（A 头优先，其次取文件名中最先出现的日期 token），步长从相邻合成
+起点差反推，span 语义取舍；年内只有一个文件则整年保留。只有子目录的
+静态根（ABI 500M 的 365 个日目录）明确报错而非静默空表。"网站"菜单
+新增 GLASS 产品官网与配套 R 包主页 glass.sqdaitools（其 0.4.0 迭代与本
+版本同步）。
+
+版本兼容：D3L Tool **2.7.0** ↔ glass.sqdaitools **≥ 0.1.0**——后续若有
 API 变更会在两边的 release notes 同步声明。
 GLASS 数据来自 GLASS 产品团队（[glass.hku.hk](https://glass.hku.hk)），
 使用请遵守其引用政策。
@@ -174,6 +185,22 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 
 ## 更新日志
 
+- **2026-11 v2.7.0** — 未登记合成周期的 GLASS 变体改为**自适应检索**而非
+  "cadence 错误"或静默空表：约 50 个核验变体（FVC、Albedo AVHRR/MIX/0.5D、
+  PAR、RN/SM、NDVI/EVI 0.25°、NPP 等）登记表无合成周期，而档案实际有
+  四种组织形态——文件直躺年目录（`A{yyyy}{ddd}` 合成码）、月码
+  （`yyyyMM`）、真 DOY 子目录、或根下套一层版本包装目录（NPP 的
+  `GLASS_NPP_0.05D_V40/` 与其 `YEARLY` 姊妹并列）。检索逐年只列一次，
+  从文件名解析合成日期（A 头优先，其次文件名最先出现的日期 token——
+  NDVI 0.25° 尾部的处理日期 "2023068" 不再被误读为 DOY），步长由相邻
+  合成起点差反推、按 span 语义取舍；年内只一个文件的整年保留；只有
+  子目录的静态根（ABI 500M 的 365 个日目录）明确报错而非静默空表。
+  "网站"菜单新增 GLASS 产品官网与 glass.sqdaitools 主页——与 R 包 0.4.0
+  修复轮同步。live 档案验收：`FVC_AVHRR_0_5D` 2018-08-01..09-15 = 恰好
+  14 个文件（7 合成 × hdf + hdf.xml）。首个重度场景：`AWGF_LST_ABI_2km`
+  跨四年 = 约 1410 个日目录，GLASS 检索因此**可随时取消**（检索按钮兼任
+  "取消检索"）并显示目录级进度条；查询将列出超过 200 个目录时产品提示
+  会提前预警。
 - **2026-11 v2.6.0** — GLASS 模块对齐 glass.sqdaitools 全量核验登记表
   （133 个变体中 131 个经真实 granule 实测）：四种归档布局全覆盖——
   `year_doy` 合成目录、`flat` 静态文件集（KGClim/AGB；无需日期——GUI

@@ -2011,7 +2011,7 @@ VARIANTS = {
         "version": 'V01',
         "code": 'GLASS06A01',
         "verified": True,
-        "url_root": 'https://glass.hku.hk/archive/LST/MODIS/Daily/',
+        "url_root": 'https://glass.hku.hk/archive/LST/MODIS/Daily/1KM/',
         "ext": 'hdf',
         "tiled": True,
     },

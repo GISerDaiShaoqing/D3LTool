@@ -92,7 +92,8 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
   managers) and a self-contained HTML index page for a logged-in browser,
   giving a rescue line when transport-level 401/403 blocks the built-in
   downloader;
-- **GLASS coverage** (since v2.5, upgraded in v2.6): the public GLASS product
+- **GLASS coverage** (since v2.5, upgraded in v2.6, self-adapting in v2.7):
+  the public GLASS product
   suite — 133 product/source/resolution variants (131 verified against real
   granules) from the glass.hku.hk archive, served as plain directory listings
   across all four archive layouts (composite folders, static file collections,
@@ -100,6 +101,9 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
   any sign-in, reusing the same tile map, download engine and export surfaces;
   global CMG products ignore tiles, static collections need no dates, and
   directory listings follow a measured rate-limit politeness policy;
+  variants without a registered composite cadence self-adapt to the
+  archive's real layout (files flat inside the year folder with A-header
+  or month-code tokens, or a one-level version wrapper) instead of failing;
   post-processing (mosaic/crop/scaling) pairs with the author's companion
   R package `glass.sqdaitools`.
 
@@ -141,7 +145,7 @@ tile map, results and task tables, a slide-out assistant drawer and a
 time-series panel sharing the main engine, settings (download directory,
 worker count, proxy) and a
 language switcher; all strings live in a single i18n module. The test suite
-(177 pytest tests at submission time) covers the tile math, configuration
+(191 pytest tests at submission time) covers the tile math, configuration
 handling, search query construction and version fallbacks, the
 resume/retry engine against a local Range-capable HTTP server, the tool
 registry and agent loop with a local streaming-HTTP fake, an end-to-end

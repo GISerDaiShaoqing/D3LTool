@@ -606,6 +606,43 @@ def test_search_panel_glass_hints(tmp_path, monkeypatch):
         window.close()
 
 
+def test_search_panel_busy_button_fires_cancel(tmp_path, monkeypatch):
+    """busy 时"检索"按钮不禁用、文字变"取消检索"，再点一次发出
+    cancel_requested——v2.7 前按钮 busy 即禁用，多年日级 GLASS 查询根本
+    无法停下（AWGF_LST_ABI_2km 四年 ≈1410 次目录是实坑）。"""
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        sp = window.search_panel
+        sp.set_searching(True)
+        assert sp.search_btn.isEnabled()
+        assert sp.search_btn.text()
+        fired = []
+        sp.cancel_requested.connect(lambda: fired.append(True))
+        sp._on_search_clicked()
+        assert fired == [True]
+        sp.set_searching(False)
+        assert sp.search_prog.isHidden()
+    finally:
+        window.close()
+
+
+def test_search_panel_progress_bar(tmp_path, monkeypatch):
+    """GLASS 目录进度回调驱动进度条：n/m 与文件夹标签可见，结束后隐藏。"""
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        sp = window.search_panel
+        sp.set_searching(True)
+        sp.on_search_progress({"done": 3, "total": 10, "label": "2018/217"})
+        assert not sp.search_prog.isHidden()
+        assert sp.search_prog.value() == 3
+        assert sp.search_prog.maximum() == 10
+        assert "2018/217" in sp.search_prog.format()
+        sp.on_search_finished()
+        assert sp.search_prog.isHidden()
+    finally:
+        window.close()
+
+
 def test_glass_batch_enqueues_without_login(tmp_path, monkeypatch):
     """全 GLASS 批次跳过 Earthdata 闸门直接入队；混入 NASA 条目则照旧
     先过登录闸（公开档案不需要凭据，NASA 数据需要）。"""

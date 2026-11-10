@@ -32,8 +32,12 @@ def build_query(p: SearchParams) -> dict:
     return q
 
 
-def run_search(p: SearchParams, searcher=None) -> list:
-    """Execute the search. `searcher` is injectable for tests.
+def run_search(p: SearchParams, searcher=None, progress=None,
+               cancelled=None) -> list:
+    """Execute the search. `searcher` is injectable for tests; `progress`
+    (done, total, label) and `cancelled` are cooperative-search hooks used
+    by the GUI for GLASS archive queries (which list real directories and
+    can take minutes over multi-year daily data).
 
     GLASS variants route to the public glass.hku.hk directory search
     (d3ltool.glass) instead of CMR — same row dicts downstream, but plain
@@ -42,7 +46,8 @@ def run_search(p: SearchParams, searcher=None) -> list:
         from . import glass
 
         return glass.search(p.short_name, p.start, p.end, tiles=p.tiles,
-                            bbox=p.bbox, max_results=p.max_results)
+                            bbox=p.bbox, max_results=p.max_results,
+                            progress=progress, cancelled=cancelled)
     if searcher is None:
         import earthaccess
         searcher = earthaccess.search_data

@@ -2,6 +2,7 @@
 """Main application window."""
 
 from pathlib import Path
+import threading
 
 from PySide6.QtCore import (QEasingCurve, QObject, QPoint,
                             QPropertyAnimation, Qt, QThread, QUrl, Signal)
@@ -24,6 +25,8 @@ RES_DIR = Path(__file__).resolve().parent.parent / "resources"
 SITE_URLS = {
     "site_home": "https://gisersqdai.top/D3LTool/",
     "site_blog": "https://gisersqdai.top/",
+    "site_glass": "https://glass.hku.hk/",
+    "site_glass_r": "https://gisersqdai.top/glass.sqdaitools/",
     "site_nasa": "https://ladsweb.modaps.eosdis.nasa.gov/",
     "site_nasa_tools": "https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/",
 }
@@ -44,21 +47,33 @@ RS_URLS = [
 class _SearchThread(QThread):
     done = Signal(list, float)     # granules, elapsed seconds
     failed = Signal(str)
+    progress = Signal(object)      # {"done": n, "total": m, "label": str}
 
     def __init__(self, params, parent=None):
         super().__init__(parent)
         self._params = params
+        self._cancel = threading.Event()
+
+    def cancel(self):
+        """Cooperative stop for GLASS archive listings — checked between
+        directory fetches and inside the politeness backoff waits."""
+        self._cancel.set()
 
     def run(self):
         import time as _time
 
         t0 = _time.time()
         try:
-            granules = search.run_search(self._params)
+            granules = search.run_search(
+                self._params, progress=self._on_progress,
+                cancelled=self._cancel.is_set)
         except Exception as exc:
             self.failed.emit(f"{type(exc).__name__}: {exc}")
             return
         self.done.emit(granules, _time.time() - t0)
+
+    def _on_progress(self, done, total, label):
+        self.progress.emit({"done": done, "total": total, "label": label})
 
 
 class _AgentPlotBridge(QObject):
@@ -232,6 +247,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(i18n.tr("status_logged_out"))
 
         self.search_panel.search_requested.connect(self._do_search)
+        self.search_panel.cancel_requested.connect(self._cancel_search)
         self.results_table.enqueue_requested.connect(self._enqueue)
         self.results_table.export_requested.connect(self._export_link_items)
         self.results_table.browse_requested.connect(self._browse_link_items)
@@ -318,6 +334,13 @@ class MainWindow(QMainWindow):
         # ---- websites: personal + NASA
         menu_sites = self.menuBar().addMenu(i18n.tr("menu_sites"))
         for key in ("site_home", "site_blog"):
+            act = QAction(i18n.tr(key), self)
+            act.triggered.connect(lambda _c=False, u=SITE_URLS[key]: self._open_url(u))
+            menu_sites.addAction(act)
+        menu_sites.addSeparator()
+        # data sources used by this tool (v2.7): the GLASS product site and
+        # the companion R package's homepage
+        for key in ("site_glass", "site_glass_r"):
             act = QAction(i18n.tr(key), self)
             act.triggered.connect(lambda _c=False, u=SITE_URLS[key]: self._open_url(u))
             menu_sites.addAction(act)
@@ -423,7 +446,16 @@ class MainWindow(QMainWindow):
         self._search_thread = _SearchThread(params, self)
         self._search_thread.done.connect(self._on_search_done)
         self._search_thread.failed.connect(self._on_search_failed)
+        self._search_thread.progress.connect(self.search_panel.on_search_progress)
         self._search_thread.start()
+
+    def _cancel_search(self):
+        t = self._search_thread
+        if t is not None and t.isRunning():
+            t.cancel()
+            self.statusBar().showMessage(i18n.tr("search_cancelling"))
+        else:
+            self.search_panel.set_searching(False)
 
     def _on_search_done(self, granules, elapsed):
         self.search_panel.set_searching(False)
@@ -436,8 +468,12 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(i18n.tr("search_done", n=len(granules), secs=elapsed))
 
     def _on_search_failed(self, message):
+        cancelled = "cancelled" in str(message).lower()
         self.search_panel.set_searching(False)
         self._search_thread = None
+        if cancelled:                      # user stop — status only, no dialog
+            self.statusBar().showMessage(i18n.tr("search_cancelled"))
+            return
         self.statusBar().showMessage(i18n.tr("search_failed", reason=message))
         QMessageBox.warning(self, i18n.tr("err_title"),
                             i18n.tr("search_failed", reason=message))

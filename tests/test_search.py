@@ -181,7 +181,7 @@ def test_run_search_routes_glass_variants(monkeypatch):
     seen = {}
 
     def fake_glass_search(short_name, start, end, tiles=None, bbox=None,
-                          max_results=200):
+                          max_results=200, progress=None, cancelled=None):
         seen.update(short_name=short_name, start=start, tiles=tiles,
                     bbox=bbox, max_results=max_results)
         return [dict(GLASS_ROW)]

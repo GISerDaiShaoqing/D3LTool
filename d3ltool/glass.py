@@ -32,6 +32,17 @@ USER_AGENT = (f"D3LTool/{__version__} (GLASS archive search; "
 
 _TILE_FN_RE = re.compile(r"h[0-9]{2}v[0-9]{2}", re.IGNORECASE)
 _ATOK_RE = re.compile(r"A[0-9]{7}")   # A{yyyy}{ddd} composite token (year_files)
+# Composite-date tokens for filenames lying directly inside a year folder
+# (the archive's real layout for ~50 cadence-less variants — NOT year/DOY/):
+# month codes "201801" (NDVI/EVI 0.25°, one per month, never a 3rd digit),
+# and bare 7-digit yyyyddd tails ("GLASSxxB01.Q10.2018217.hdf").  Priority
+# when both appear: the A-header wins, otherwise the FIRST match in the
+# filename — NDVI0.25's trailing "2023068" is the processing date, the
+# month code "201801" sits before it in the name and must win.
+_MONTH_RE = re.compile(r"(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?![0-9])")
+_TAILC_RE = re.compile(r"(?:19|20)\d{2}\d{3}(?![0-9])")
+_YEAR_DIR_RE = re.compile(r"(?:18|19|20)\d{2}")   # 4-digit year directory
+_DOY_DIR_RE = re.compile(r"\d{3}")               # 3-digit DOY directory
 
 # glass.hku.hk rate-limits bursts of directory listings (requests fail or
 # time out).  Measured politeness policy from the glass.sqdaitools engine:
@@ -46,6 +57,15 @@ _LAST_LISTING = [0.0]   # monotonic timestamp of the last listing fetch
 
 class GlassError(ValueError):
     """Unknown GLASS variant / unusable date range (user-fixable)."""
+
+
+class GlassCancelled(RuntimeError):
+    """Search aborted by the user (cooperative cancellation flag)."""
+
+
+# search() installs the caller's cancelled() callable here so the deep
+# listing/backoff loops can bail out promptly; None while no search runs.
+_CANCELLED = [None]
 
 
 # --------------------------------------------------------------- registry
@@ -247,8 +267,32 @@ def _ext_pattern(ext: str) -> "re.Pattern":
     return re.compile(r"(?:\." + r"|\.".join(alts) + r")$")
 
 
+def _parse_composite(filename: str):
+    """Composite start carried by a filename lying directly inside a year
+    folder: ("doy", year, doy) from the A{yyyy}{ddd} header (FVC/Albedo/
+    NPP...), ("month", year, month) from a yyyyMM code (NDVI/EVI 0.25°), or
+    ("doy", year, doy) from a bare 7-digit yyyyddd tail.
+    A-header wins; otherwise the FIRST match in the name (NDVI0.25 carries
+    the processing date "2023068" later in the name — the month code "201801"
+    sits before it and must win).  None when no composite token exists."""
+    m = _ATOK_RE.search(filename)
+    if m:
+        tok = m.group(0)
+        return "doy", int(tok[1:5]), int(tok[5:8])
+    cands = []
+    for mm in _MONTH_RE.finditer(filename):
+        ym = mm.group(0)
+        cands.append((mm.start(), "month", int(ym[0:4]), int(ym[4:6])))
+    for tc in _TAILC_RE.finditer(filename):
+        tok = tc.group(0)
+        cands.append((tc.start(), "doy", int(tok[0:4]), int(tok[4:7])))
+    if not cands:
+        return None
+    return min(cands, key=lambda c: c[0])[1:]
+
+
 def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
-               ext=None, session=None, fetch=None) -> list:
+               ext=None, session=None, fetch=None, _folder=None) -> list:
     """One directory listing — port of the R glass_list_files(): the variant
     folder's <a href>s, subdirectories dropped, filtered by extension (an
     hdf match also keeps '.hdf.xml' sidecars), by tile fragment — only for
@@ -256,7 +300,11 @@ def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
     variants, by the registry's real GLASS code prefix (GHOSE03G01 for BBE,
     not every family starts with "GLASS").  year_files variants additionally
     filter by the A{yyyy}{ddd} composite token in the filename when a doy is
-    given.  ext=None uses the variant's registry ext (from the R package's
+    given; cadence-less year_doy variants whose files lie directly inside a
+    year folder (FVC, Albedo AVHRR/MIX, NPP...) are listed through the
+    private ``_folder`` escape hatch — search() resolved that address
+    itself, and per-file composite dates come from _parse_composite().
+    ext=None uses the variant's registry ext (from the R package's
     verified granule samples: .hdf / .tif / .nc / .dat); a missing folder
     raises FileNotFoundError (the cadence math names composite folders the
     archive never filled).  `fetch` lets search() memoize directory pages —
@@ -265,7 +313,10 @@ def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
     fetch = fetch or _fetch_hrefs
     root = v["url_root"]
     layout = v.get("layout")
-    if layout == "flat":
+    folder = _folder
+    if _folder:
+        pass
+    elif layout == "flat":
         folder = root
     elif layout == "year_doy":
         if not year or not doy:
@@ -307,18 +358,29 @@ def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
             continue
         if v.get("verified") and code and not filename.startswith(code):
             continue
-        f_year, f_doy = year, doy
+        f_year, f_doy, f_month = year, doy, None
         if layout == "year_files":
             tok = _ATOK_RE.search(filename)
             if tok:
                 f_year, f_doy = int(tok.group(0)[1:5]), int(tok.group(0)[5:8])
             else:
                 f_year, f_doy = int(year), None   # annual file, no composite token
+        elif layout == "year_doy" and _folder:
+            pt = _parse_composite(filename)   # files lie flat inside {year}/
+            if pt:
+                kind, f_year, val = pt
+                if kind == "doy":
+                    f_doy = val
+                else:
+                    f_month = val
+            else:
+                f_year, f_doy = int(year), None
         out.append({
             "filename": filename,
             "url": href if href.startswith("http") else folder + href,
             "year": int(f_year) if f_year else None,
             "doy": int(f_doy) if f_doy else None,
+            "month": int(f_month) if f_month else None,
             "tile": m.group(0).lower() if m else "",
             "ext": filename.rsplit(".", 1)[-1].lower(),
         })
@@ -328,7 +390,7 @@ def list_files(v: dict, year: int = None, doy: int = None, tiles=None,
 # ----------------------------------------------------------------- search
 
 def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
-           max_results: int = 200) -> list:
+           max_results: int = 200, progress=None, cancelled=None) -> list:
     """GLASS archive search.  Returns the row dicts the CMR path's accessor
     functions understand: {url, filename, date, tile, size_mb, size_bytes,
     product}.  size is 0 — directory listings carry no sizes; the download
@@ -336,9 +398,25 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
     year_doy (composite folders), flat (static file collections — dates
     ignored), year_files (granules under {year}/, cadence ones filtered by
     the A{yyyy}{ddd} token) and year_yyyddd (7-digit YYYYDDD day folders).
-    Variants without a verified cadence get their folders derived from the
-    archive itself (doys_from_listing).  Tile filtering only applies to
-    tiled products; global CMG variants ignore tiles/bbox entirely."""
+    Variants without a verified cadence self-adapt to the real archive
+    layout (_search_year_doy_adaptive).  Tile filtering only applies to
+    tiled products; global CMG variants ignore tiles/bbox entirely.
+
+    progress(done, total, label) is called once per directory listing the
+    search performs — daily cadences spanning years mean thousands of
+    listings, so the caller should surface this.  cancelled() returning
+    truthy aborts cooperatively (GlassCancelled), checked between listings
+    and inside the politeness backoff waits."""
+    _CANCELLED[0] = cancelled
+    try:
+        return _search_impl(short_name, start, end, tiles, bbox, max_results,
+                            progress, cancelled)
+    finally:
+        _CANCELLED[0] = None
+
+
+def _search_impl(short_name, start, end, tiles, bbox, max_results,
+                 progress, cancelled) -> list:
     v = get_variant(short_name)
     layout = v.get("layout")
     want = {str(t).lower() for t in (tiles or [])}
@@ -355,6 +433,14 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
         # listing per year inside the range, no composite filter
         d0, d1 = _date_range(start, end)
         pairs = [(y, None) for y in range(d0.year, d1.year + 1)]
+    elif layout == "year_doy" and not v.get("cadence_days"):
+        # ~50 verified variants (FVC, Albedo AVHRR/MIX, PAR, RN, SM, NDVI/EVI
+        # 0.25°, NPP…): the label says year_doy, the archive often does not
+        # (files flat in the year folder, month codes, version wrappers) —
+        # self-adapt from real listings instead of a cadence guess.
+        return _search_year_doy_adaptive(v, start, end, want, session,
+                                         max_results, progress=progress,
+                                         cancelled=cancelled)
     else:
         try:
             pairs = doys(v, start, end)
@@ -381,7 +467,19 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
             raise val
         return val
 
+    total = max(len(pairs), 1)
+    done = 0
     for year, doy in pairs:
+        if cancelled and cancelled():
+            raise GlassCancelled("GLASS search cancelled")
+        done += 1
+        if progress:
+            label = f"{year}/{doy:03d}" if doy else \
+                (str(year) if year else v["url_root"])
+            try:
+                progress(done, total, label)
+            except Exception:
+                pass
         try:
             files = list_files(v, year=year, doy=doy, tiles=want,
                                session=session, fetch=_memo_fetch)
@@ -410,6 +508,16 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
             })
             if len(rows) >= max_results:
                 return rows
+    if not rows and not missing and not errors and layout == "flat":
+        # listing succeeded but every entry was a subdirectory — never a
+        # silent empty table.  Two measured shapes sit behind this: ABI
+        # climatology roots in 365 day folders; HiGLASS 20m (HR) files live
+        # one level deeper in 1-degree band folders like n018e108/.
+        raise GlassError(
+            f"no data files under {v['url_root']} — the collection root "
+            "holds only subdirectories (ABI's 365 day folders, or HiGLASS "
+            "20m's 1-degree band folders like n018e108/); browse it "
+            "directly or use the glass.sqdaitools R package")
     if not rows and missing and missing == len(pairs):
         # Two very different causes share this symptom: the requested range
         # sits beyond the archive's observed coverage (the GUI default dates
@@ -436,11 +544,251 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
     return rows
 
 
+def _search_year_doy_adaptive(v: dict, start: str, end: str, want: set,
+                              session, max_results: int, progress=None,
+                              cancelled=None) -> list:
+    """Search the ~50 verified variants labelled year_doy without a verified
+    cadence (FVC, Albedo AVHRR/MIX/0.5D, PAR, RN, SM, NDVI/EVI 0.25°,
+    NPP, …).  The 2026-06 skeleton scan trusted the res-directory for the
+    year/DOY layout, but live listings show the archive really organizes
+    these products four different ways:
+
+    1. composite files flat inside ``{year}/`` — FVC "GLASS10G02.V40.
+       A2018001.2021040.hdf" (8-day), PAR/RN/SM/DSR daily,
+    2. month codes inside ``{year}/`` — NDVI/EVI 0.25° "GLASS13J01.
+       201801.V10.2023068.hdf" (12 per year; the trailing 7-digit token is
+       the processing date, the month code sits first),
+    3. DOY subdirectories under ``{year}/`` — the layout the label assumed
+       (a few MODIS families),
+    4. a version wrapper between root and years — NPP roots hold
+       GLASS_NPP_0.05D_V40/ beside GLASS_NPP_0.05D_YEARLY_V40/.
+
+    Instead of trusting the registry's cadence, every year folder in the
+    range is listed ONCE (memoized), per-file composite dates come from
+    _parse_composite(), and the stride is the smallest gap between
+    consecutive composite starts in any year — the measured cadence.  Span
+    semantics like the registered variants: [begin, begin+stride-1] must
+    intersect the range; month files span their calendar month; a year that
+    yields a single composite (or one undated file — an annual product)
+    keeps it for the whole year.  A 404 year folder triggers a one-level
+    wrapper probe (root subdirectory whose name contains the root path's
+    resolution segment, "YEARLY" wrappers demoted); sparse 404 years and
+    missing composite folders are the archive's normal gaps, never retried.
+    Registered-cadence variants never reach this path."""
+    d0, d1 = _date_range(start, end)
+    root = v["url_root"]
+    memo = {}
+
+    def _memo(url, _session=None):
+        if url in memo:
+            val = memo[url]
+            if isinstance(val, Exception):
+                raise val
+            return val
+        try:
+            val = _fetch_hrefs(url, session)
+        except Exception as exc:
+            memo[url] = exc
+            raise
+        memo[url] = val
+        return val
+
+    def _listed_dirs(folder) -> list:
+        return sorted(n.rstrip("/") for n in _memo(folder) if n.endswith("/"))
+
+    wrap = [None, False]   # [wrapper name or None, probe attempted]
+
+    def _wrapper_dir():
+        """First tier under root whose name echoes the root path's resolution
+        segment — NPP's GLASS_NPP_0.05D_V40 inside NPP/AVHRR/0.05D/."""
+        if wrap[0] is not None:
+            return wrap[0]
+        seg = urlsplit(root).path.rstrip("/").rsplit("/", 1)[-1].lower()
+        try:
+            dirs = _listed_dirs(root)
+        except Exception:
+            dirs = []
+        cands = [d for d in dirs if not _YEAR_DIR_RE.fullmatch(d)
+                 and seg and seg in d.lower()]
+        keep = [c for c in cands if "YEARLY" not in c.upper()] or cands
+        wrap[0], wrap[1] = (keep[0] if keep else None), True
+        return wrap[0]
+
+    def _year_folder(year: int) -> str:
+        if wrap[1] and wrap[0]:
+            return f"{root}{wrap[0]}/{year}/"
+        if not wrap[1]:
+            folder = f"{root}{year}/"
+            try:
+                _memo(folder)
+                return folder
+            except FileNotFoundError:
+                _wrapper_dir()   # resolve once; later years skip the probe
+        if wrap[0]:
+            return f"{root}{wrap[0]}/{year}/"   # 404 propagates → sparse year
+        raise FileNotFoundError(f"{root}{year}/")
+
+    try:
+        year_list = _listed_dirs(root)
+    except FileNotFoundError:
+        raise GlassError(
+            f"archive folder not found (404): {root} — the variant exists "
+            "in the registry but not on the archive") from None
+    typed = sorted(int(n) for n in year_list if _YEAR_DIR_RE.fullmatch(n))
+    if not typed:
+        w = _wrapper_dir()
+        if w:
+            try:
+                typed = sorted(int(n) for n in _listed_dirs(f"{root}{w}/")
+                               if _YEAR_DIR_RE.fullmatch(n))
+            except FileNotFoundError:
+                typed = []
+    if not typed:
+        raise GlassError(
+            f"no year folders under {root} — the archive layout of "
+            f"{v['variant_id']} is not year/composite based; browse it "
+            "directly or use the glass.sqdaitools R package")
+    years = [y for y in typed if d0.year <= y <= d1.year]
+    if not years:
+        raise GlassError(
+            f"GLASS archive coverage for {v['variant_id']} observed "
+            f"{typed[0]}-{typed[-1]}; the requested range {start}..{end} "
+            "has no year folders — pick a period inside it")
+
+    # pass 1 — one listing per year folder: composite subdirectories, or the
+    # year folder holds the files itself (ext/code/tile filters still apply)
+    plans = {}    # year -> (folder, 3-digit DOY subdirs)
+    file_rows = {}
+    missing = 0
+    errors = []
+    for year in years:
+        if cancelled and cancelled():
+            raise GlassCancelled("GLASS search cancelled")
+        if progress:
+            try:
+                progress(years.index(year) + 1, len(years), f"{year}/")
+            except Exception:
+                pass
+        try:
+            folder = _year_folder(year)
+            hrefs = _memo(folder)
+        except FileNotFoundError:
+            missing += 1
+            continue
+        except requests.RequestException as exc:
+            errors.append(f"{year}: {exc}")
+            continue
+        dirs3 = sorted(int(n.rstrip("/")) for n in hrefs
+                       if n.endswith("/") and _DOY_DIR_RE.fullmatch(n.rstrip("/")))
+        plans[year] = (folder, dirs3)
+        if not dirs3:
+            try:
+                file_rows[year] = list_files(v, year=year, tiles=want,
+                                             session=session, fetch=_memo,
+                                             _folder=folder)
+            except requests.RequestException as exc:
+                errors.append(f"{year}: {exc}")
+    per_year_doy = {}
+    for year, (_, dirs3) in plans.items():
+        if dirs3:
+            per_year_doy[year] = set(dirs3)
+    for year, rows in file_rows.items():
+        pts = {r["doy"] for r in rows if r["doy"]}
+        if pts:
+            per_year_doy.setdefault(year, set()).update(pts)
+    diffs = sorted({b - a for lst in per_year_doy.values()
+                    for a, b in zip(sorted(lst), sorted(lst)[1:]) if b > a})
+    stride = diffs[0] if diffs else None   # measured cadence, not the registry's
+
+    # pass 2 — span-filter and assemble rows (memo serves every listing)
+    out = []
+
+    def _emit(r, date_s):
+        out.append({
+            "url": r["url"],
+            "filename": r["filename"],
+            "date": date_s,
+            "tile": r["tile"],
+            "size_mb": 0.0,
+            "size_bytes": 0,
+            "product": v["variant_id"],
+        })
+
+    for year in sorted(plans):
+        if cancelled and cancelled():
+            raise GlassCancelled("GLASS search cancelled")
+        _, dirs3 = plans[year]
+        if dirs3:
+            for doy in sorted(dirs3):
+                begin = _doy_date(year, doy)
+                if stride is not None and not (
+                        begin <= d1 and
+                        begin + timedelta(days=stride - 1) >= d0):
+                    continue
+                try:
+                    files = list_files(v, year=year, doy=doy, tiles=want,
+                                       session=session, fetch=_memo)
+                except FileNotFoundError:
+                    continue
+                except requests.RequestException as exc:
+                    errors.append(f"{year}/{doy:03d}: {exc}")
+                    continue
+                for r in files:
+                    _emit(r, begin.isoformat())
+                    if len(out) >= max_results:
+                        return out
+        else:
+            rows = file_rows.get(year, [])
+            dated = any(r["doy"] or r["month"] for r in rows)
+            if rows and not dated and len(rows) == 1:
+                _emit(rows[0], str(year))  # annual single file keeps the year
+            else:
+                for r in rows:
+                    if r["doy"]:
+                        begin = _doy_date(year, r["doy"])
+                        if stride is None or (
+                                begin <= d1 and
+                                begin + timedelta(days=stride - 1) >= d0):
+                            _emit(r, begin.isoformat())
+                    elif r["month"]:
+                        ms = date(year, r["month"], 1)
+                        me = ((date(year + 1, 1, 1) if r["month"] == 12
+                               else date(year, r["month"] + 1, 1))
+                              - timedelta(days=1))
+                        if ms <= d1 and me >= d0:
+                            _emit(r, f"{year}-{r['month']:02d}")
+                    # undated files next to dated ones: unparseable, dropped
+            if len(out) >= max_results:
+                return out
+    if not out and missing and missing == len(years):
+        raise GlassError(
+            f"no archive folder found for {v['variant_id']} (all {missing} "
+            "year folders returned 404 — the archive layout may differ from "
+            "the registry)")
+    if not out and errors and not missing:
+        raise RuntimeError("GLASS archive unreachable: " + errors[0])
+    if not out:
+        raise GlassError(
+            f"no composite files could be parsed from the year folders of "
+            f"{v['variant_id']} under {root} — browse the archive directly "
+            "or use the glass.sqdaitools R package")
+    return out
+
+
 def _doy_date(year: int, doy: int) -> date:
     return date(year, 1, 1) + timedelta(days=doy - 1)
 
 
 # ---------------------------------------------------------------- session
+
+def _maybe_cancel():
+    """Hit the caller's cooperative-cancel flag while stuck in the
+    politeness sleeps (backoff 8/24/72 s + cooldown) — without this a
+    cancelled search would still wait out the full backoff ladder."""
+    chk = _CANCELLED[0]
+    if chk is not None and chk():
+        raise GlassCancelled("GLASS search cancelled during listing wait")
+
 
 _SESSION = None
 
@@ -471,9 +819,11 @@ def _fetch_hrefs(url: str, session) -> list:
     last_exc = None
     for wait in waits:
         if wait:
+            _maybe_cancel()
             time.sleep(wait)
         gap = LISTING_MIN_INTERVAL - (time.monotonic() - _LAST_LISTING[0])
         if gap > 0:
+            _maybe_cancel()
             time.sleep(gap)
         try:
             resp = session.get(url, timeout=30)

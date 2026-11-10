@@ -13,7 +13,7 @@ D3L Tool v2 is a free & open-source tool to **search and download** NASA Earth s
 the whole workflow (login → search → download) inside one app, built on NASA's official
 [earthaccess](https://earthaccess.readthedocs.io/) library and the CMR search service —
 and, since v2.3, to sample a pixel's time series over OPeNDAP and plot it in-app.
-**GLASS support (since v2.5.0)**: the public **GLASS** (Global Land Surface Satellite)
+**GLASS support (since v2.5.0; upgraded in v2.6.0, self-adapting in v2.7.0)**: the public **GLASS** (Global Land Surface Satellite)
 archive joins the same workflow — no sign-in — with the GLASS engine ported from
 the author's R package
 [glass.sqdaitools](https://github.com/GISerDaiShaoqing/glass.sqdaitools)
@@ -26,7 +26,7 @@ two as a matched pair. No more manual order creation, no more browser automation
 - **Built-in search**: by product, date range, MODIS/VIIRS sinusoidal tile (clickable 36×18 tile map)
   or bounding box — search works without an Earthdata login
 - **Coverage**: MODIS, VIIRS (LAADS DAAC), MERRA-2 (GES DISC) — any CMR short_name works too
-- **GLASS data source** (new in v2.5.0, upgraded in v2.6.0): search & download the
+- **GLASS data source** (new in v2.5.0, upgraded in v2.6.0, self-adapting in v2.7.0): search & download the
   GLASS (Global Land Surface Satellite) suite — 133 variants (131 verified against
   real granules) from the public [glass.hku.hk](https://glass.hku.hk) archive, no
   Earthdata sign-in; all four archive layouts covered, global CMG products need no
@@ -132,7 +132,21 @@ follow the measured glass.hku.hk politeness policy: exponential backoff
 8/24/72 s plus a 15 s-cooldown final retry, ≥1.2 s between listings, and one
 listing per year folder however long the date range.
 
-Compatibility: D3L Tool **2.6.0** ↔ glass.sqdaitools **≥ 0.1.0** — breaking
+**Self-adapting in v2.7.0**: variants the registry carries no composited
+cadence for (FVC, Albedo AVHRR/MIX/0.5D, PAR, RN, SM, NDVI/EVI 0.25°, NPP —
+~50 verified ones) no longer trust the `year_doy` label. Search lists each
+year folder once and adapts to the real organization: composite files lying
+flat in the year folder, `yyyyMM` month codes, or one version-wrapper level
+below the root. Composite dates parse from filenames (A-header first, else
+the first date token in the name), the stride infers from the gaps between
+consecutive composites, and span semantics decide selection; a year that
+yields a single file keeps it for the whole year. Static roots holding only
+subdirectories fail loudly instead of silently returning an empty table. The
+**Websites** menu now carries the GLASS product site and the companion R
+package's homepage (glass.sqdaitools — its 0.4.0 iteration pairs with this
+release).
+
+Compatibility: D3L Tool **2.7.0** ↔ glass.sqdaitools **≥ 0.1.0** — breaking
 API changes will be announced in both projects' release notes.
 GLASS data are produced by the GLASS product team
 ([glass.hku.hk](https://glass.hku.hk)); please follow their citation policy
@@ -185,7 +199,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   author  = {Dai, Shaoqing},
   orcid   = {0000-0003-0858-4728},
   title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
-  version = {2.6.0},
+  version = {2.7.0},
   year    = {2026},
   url     = {https://github.com/GISerDaiShaoqing/D3LTool},
 }
@@ -193,6 +207,28 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-11 v2.7.0** — cadence-less GLASS variants now **self-adapt instead of
+  failing**: ~50 verified variants (FVC, Albedo AVHRR/MIX/0.5D, PAR, RN, SM,
+  NDVI/EVI 0.25°, NPP, …) carry no composited cadence in the registry, and
+  the archive really organizes them four ways — composite files flat inside
+  the year folder (`A{yyyy}{ddd}` tokens), month codes (`yyyyMM`), real DOY
+  subfolders, or a version wrapper below the root (NPP's
+  `GLASS_NPP_0.05D_V40/` beside its `YEARLY` twin). Search now lists each
+  year folder once, parses composite dates from filenames (A-header first,
+  else the first date token in the name — NDVI 0.25°'s trailing processing
+  date "2023068" never wins), infers the stride from observed composite
+  gaps and applies span semantics; a year folder holding a single file
+  keeps it for the whole year; static roots holding only subdirectories
+  (ABI 500M's 365 day folders) fail loudly instead of silently returning an
+  empty table. The **Websites** menu gains the GLASS product site and
+  glass.sqdaitools' homepage — round-tripped with the R package's 0.4.0
+  fix. Verified on the live archive: `FVC_AVHRR_0_5D` 2018-08-01..09-15 =
+  exactly 14 files (7 composites × hdf + hdf.xml). First real stress case:
+  `AWGF_LST_ABI_2km` over four years means ~1410 daily-directory listings,
+  so GLASS searches are now **cancellable mid-run** (the search button
+  doubles as "Cancel search") with a per-directory progress bar, and the
+  product hint warns up front when a query will list more than 200
+  directories.
 - **2026-11 v2.6.0** — GLASS module aligned with glass.sqdaitools' fully
   verified registry (131 of 133 variants measured against real granules):
   all four archive layouts are now covered — `year_doy` composite folders,

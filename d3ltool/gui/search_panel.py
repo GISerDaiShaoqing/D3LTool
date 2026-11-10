@@ -10,21 +10,50 @@ overlap each other.
 from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtWidgets import (QComboBox, QDateEdit, QFormLayout, QGridLayout,
                                QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QScrollArea, QSpinBox,
-                               QVBoxLayout, QWidget)
+                               QProgressBar, QPushButton, QScrollArea,
+                               QSpinBox, QVBoxLayout, QWidget)
 
 from .. import glass, i18n, products, search
 from .tile_map import TileMap
 
 CUSTOM_LABEL_ZH = "自定义产品 / Custom"
+BIG_QUERY_DIR_LIMIT = 200   # beyond this the hint warns about listing time
+
+
+def _search_cost_estimate(v: dict, start_q, end_q):
+    """Approximate directory-listing count for a GLASS date range — one
+    listing per composite (or per year for cadence-less adaptive variants).
+    Daily cadences over multiple years easily top thousands of listings
+    (e.g. AWGF_LST_ABI_2km 2017-01-01..2020-11-10 = 1410), so the hint
+    warns the user up front and they can cancel mid-search."""
+    from datetime import date as _date
+
+    s0 = _date(start_q.year(), start_q.month(), start_q.day())
+    s1 = _date(end_q.year(), end_q.month(), end_q.day())
+    sy, ey = v.get("start_year"), v.get("end_year")
+    if sy and ey and not (sy <= s1.year and ey >= s0.year):
+        return None    # entirely outside coverage — let search() report it
+    try:
+        if v.get("cadence_days"):
+            n = len(glass.doys(v, s0.isoformat(), s1.isoformat()))
+        else:
+            n = sum(1 for y in range(s0.year, s1.year + 1))
+    except glass.GlassError:
+        return None
+    if n <= BIG_QUERY_DIR_LIMIT:
+        return None
+    mins = max(int(n * 2 / 60 + 0.5), 1)   # ~1.2 s spacing + request time
+    return i18n.tr("glass_hint_bigquery", n=n, mins=mins)
 
 
 class SearchPanel(QWidget):
     search_requested = Signal(object)   # SearchParams
+    cancel_requested = Signal()         # user wants the running search stopped
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._custom_mode = False
+        self._busy = False
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -66,7 +95,7 @@ class SearchPanel(QWidget):
         product_row.addWidget(self.catalog_btn)
 
         self.version_edit = QLineEdit()
-        self.version_edit.setPlaceholderText("6.1 / 2 / 5.12.4 / (empty)")
+        self.version_edit.setPlaceholderText(i18n.tr("label_version_hint"))
 
         form.addRow(i18n.tr("label_product_group"), self.group_combo)
         form.addRow(i18n.tr("label_product"), product_row)
@@ -94,6 +123,12 @@ class SearchPanel(QWidget):
         self.glass_hint.setStyleSheet("color: #888;")
         self.glass_hint.hide()
         root.addWidget(self.glass_hint)
+
+        # per-directory progress for GLASS archive searches (they list real
+        # folders — multi-year daily cadences mean thousands of listings)
+        self.search_prog = QProgressBar()
+        self.search_prog.hide()
+        root.addWidget(self.search_prog)
 
         # ---- area group
         area_box = QGroupBox(i18n.tr("group_area"))
@@ -211,6 +246,10 @@ class SearchPanel(QWidget):
                     hint = i18n.tr("glass_hint_flat")
                 elif not v.get("tiled", True):
                     hint = i18n.tr("glass_hint_cmg")
+                est = _search_cost_estimate(v, self.start_edit.date(),
+                                            self.end_edit.date())
+                if est:
+                    hint = (hint + "\n" if hint else "") + est
         except glass.GlassError:
             pass   # not a GLASS id (or malformed) — no hint, dates stay on
         self.glass_hint.setText(hint)
@@ -237,6 +276,9 @@ class SearchPanel(QWidget):
         self.tile_edit.setText(", ".join(self.tile_map.selected_tiles()))
 
     def _on_search_clicked(self):
+        if self._busy:                       # the button doubles as "取消检索"
+            self.cancel_requested.emit()
+            return
         params = self.build_params()
         if params is None:
             return
@@ -251,8 +293,30 @@ class SearchPanel(QWidget):
         return self.product_combo.currentText().strip().upper()
 
     def set_searching(self, busy: bool) -> None:
-        self.search_btn.setEnabled(not busy)
-        self.search_btn.setText(i18n.tr("btn_cancel_search") if busy else i18n.tr("btn_search"))
+        """While busy the button stays ENABLED and reads "取消检索" — a second
+        click emits cancel_requested (before v2.7 it was disabled, so a
+        multi-year GLASS query could not be stopped at all)."""
+        self._busy = busy
+        self.search_btn.setText(i18n.tr("btn_cancel_search") if busy
+                                else i18n.tr("btn_search"))
+        if not busy:
+            self.search_prog.hide()
+
+    def on_search_progress(self, payload: dict) -> None:
+        """GLASS directory-listing progress: n/m with the folder label on the
+        hint line."""
+        total = int(payload.get("total") or 0)
+        self.search_prog.setRange(0, max(total, 1))
+        self.search_prog.setValue(int(payload.get("done") or 0))
+        self.search_prog.setFormat(
+            f"{payload.get('label', '')}  ·  %v / %m " +
+            i18n.tr("glass_prog_dirs"))
+        self.search_prog.show()
+
+    def on_search_finished(self) -> None:
+        """Hide the GLASS directory-listing progress bar (also auto-hidden
+        by set_searching(False))."""
+        self.search_prog.hide()
 
     def build_params(self):
         try:

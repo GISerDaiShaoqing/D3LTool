@@ -221,6 +221,56 @@ def test_search_flat_variant_rows_carry_no_date(monkeypatch):
     assert rows[0]["url"].endswith("GLASS_AGB_5km_Y1992.tif")
 
 
+def test_search_progress_reports_listing_count(monkeypatch):
+    """progress(done, total, label) fires once per directory listing — the
+    GUI progress bar's data source (multi-year daily cadences mean thousands
+    of listings)."""
+    monkeypatch.setattr(
+        glass, "_fetch_hrefs",
+        lambda url, session=None: ["GLASS_AGB_5km_Y1992.tif"])
+    seen = []
+    rows = glass.search("AGB_0.05D", "2020-01-01", "2020-12-31",
+                        progress=lambda d, t, l: seen.append((d, t, l)))
+    assert len(rows) == 1
+    assert seen == [(1, 1, "https://glass.hku.hk/archive/AGB/0.05D/")]
+
+
+def test_search_cancelled_cuts_in_before_any_listing(monkeypatch):
+    """cancelled() true → GlassCancelled before the first listing; progress
+    never fires and the module-level hook is reset in the finally."""
+    monkeypatch.setattr(
+        glass, "_fetch_hrefs",
+        lambda url, session=None: ["GLASS_AGB_5km_Y1992.tif"])
+    seen = []
+    with pytest.raises(glass.GlassCancelled):
+        glass.search("AGB_0.05D", "2020-01-01", "2020-12-31",
+                     progress=lambda d, t, l: seen.append((d, t, l)),
+                     cancelled=lambda: True)
+    assert seen == []
+    assert glass._CANCELLED[0] is None
+
+
+def test_fetch_hrefs_cancel_during_backoff(monkeypatch):
+    """_maybe_cancel fires while standing in the politeness sleeps — a
+    pending backoff wait is not waited out; a cancelled search stops in
+    seconds instead of suffering the 8/24/72 s ladder."""
+    monkeypatch.setattr(glass, "LISTING_BACKOFFS", (5.0,))
+    monkeypatch.setattr(glass, "LISTING_COOLDOWN", 0.0)
+    monkeypatch.setattr(glass, "LISTING_MIN_INTERVAL", 0.0)
+    glass._LAST_LISTING[0] = 0.0
+
+    class _DownSession:
+        def get(self, url, timeout=None):
+            raise requests.ConnectionError("boom")
+
+    try:
+        glass._CANCELLED[0] = lambda: True
+        with pytest.raises(glass.GlassCancelled):
+            glass._fetch_hrefs("https://glass.hku.hk/x/", _DownSession())
+    finally:
+        glass._CANCELLED[0] = None
+
+
 def test_search_all_folders_missing_raises(fake_fetch):
     with pytest.raises(glass.GlassError, match="404"):
         glass.search(LAI, "2019-01-01", "2019-02-01", tiles=["h28v05"])
@@ -236,8 +286,10 @@ def test_search_beyond_coverage_says_so(fake_fetch):
 
 def test_search_skeleton_variant_derives_folders(monkeypatch):
     """Cadence-unknown year_doy variants (SH_MODIS is the registry's real
-    skeleton): derive year/DOY folders from the archive itself (the R
-    package's legacy "start" mode)."""
+    skeleton): composite folders come from the archive itself, span-tested
+    with a stride measured from the observed folder gaps — the legacy
+    "start" mode silently dropped the composite that began before the range
+    while still covering part of it (Jul 1 sits inside 001+192)."""
     def fake(url, session=None):
         if url.endswith("/archive/SH/MODIS/"):
             return ["2018/", "2019/", "readme.txt"]
@@ -256,9 +308,10 @@ def test_search_skeleton_variant_derives_folders(monkeypatch):
     monkeypatch.setattr(glass, "_fetch_hrefs", fake)
     rows = glass.search("SH_MODIS", "2018-07-01", "2019-01-10",
                         tiles=["h28v05"])
-    # legacy "start" mode keeps folders beginning inside the range:
-    # 2018/193 (Jul 12) and 2019/001 (Jan 1); 2018/001 began before the range
-    assert [r["date"] for r in rows] == ["2018-07-12", "2019-01-01"]
+    # span mode keeps [begin, begin+stride-1] ranges intersecting the range:
+    # stride 192 (001→193) makes 2018/001 [1..192] reach Jul 1; 2018/193 and
+    # 2019/001 begin inside the range.
+    assert [r["date"] for r in rows] == ["2018-01-01", "2018-07-12", "2019-01-01"]
     assert all(r["product"] == "SH_MODIS" for r in rows)
 
 
@@ -381,6 +434,179 @@ def test_search_flat_404_names_the_folder(monkeypatch):
     with pytest.raises(glass.GlassError, match="404"):
         glass.search("KGClim_KGClim_V1_historical_1981_2010",
                      "2020-01-01", "2020-02-01")
+
+
+# --------------------- cadence-less year_doy（自适应；档案 2026-11 实测形态）
+# R 包与 D3LTool 团使用中发现的：登记表只存了年份目录在哪，没存合成周期——
+# FVC/Albedo/NDVI0.25/NPP 等文件直躺年目录、月码、或套版本包装，were
+# "cadence unknown"（R）或静默空表（v2.6.0 的 D3LTool）。自适应路径逐一还原：
+# 列真实年目录 → 文件名解析复合码 → 相邻档位差反推步长 → span 过滤。
+
+FVC_2018_HREFS = [
+    "../",
+    "GLASS10G02.V40.A2018001.2021040.hdf",
+    "GLASS10G02.V40.A2018001.2021040.hdf.xml",
+    "GLASS10G02.V40.A2018009.2021040.hdf",
+    "GLASS10G02.V40.A2018009.2021040.hdf.xml",
+    "GLASS10G02.V40.A2018025.2021040.hdf",
+    "GLASS10G02.V40.A2018025.2021040.hdf.xml",
+    "GLASS10G02.V40.A2018209.2021040.hdf",
+    "GLASS10G02.V40.A2018209.2021040.hdf.xml",
+    "GLASS10G02.V40.A2018217.2021040.hdf",
+    "GLASS10G02.V40.A2018217.2021040.hdf.xml",
+    "GLASS10G02.V40.A2018225.2021040.hdf",
+    "GLASS10G02.V40.A2018225.2021040.hdf.xml",
+    "GLASS10G02.V40.A2018233.2021040.hdf",
+    "GLASS10G02.V40.A2018233.2021040.hdf.xml",
+    "GLASS10G02.V40.A2018241.2021040.hdf",
+    "GLASS10G02.V40.A2018241.2021040.hdf.xml",
+    "GLASS10G02.V40.A2018249.2021040.hdf",
+    "GLASS10G02.V40.A2018249.2021040.hdf.xml",
+    "GLASS10G02.V40.A2018257.2021040.hdf",
+    "GLASS10G02.V40.A2018257.2021040.hdf.xml",
+]
+
+
+def _fvc_like_fetch(url, session=None):
+    if url.endswith("/FVC/AVHRR/0.5D/"):
+        return ["2018/"]
+    if url.endswith("/2018/"):
+        return FVC_2018_HREFS
+    raise FileNotFoundError(url)
+
+
+def test_parse_composite_priority():
+    """A-header wins; otherwise the FIRST composite token in the name —
+    NDVI0.25's trailing "2023068" is the processing date, the month code
+    sits before it and must win; a bare 7-digit yyyyddd tail parses to DOY."""
+    assert glass._parse_composite(
+        "GLASS10G02.V40.A2018001.2021040.hdf") == ("doy", 2018, 1)
+    assert glass._parse_composite(
+        "GLASS13J01.201801.V10.2023068.hdf") == ("month", 2018, 1)
+    assert glass._parse_composite(
+        "GLASS01B02.Q10.2018217.hdf") == ("doy", 2018, 217)
+    assert glass._parse_composite("GLASS20B01.annual.hdf") is None
+
+
+def test_search_adaptive_files_in_year_folder(monkeypatch):
+    """验收判据：FVC_AVHRR_0_5D + 2018-08-01..09-15 = 7 合成 × (hdf+hdf.xml)
+    = 14 个文件，而不是 cadence 错误。步长 8 由相邻档位差反推，span 语义。"""
+    monkeypatch.setattr(glass, "_fetch_hrefs", _fvc_like_fetch)
+    rows = glass.search("FVC_AVHRR_0_5D", "2018-08-01", "2018-09-15")
+    assert len(rows) == 14
+    dates = {glass._doy_date(2018, d).isoformat()
+             for d in (209, 217, 225, 233, 241, 249, 257)}
+    assert {r["date"] for r in rows} == dates
+    assert all(r["filename"].endswith((".hdf", ".hdf.xml")) for r in rows)
+    assert sorted(r["date"] for r in rows if r["filename"].endswith(".hdf")) \
+        == sorted(dates)
+
+
+def test_search_adaptive_span_touches_window(monkeypatch):
+    monkeypatch.setattr(glass, "_fetch_hrefs", _fvc_like_fetch)
+    # composite 001 spans [Jan 1, Jan 8] — Jan 5..7 sits inside it
+    rows = glass.search("FVC_AVHRR_0_5D", "2018-01-05", "2018-01-07")
+    assert [r["date"] for r in rows] == ["2018-01-01", "2018-01-01"]
+
+
+def test_search_adaptive_month_codes(monkeypatch):
+    """NDVI 0.25°：文件名 yyyyMM 月码（hdf + hdf.xml + .NDVI.jpg 三件套，
+    jpg 被登记 ext 挡掉；尾部 2023068 是处理日期，不得误读为 DOY）。"""
+    def fake(url, session=None):
+        if url.endswith("/NDVI/MODIS/0.25/"):
+            return ["2018/"]
+        if url.endswith("/2018/"):
+            out = []
+            for m in range(1, 13):
+                stem = f"GLASS13J01.2018{m:02d}.V10.2023068"
+                out.extend([stem + ".NDVI.jpg", stem + ".hdf",
+                            stem + ".hdf.xml"])
+            return out
+        raise FileNotFoundError(url)
+
+    monkeypatch.setattr(glass, "_fetch_hrefs", fake)
+    rows = glass.search("NDVI_MODIS_0_25", "2018-08-01", "2018-08-31")
+    assert [r["date"] for r in rows] == ["2018-08", "2018-08"]
+    assert all(r["filename"].endswith((".hdf", ".hdf.xml")) for r in rows)
+    assert all(".201808." in r["filename"] for r in rows)
+
+
+def test_search_adaptive_tail_doy_token(monkeypatch):
+    """无 A 头、无月码的变体（如 LST 0.5°）：无分隔 7 位尾码解析为 DOY。"""
+    def fake(url, session=None):
+        if url.endswith("/LST/AVHRR/05D/"):
+            return ["2018/"]
+        if url.endswith("/2018/"):
+            return ["GLASS08G21.Q10.2018217.hdf",
+                    "GLASS08G21.Q10.2018225.hdf"]
+        raise FileNotFoundError(url)
+
+    monkeypatch.setattr(glass, "_fetch_hrefs", fake)
+    rows = glass.search("LST_AVHRR_05D", "2018-08-05", "2018-08-14")
+    assert [r["date"] for r in rows] == ["2018-08-05", "2018-08-13"]
+
+
+def test_search_adaptive_single_undated_file_keeps_year(monkeypatch):
+    """年内只 1 个文件且无复合码（年度单文件产品）：日期级年报，整年保留。"""
+    def fake(url, session=None):
+        if url.endswith("/RN/AVHRR/"):
+            return ["2018/"]
+        if url.endswith("/2018/"):
+            return ["GLASS07B12.annual.hdf"]
+        raise FileNotFoundError(url)
+
+    monkeypatch.setattr(glass, "_fetch_hrefs", fake)
+    rows = glass.search("RN_AVHRR", "2018-02-01", "2018-12-31")
+    assert [r["date"] for r in rows] == ["2018"]
+
+
+def test_search_adaptive_all_undated_multi_files_raises(monkeypatch):
+    """年目录文件直达 ext 过滤却全无日期语义（杂文件年）：明确报错而非静默空。"""
+    def fake(url, session=None):
+        if url.endswith("/RN/AVHRR/"):
+            return ["2018/"]
+        if url.endswith("/2018/"):
+            return ["GLASS07B12.notes.hdf", "GLASS07B12.other.hdf"]
+        raise FileNotFoundError(url)
+
+    monkeypatch.setattr(glass, "_fetch_hrefs", fake)
+    with pytest.raises(glass.GlassError, match="could be parsed"):
+        glass.search("RN_AVHRR", "2018-02-01", "2018-12-31")
+
+
+def test_search_adaptive_wrapper_probe(monkeypatch):
+    """NPP：根下只有版本包装目录（GLASS_NPP_0.5D_V40 与 …_YEARLY_V40，
+    取非 YEARLY），年目录在包装层内，文件直躺 A 头。"""
+    def fake(url, session=None):
+        if url.endswith("/NPP/AVHRR/0.05D/"):
+            return ["GLASS_NPP_0.05D_V40/", "GLASS_NPP_0.05D_YEARLY_V40/",
+                    "readme.txt"]
+        if url.endswith("/GLASS_NPP_0.05D_V40/"):
+            return ["1988/"]
+        if url.endswith("/GLASS_NPP_0.05D_V40/1988/"):
+            return ["GLASS17B02.V40.A1988001.2020353.hdf",
+                    "GLASS17B02.V40.A1988001.2020353.hdf.xml",
+                    "GLASS17B02.V40.A1988001.2020353.jpg",
+                    "GLASS17B02.V40.A1988009.2020353.hdf",
+                    "GLASS17B02.V40.A1988009.2020353.hdf.xml",
+                    "GLASS17B02.V40.A1988009.2020353.jpg"]
+        raise FileNotFoundError(url)
+
+    monkeypatch.setattr(glass, "_fetch_hrefs", fake)
+    rows = glass.search("NPP_AVHRR_0_05D", "1988-01-01", "1988-01-20")
+    assert sorted(r["date"] for r in rows) == \
+        ["1988-01-01", "1988-01-01", "1988-01-09", "1988-01-09"]
+    assert all(r["filename"].endswith((".hdf", ".hdf.xml")) for r in rows)
+
+
+def test_search_flat_subdirs_only_raises(monkeypatch):
+    """ABI 500M 静态根：365 个 DOY 子目录的第二层——列成功但无数据文件时
+    明确报错（旧路径静默回空表）。"""
+    monkeypatch.setattr(
+        "d3ltool.glass._fetch_hrefs",
+        lambda url, session=None: ["001/", "002/", "003/"])
+    with pytest.raises(glass.GlassError, match="subdirectories"):
+        glass.search("Albedo_ABI_500M", "2020-01-01", "2020-02-01")
 
 
 # --------------------------------------------------- politeness (measured)

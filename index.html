@@ -27,7 +27,7 @@
         downloads can hand a link list to your own browser or wget; since v2.5
         the public GLASS archive (glass.hku.hk) is covered too — no sign-in.</p>
         <div class="badges">
-          <span class="badge">v2.6.0</span>
+          <span class="badge">v2.7.0</span>
           <span class="badge">MIT License</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -62,7 +62,7 @@
           <div class="card">
             <div class="ico">🌏</div>
             <h3>GLASS archive</h3>
-            <p>Since v2.5, upgraded in v2.6: search &amp; download the GLASS (Global
+            <p>Since v2.5, upgraded in v2.6, self-adapting in v2.7: search &amp; download the GLASS (Global
             Land Surface Satellite) suite — 133 variants (131 verified against
             real granules) from the public <code>glass.hku.hk</code> archive, no
             Earthdata sign-in; all four archive layouts, global CMG products
@@ -178,7 +178,8 @@
         <code>short_name</code>), optional version (blank = latest) and start/end
         dates. For the area, click tiles on the sinusoidal map (multi-select, or
         type <code>h04v03</code>, or use the lat/lon locator) — or enter a
-        bounding box for MERRA-2 style data. The <b>GLASS</b> group (v2.6)
+        bounding box for MERRA-2 style data. The <b>GLASS</b> group (v2.6,
+        v2.7)
         lists 133 variants (131 verified) from the public glass.hku.hk archive
         across four archive layouts — static collections need no dates, global
         CMG products need no tiles — and GLASS searches never ask for a login. Hit the red <b>Search</b> button and
@@ -228,7 +229,17 @@ glass.sqdaitools::glass_process(files, roi = my_roi,
         measured glass.hku.hk politeness policy for directory listings
         (8/24/72&nbsp;s backoff + cooldown retry, ≥1.2&nbsp;s between
         listings).</p>
-        <p>Compatibility: D3L Tool 2.6.0 ↔ glass.sqdaitools ≥ 0.1.0 (API changes
+        <p>Self-adapting in v2.7: the ~50 variants carrying no composited
+        cadence no longer trust the registry's <code>year_doy</code> label —
+        search lists each year folder once and follows the archive's real
+        shape (files flat in the year folder with A-header tokens,
+        <code>yyyyMM</code> month codes, or a one-level version wrapper such
+        as NPP's <code>GLASS_NPP_0.05D_V40/</code>); the stride infers from
+        observed composite gaps, span semantics decide selection, and a
+        single-file year keeps the file whole. Verified live:
+        <code>FVC_AVHRR_0_5D</code> for 2018-08-01..09-15 returns exactly 14
+        files.</p>
+        <p>Compatibility: D3L Tool 2.7.0 ↔ glass.sqdaitools ≥ 0.1.0 (API changes
         are announced in both release notes). GLASS data are produced by the
         GLASS product team (<a href="https://glass.hku.hk">glass.hku.hk</a>) —
         please follow their citation policy.</p>
