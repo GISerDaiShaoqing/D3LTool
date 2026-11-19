@@ -32,7 +32,7 @@
 | 3 | `CITATION.cff` | `version`、`date-released`；新功能时补 abstract 一句与 keywords | |
 | 4 | `README.md` | 定位变化时改首段；新功能加 Features 条目；`## Changelog` 顶部加新条目 `- **YYYY-MM vX.Y.Z** — 要点` | 历史条目是事实，不改 |
 | 5 | `READMEcn.md` | 同上，中文镜像 | |
-| 6 | `index.html` / `index-cn.html` | 徽章版本、lede、meta description、新功能加 📈 风格卡片、MCP 工具数、指南新增小节 | 官网页面源码，随仓库走，作者手动部署到服务器 |
+| 6 | `index.html` / `index-cn.html` | 徽章版本、lede、meta description、新功能加 📈 风格卡片、MCP 工具数、指南新增小节 | 官网页面源码，随仓库走，Pages 侧自动更新 |
 | 7 | `docs/mcp.md` | 工具表加行；Routing 段与实际路由一致 | MCP 客户端直接读它 |
 | 8 | `d3ltool/i18n.py` | 新 UI 字符串 zh/en 同步加；`about_text`（zh/en）口径 | |
 | 9 | `paper/paper.md`（JOSS） | 新功能加 tags / Summary 句 / Statement bullet / 模块说明；**工具数与测试数每次刷新** | 提交前删作者注释 |
@@ -67,7 +67,7 @@
 5. 该版本要随 release 发布（新功能默认要）时，作者执行
    `git tag -f vX.Y.Z && git push -f origin vX.Y.Z`，CI 三平台自动构建并挂到
    GitHub Release；amend 过的提交需先 `git push --force-with-lease`；
-6. 发版后作者把两个 index 页同步部署到官网服务器；
+6. 官网（GitHub Pages 侧）随仓库推自动更新，无需手动部署（2026-11 确认）；
 7. 若改了 `agent_system_prompt` / `agent_welcome`：提醒作者 AI 聊天需清空
    会话或重启软件才生效；
 8. 提醒：纯文案轮次**不需要**重打 tag（网页/文档不进 release 产物），
