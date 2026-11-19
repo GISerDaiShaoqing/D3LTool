@@ -33,7 +33,10 @@ abstract: >-
   direct downloads fail. Since v2.5 it additionally covers the GLASS product
   suite (130+ variants from the public glass.hku.hk archive — no sign-in
   required), sharing the same tile map, download queue and export surfaces
-  with the NASA sources. It is designed for
+  with the NASA sources. Since v2.8 it adds HiGLASS 20-m band retrieval,
+  multi-variant batch search, cancellable searches under a CMR watchdog, a
+  bundled agent Skill for MCP clients, and an OpenCode gateway preset. It is
+  designed for
   remote-sensing practitioners who do not write code and for users in
   network-constrained environments.
 keywords:

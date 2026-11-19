@@ -65,7 +65,9 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
 - **built-in search** by product, date range, sinusoidal tile (a clickable 36×18
   MODIS/VIIRS tile map, text tile ids such as `h04v03`, or a lat/lon bounding
   box for MERRA-2-style data), with a browsable bilingual product catalog that
-  frees non-experts from memorising CMR short names;
+  frees non-experts from memorising CMR short names; every search can be
+  cancelled mid-run and CMR queries are bounded by a 90-second watchdog
+  (since v2.8);
 - **a robust download queue** built on the authenticated `earthaccess`
   session: parallel workers, chunked transfer with per-file progress, HTTP
   `Range` resumption of interrupted transfers, exponential-backoff retries,
@@ -84,7 +86,10 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
   Cursor, OpenCode, Qoder or ZCode can
   search and download data on the user's behalf, and through a built-in
   conversational assistant drawer in the GUI that accepts any OpenAI-compatible
-  provider key and can plot fetched time series directly in the app;
+  provider key and can plot fetched time series directly in the app; since
+  v2.8 a bundled agent Skill (installed via the CLI or the Help menu) teaches
+  these clients the correct tool routing and archive politeness policy, and
+  the assistant's provider presets include the OpenCode Console/Go gateway;
   tool-driven downloads reuse the persisted credentials and require explicit
   user confirmation before queuing;
 - **browser-assisted download hand-off**: since v2.4 the checked granules can
@@ -144,11 +149,12 @@ MCP stdio (supporting both the v1 and v2 tool-APIs of the official SDK), and
 `agent/` provides a provider-agnostic streaming client for OpenAI-compatible
 endpoints plus a small tool-calling loop used by the built-in assistant.
 The GUI (`d3ltool.gui`) is a PySide6 application: a search panel with the
-tile map, results and task tables, a slide-out assistant drawer and a
+tile map, search history, a sortable and filterable results table, task
+tables, a slide-out assistant drawer and a
 time-series panel sharing the main engine, settings (download directory,
 worker count, proxy) and a
 language switcher; all strings live in a single i18n module. The test suite
-(221 pytest tests at submission time) covers the tile math, configuration
+(222 pytest tests at submission time) covers the tile math, configuration
 handling, search query construction and version fallbacks, the
 resume/retry engine against a local Range-capable HTTP server, the tool
 registry and agent loop with a local streaming-HTTP fake, an end-to-end

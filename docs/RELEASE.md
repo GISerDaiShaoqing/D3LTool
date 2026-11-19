@@ -45,7 +45,7 @@
 - **MCP/AI 工具数** = `len(d3ltool.tools.REGISTRY)`（当前 13）。
   引用处：README.md、READMEcn.md、index.html、index-cn.html、paper/paper.md、
   user_manual §4.6、docs/mcp.md。
-- **pytest 测试数** = 全量 `python -m pytest tests/ -q` 末行 passed 数（当前 221）。
+- **pytest 测试数** = 全量 `python -m pytest tests/ -q` 末行 passed 数（当前 222）。
   引用处：paper/paper.md、docs/submission_checklist.md。
 - **Skill 对齐行** = skill 仓库
   [d3ltool-skill](https://github.com/GISerDaiShaoqing/d3ltool-skill) 的
