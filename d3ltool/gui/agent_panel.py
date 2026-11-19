@@ -126,11 +126,16 @@ class AgentSettingsDialog(QDialog):
     callers/tests keep the original names.
     """
 
+    test_done = Signal(bool, str)   # queued from the test worker thread
+
     def __init__(self, panel, parent=None):
         super().__init__(parent or panel)
         self.panel = panel
         self.setWindowTitle(i18n.tr("agent_settings"))
         self.setMinimumWidth(460)
+        # 测试流程的槽在 AgentPanel 上（控件经属性转发）；信号在 Dialog 上，
+        # 跨线程 queued 回填
+        self.test_done.connect(self.panel._on_test_done)
 
         form = QFormLayout(self)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
@@ -324,6 +329,10 @@ class AgentPanel(QWidget):
     def test_result(self):
         return self._settings_dialog.test_result
 
+    @property
+    def test_btn(self):
+        return self._settings_dialog.test_btn
+
     def _open_settings(self):
         if self._settings_dialog.exec() == QDialog.DialogCode.Accepted:
             self._settings_dialog.apply()
@@ -352,14 +361,29 @@ class AgentPanel(QWidget):
         s = self.current_settings()
         if not self._settings_valid(s):
             return
+        # run the HTTP test on a worker thread: a slow/hanging overseas
+        # gateway (DNS alone is not bounded by requests' timeout) used to
+        # freeze the whole dialog on the GUI thread
+        self.test_btn.setEnabled(False)
+        self.test_result.setStyleSheet("")
         self.test_result.setText(i18n.tr("agent_testing"))
+        threading.Thread(target=self._test_worker, args=(dict(s),),
+                         daemon=True).start()
+
+    def _test_worker(self, s):
         ok, message = llm.test_connection(s["base_url"], s["api_key"], s["model"])
+        # test_done is the settings dialog's signal — emit through the
+        # forwarded attribute's owner, not the panel
+        self._settings_dialog.test_done.emit(ok, message)
+
+    def _on_test_done(self, ok: bool, message: str):
         if ok:
             self.test_result.setStyleSheet("color: #1a7f37;")
             self.test_result.setText(i18n.tr("agent_test_ok"))
         else:
             self.test_result.setStyleSheet("color: #d6372a;")
             self.test_result.setText(i18n.tr("agent_test_fail", reason=message))
+        self.test_btn.setEnabled(True)
 
     def _settings_valid(self, s) -> bool:
         # Ollama needs no API key; other OpenAI-compatible providers do

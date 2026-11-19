@@ -26,7 +26,7 @@
         清单交给你的浏览器或 wget；v2.5 起公开的 GLASS 档案（glass.hku.hk）也
         一并覆盖——免登录。</p>
         <div class="badges">
-          <span class="badge">v2.7.0</span>
+          <span class="badge">v2.8.0</span>
           <span class="badge">MIT 协议</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -67,6 +67,14 @@
             <a href="https://github.com/GISerDaiShaoqing/glass.sqdaitools/tree/v0.1.0">glass.sqdaitools</a>
             v0.1.0（<a href="https://giserdaishaoqing.github.io/glass.sqdaitools/">文档</a>）为骨架：
             D3L Tool 管找和下，后处理在 R 侧完成——配套使用。</p>
+          </div>
+          <div class="card">
+            <div class="ico">🧭</div>
+            <h3>检索体验（v2.8）</h3>
+            <p>HiGLASS 20m 带状检索（bbox/瓦片 &rarr; 档案 1&deg; 带目录）、
+            GLASS 多变体批量检索、检索历史、结果表排序与文件名过滤。
+            所有检索都可取消，进度条覆盖 NASA 检索（脉动显示——单次
+            CMR 请求，不给假百分比）。</p>
           </div>
           <div class="card">
             <div class="ico">⬇️</div>
@@ -211,7 +219,7 @@ glass.sqdaitools::glass_process(files, roi = my_roi,
         相邻合成起点差反推、按 span 语义取舍，年内只一个文件整年保留。
         live 验收：<code>FVC_AVHRR_0_5D</code> 2018-08-01..09-15 返回恰好
         14 个文件。</p>
-        <p>版本兼容：D3L Tool 2.7.0 ↔ glass.sqdaitools ≥ 0.1.0（API 变更在
+        <p>版本兼容：D3L Tool 2.8.0 ↔ glass.sqdaitools ≥ 0.1.0（API 变更在
         两边 release notes 同步声明）。GLASS 数据由 GLASS 产品团队
         （<a href="https://glass.hku.hk">glass.hku.hk</a>）生产，使用请遵守
         其引用政策。</p>

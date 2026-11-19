@@ -20,6 +20,13 @@ PROVIDER_PRESETS = [
     ("Moonshot / Kimi", "https://api.moonshot.cn/v1", "moonshot-v1-8k"),
     ("智谱 / GLM", "https://open.bigmodel.cn/api/paas/v4", "glm-4-flash"),
     ("SiliconFlow", "https://api.siliconflow.cn/v1", "Qwen/Qwen2.5-72B-Instruct"),
+    # OpenCode Console **Go** gateway — free models are quota-gated to the
+    # OpenCode client, but a Go subscription unlocks direct API use (measured
+    # 2026-11: the go route additionally requires an x-opencode-session
+    # header, injected automatically below; base URL per ZCode's provider
+    # config, not the docs' non-Go console route).
+    ("OpenCode (Console/Go)", "https://opencode.ai/inference/go/openai/v1",
+     "deepseek-v4.1-flash-free"),
     ("Ollama (local)", "http://127.0.0.1:11434/v1", ""),
     ("Custom / 自定义", "", ""),
 ]
@@ -97,6 +104,44 @@ def _is_loopback(url: str) -> bool:
             or host.endswith(".localhost"))
 
 
+def _clean_key(api_key: str) -> str:
+    """Strip copy-paste artifacts (trailing newline, leading/full-width
+    spaces) off an API key; reject anything a header cannot legally carry
+    with a message the user can act on — urllib3's raw 'Invalid leading
+    whitespace, reserved character(s), or return …' error reads like a
+    network fault when it is really a paste accident."""
+    key = (api_key or "").strip()
+    if key and re.search(r"[\x00-\x1f\x7f]", key):
+        raise LLMError(
+            "API Key contains a line break or control character — re-copy "
+            "it as a single line (check for wrapped lines / extra spaces)")
+    return key
+
+
+_GO_SESSION = None
+
+
+def _go_session_id() -> str:
+    """Stable per-process session identifier for the OpenCode **Go** route —
+    the gateway 400s (MissingSessionID) without an x-opencode-session
+    header; any client-generated id works, it is for routing affinity."""
+    global _GO_SESSION
+    if _GO_SESSION is None:
+        import uuid
+        _GO_SESSION = uuid.uuid4().hex
+    return _GO_SESSION
+
+
+def _build_headers(url: str, api_key: str) -> dict:
+    headers = {"Content-Type": "application/json"}
+    api_key = _clean_key(api_key)
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    if "/inference/go/" in url:               # OpenCode Go route contract
+        headers["x-opencode-session"] = _go_session_id()
+    return headers
+
+
 def stream_chat(base_url, api_key, model, messages, tools=None,
                 timeout=(30, 300), should_stop=None):
     """POST /chat/completions with stream=True and yield structured events:
@@ -110,13 +155,11 @@ def stream_chat(base_url, api_key, model, messages, tools=None,
     turns true between chunks.
     """
     url = _endpoint(base_url)
-    body = {"model": model, "messages": messages, "stream": True}
+    body = {"model": (model or "").strip(), "messages": messages, "stream": True}
     if tools:
         body["tools"] = tools
         body["tool_choice"] = "auto"
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
+    headers = _build_headers(url, api_key)
     # explicit None: LLM requests follow only the app's own proxy setting
     # (deliberately not env/system proxies — keeps local test servers safe)
     try:
@@ -205,13 +248,15 @@ def test_connection(base_url, api_key, model):
         url = _endpoint(base_url)
     except LLMError as exc:
         return False, str(exc)
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        headers = _build_headers(url, api_key)
+    except LLMError as exc:
+        return False, str(exc)
     try:
         resp = requests.post(
             url,
-            json={"model": model, "messages": [{"role": "user", "content": "ping"}],
+            json={"model": (model or "").strip(),
+                  "messages": [{"role": "user", "content": "ping"}],
                   "max_tokens": 1, "stream": False},
             headers=headers, timeout=30, proxies=_proxies(url))
     except requests.RequestException as exc:

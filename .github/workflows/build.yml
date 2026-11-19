@@ -37,6 +37,22 @@ jobs:
         with:
           python-version: "3.12"
 
+      # bundled agent skill lives in its own repo — fetched at build time so
+      # the D3LTool repo carries no copy. Pin SKILL_REF to a tag for
+      # reproducible artifacts; bump it when the skill iterates.
+      - name: Fetch bundled agent skill (d3ltool-skill)
+        env:
+          SKILL_REPO_URL: https://github.com/GISerDaiShaoqing/d3ltool-skill
+          SKILL_REF: main
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$SKILL_REF" "$SKILL_REPO_URL" skill-tmp
+          rm -rf d3ltool/resources/skill
+          mkdir -p d3ltool/resources/skill
+          cp -r skill-tmp d3ltool/resources/skill/d3ltool
+          rm -rf d3ltool/resources/skill/d3ltool/.git
+
+
       - name: Install Qt system libs (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1

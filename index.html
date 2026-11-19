@@ -27,7 +27,7 @@
         downloads can hand a link list to your own browser or wget; since v2.5
         the public GLASS archive (glass.hku.hk) is covered too — no sign-in.</p>
         <div class="badges">
-          <span class="badge">v2.7.0</span>
+          <span class="badge">v2.8.0</span>
           <span class="badge">MIT License</span>
           <span class="badge">Windows · macOS · Linux</span>
           <span class="badge">pip install d3ltool</span>
@@ -72,6 +72,15 @@
             v0.1.0 (<a href="https://giserdaishaoqing.github.io/glass.sqdaitools/">docs</a>):
             D3LTool finds &amp; downloads, the R package does the post-processing —
             a matched pair.</p>
+          </div>
+          <div class="card">
+            <div class="ico">🧭</div>
+            <h3>Search workflow (v2.8)</h3>
+            <p>HiGLASS 20m band retrieval (bbox/tiles &rarr; the archive's 1&deg;
+            band folders), multi-variant GLASS batch search, search history and
+            results sorting &amp; filename filtering. Cancellation works for
+            every search and the progress bar covers NASA products too
+            (pulsing &mdash; one CMR request, no fake percentage).</p>
           </div>
           <div class="card">
             <div class="ico">⬇️</div>
@@ -239,7 +248,7 @@ glass.sqdaitools::glass_process(files, roi = my_roi,
         single-file year keeps the file whole. Verified live:
         <code>FVC_AVHRR_0_5D</code> for 2018-08-01..09-15 returns exactly 14
         files.</p>
-        <p>Compatibility: D3L Tool 2.7.0 ↔ glass.sqdaitools ≥ 0.1.0 (API changes
+        <p>Compatibility: D3L Tool 2.8.0 ↔ glass.sqdaitools ≥ 0.1.0 (API changes
         are announced in both release notes). GLASS data are produced by the
         GLASS product team (<a href="https://glass.hku.hk">glass.hku.hk</a>) —
         please follow their citation policy.</p>

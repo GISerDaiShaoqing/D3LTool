@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """Search query construction & fallbacks (earthaccess mocked out)."""
 
+import threading
+import time
+
 import pytest
 
 from d3ltool import search
@@ -194,3 +197,63 @@ def test_run_search_routes_glass_variants(monkeypatch):
                     "tiles": ["h28v05"], "bbox": None, "max_results": 5}
     assert rows[0]["filename"] == GLASS_ROW["filename"]
     assert search.granule_tile(rows[0]) == "h28v05"
+
+
+def test_run_search_cmr_cancel_cuts_in_before_first_request(monkeypatch):
+    """cancelled() true from the start → SearchCancelled before the CMR
+    request fires; the busy pulse still reports once (bar data source)."""
+    called = []
+    seen = []
+    monkeypatch.setattr(search, "CMR_TIMEOUT", 5.0)
+    p = SearchParams(short_name="MOD13Q1", start="2018-01-01", end="2018-01-02")
+    with pytest.raises(search.SearchCancelled):
+        search.run_search(p, searcher=lambda **q: called.append(q),
+                          progress=lambda d, t, l: seen.append((d, t, l)),
+                          cancelled=lambda: True)
+    assert called == []
+    assert seen == [(0, 0, "MOD13Q1")]
+
+
+def test_run_search_cmr_cancel_wakes_a_hung_request(monkeypatch):
+    """earthaccess issues its CMR request with no timeout — a stalled route
+    used to hang the search thread forever and make the cancel button look
+    dead.  The watchdog wait loop polls the cancel flag and returns fast."""
+    gate = threading.Event()
+    monkeypatch.setattr(search, "CMR_TIMEOUT", 60.0)
+    monkeypatch.setattr(search, "_CANCEL_POLL", 0.05)
+
+    def hung(**q):
+        gate.wait(10)          # blocks like a stalled CMR socket
+        return []
+
+    p = SearchParams(short_name="MOD13Q1", start="2018-01-01", end="2018-01-02")
+    t0 = time.monotonic()
+    with pytest.raises(search.SearchCancelled):
+        search.run_search(p, searcher=hung, cancelled=lambda: True)
+    assert time.monotonic() - t0 < 5
+    gate.set()                 # let the abandoned daemon thread finish
+
+
+def test_run_search_cmr_timeout(monkeypatch):
+    """No response within CMR_TIMEOUT → a clear TimeoutError, not silence."""
+    monkeypatch.setattr(search, "CMR_TIMEOUT", 0.3)
+    monkeypatch.setattr(search, "_CANCEL_POLL", 0.05)
+
+    def hung(**q):
+        time.sleep(5)
+        return []
+
+    p = SearchParams(short_name="MOD13Q1", start="2018-01-01", end="2018-01-02")
+    with pytest.raises(TimeoutError):
+        search.run_search(p, searcher=hung)
+
+
+def test_run_search_cmr_busy_pulse_then_results():
+    """total 0 busy pulse precedes the results on the happy path too — the
+    GUI's progress bar pulses for MODIS/VIIRS/MERRA-2 searches as well."""
+    seen = []
+    p = SearchParams(short_name="MOD13Q1", start="2018-01-01", end="2018-01-02")
+    rows = search.run_search(p, searcher=lambda **q: [object()],
+                             progress=lambda d, t, l: seen.append((d, t, l)))
+    assert len(rows) == 1
+    assert seen[0] == (0, 0, "MOD13Q1")

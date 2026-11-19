@@ -279,3 +279,70 @@ def test_agent_tool_result_summary():
     assert "已登录" in login and "giser.d" in login
     assert AgentPanel._summarize_result(
         json.dumps({"authenticated": False})) == "未登录"
+
+
+def test_provider_presets_include_opencode_free_gateway():
+    """OpenCode Console 网关（免费模型档）是预置服务商之一：OpenAI 兼容
+    路由 + /v1 结尾（_endpoint() 直接拼 chat/completions）。"""
+    from d3ltool.agent import llm
+
+    opencode = [(l, u, m) for l, u, m in llm.PROVIDER_PRESETS
+                if l.startswith("OpenCode")]
+    assert len(opencode) == 1
+    label, url, model = opencode[0]
+    # Go 网关（ZCode 同款 /inference/go/ 路由）
+    assert url == "https://opencode.ai/inference/go/openai/v1"
+    assert model and "free" in model
+    # the URL must land on the chat/completions endpoint unchanged
+    assert llm._endpoint(url) == "https://opencode.ai/inference/go/openai/v1/chat/completions"
+    # Go 路由契约：自动注入 x-opencode-session（无此头网关 400）
+    h = llm._build_headers(url, "sk-test")
+    assert h["Authorization"] == "Bearer sk-test"
+    assert h["x-opencode-session"]
+    plain = llm._build_headers("https://api.deepseek.com/v1", "sk-test")
+    assert "x-opencode-session" not in plain
+
+
+def test_llm_key_cleaning():
+    """API Key 粘贴事故防护：首尾空白/换行剥掉；内部换行不再抛神秘的
+    network error（urllib3 header 校验），而是给出可操作的提示。"""
+    from d3ltool.agent import llm
+
+    assert llm._clean_key("  oc_abc123  \n") == "oc_abc123"
+    assert llm._clean_key(None) == ""
+    with pytest.raises(llm.LLMError):
+        llm._clean_key("oc_a\nbc123")          # 两行粘贴 → 明确报错
+    ok, msg = llm.test_connection("http://127.0.0.1:9/v1", "oc_a\nbc", "m")
+    assert ok is False
+    assert "line break" in msg and "network error" not in msg
+
+
+def test_settings_test_connection_async(monkeypatch, tmp_path):
+    """「测试连接」挪到工作线程：海外网关 DNS 慢时不再冻死设置弹窗——
+    结果经 queued 信号回填、按钮恢复可用。"""
+    import time as _time
+
+    app, panel, _saved = _make_panel(monkeypatch, tmp_path)
+    try:
+        from d3ltool.agent import llm as llm_mod
+
+        panel._apply_settings(base_url="https://api.test/v1", model="m",
+                              api_key="sk-test")
+        dlg = panel._settings_dialog
+
+        def slow_test(base_url, api_key, model):
+            _time.sleep(0.3)
+            return False, "boom"
+
+        monkeypatch.setattr(llm_mod, "test_connection", slow_test)
+        dlg.test_btn.click()
+        assert not dlg.test_btn.isEnabled()          # 测试期间按钮禁用
+        deadline = _time.time() + 5
+        while _time.time() < deadline and "boom" not in dlg.test_result.text():
+            app.processEvents()                      # 等待 queued 信号
+            _time.sleep(0.02)
+        assert "boom" in dlg.test_result.text()
+        assert dlg.test_btn.isEnabled()               # 结果到达后按钮恢复
+        app.processEvents()
+    finally:
+        dlg.close()

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "d3ltool"
-version = "2.7.0"
+version = "2.8.0"
 description = "D3L Tool of NASA Satellite v2 — search & download MODIS / VIIRS / MERRA-2 data (LAADS DAAC & GES DISC) plus the public GLASS archive (glass.hku.hk) with a bilingual PySide6 GUI, CLI, MCP server, point time-series sampling and browser-assisted download lists"
 readme = "README_v2.md"
 requires-python = ">=3.10"
@@ -46,7 +46,8 @@ Homepage = "https://giserdaishaoqing.github.io/D3LTool/"
 include = ["d3ltool*"]
 
 [tool.setuptools.package-data]
-d3ltool = ["resources/*"]
+d3ltool = ["resources/*", "resources/skill/d3ltool/*",
+           "resources/skill/d3ltool/references/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -7,6 +7,7 @@ With no arguments, launches the GUI.
 import argparse
 import getpass
 import sys
+from pathlib import Path
 
 from . import __version__, auth, config, engine, glass, search
 
@@ -131,8 +132,37 @@ def _cmd_download(args):
 
 
 def _cmd_gui(_args):
+    from . import banner
     from .app import run_gui
+
+    banner.show_banner()
     return run_gui()
+
+
+def _cmd_banner(_args):
+    from . import banner
+
+    banner.show_banner()
+    return 0
+
+
+def _cmd_skill(args):
+    """`d3ltool skill install` — copy the bundled agent skill into an
+    agent skill discovery directory; re-running updates in place."""
+    from . import skill as skill_mod
+
+    if getattr(args, "dest", ""):
+        dest = Path(args.dest)
+    elif getattr(args, "project", False):
+        dest = skill_mod.project_dest()
+    else:
+        dest = skill_mod.user_dest()
+    target = skill_mod.install(dest)
+    files = skill_mod.installed_files(target)
+    print(f"skill installed: {target}  ({len(files)} files)")
+    print("register the d3ltool MCP server next — see docs/mcp.md "
+          "(agents discover the skill from .agents/skills/)")
+    return 0
 
 
 def main(argv=None) -> int:
@@ -145,6 +175,7 @@ def main(argv=None) -> int:
     sub = parser.add_subparsers(dest="cmd")
 
     sub.add_parser("gui", help="start the GUI").set_defaults(func=_cmd_gui)
+    sub.add_parser("banner", help="print the startup banner (Claude-Code-style)").set_defaults(func=_cmd_banner)
     sub.add_parser("login", help="login to NASA Earthdata and persist ~/.netrc") \
        .set_defaults(func=_cmd_login)
 
@@ -157,6 +188,19 @@ def main(argv=None) -> int:
     p_dl.add_argument("--dest", default="", help="destination directory (default: settings)")
     p_dl.add_argument("--workers", type=int, default=0, help="concurrent downloads")
     p_dl.set_defaults(func=_cmd_download)
+
+    p_skill = sub.add_parser(
+        "skill", help="install the bundled AI agent skill (ZCode/Claude/Cursor)")
+    skill_sub = p_skill.add_subparsers(dest="skill_cmd")
+    p_inst = skill_sub.add_parser(
+        "install", help="copy the bundled skill into an agent skill directory "
+                        "(re-run to update)")
+    p_inst.add_argument("--user", action="store_true",
+                        help="install to ~/.agents/skills/d3ltool (default)")
+    p_inst.add_argument("--project", action="store_true",
+                        help="install to ./.agents/skills/d3ltool (this workspace only)")
+    p_inst.add_argument("--dest", default="", help="custom target directory")
+    p_skill.set_defaults(func=_cmd_skill)
 
     args = parser.parse_args(argv)
     if not getattr(args, "func", None):

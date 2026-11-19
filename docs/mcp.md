@@ -116,6 +116,57 @@ command = "d3ltool-mcp"
 }
 ```
 
+### OpenCode
+
+OpenCode 的 MCP 配置键名不同（`mcp.servers`，`type: local`）。写进项目根的
+`opencode.jsonc`（或 `~/.config/opencode/opencode.json`）：
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "d3ltool": {
+        "type": "local",
+        "command": ["d3ltool-mcp"]
+      }
+    }
+  }
+}
+```
+
+使用官方发行包时把 `command` 换成 `["D:/D3LTool/D3LToolMCP.exe"]`。
+顺带一提：OpenCode 自家的 **Go 网关**也可以接进 D3LTool 内置 AI 助手
+（设置里选 "OpenCode (Console/Go)"，端点
+`https://opencode.ai/inference/go/openai/v1`，密钥从 OpenCode Console
+账户复制；软件自动附带你 x-opencode-session 头——该路由无此头会 400）。
+注意实测（2026-11-18）：**免费模型 quota 绑定 OpenCode 官方客户端**——
+非 Go 直连匿名请求返回 429 `FreeUsageLimitError`（"Free models work in
+OpenCode; subscribe to OpenCode Go to keep going"）；**Go 订阅用户用
+Console key 即可直接使用**（含免费档模型）。没有 Go 订阅只想免费用
+模型的话，推荐组合是：**OpenCode 客户端 + 本表上方的 d3ltool MCP
+服务器**（免费模型在 OpenCode 里用，MCP 让它能检索/下载 NASA 数据）；
+或直接在 D3LTool 助手里用智谱 GLM-4-Flash（免费）/ SiliconFlow
+免费档 / Ollama 本地。
+
+### Agent Skill（ZCode / Claude / Cursor）
+
+随包内置一份 AI Skill（`SKILL.md` + 产品速查 + 排障参考）：教 agent 在用户提到
+NASA/GLASS 数据需求时，按正确路由编排 d3ltool 的 13 个 MCP 工具（检索/下载 vs
+点位时间序列 vs 浏览器兜底），含 Earthdata 凭据边界与限速礼貌策略。安装：
+
+```bash
+d3ltool skill install            # 用户级：~/.agents/skills/d3ltool（默认）
+d3ltool skill install --project  # 项目级：./.agents/skills/d3ltool
+d3ltool skill install --dest X   # 任意目标；重复执行即更新
+```
+
+GUI 在「帮助」菜单提供同一功能（「安装 AI Skill」）。Skill 的单一事实源
+是独立仓库
+[d3ltool-skill](https://github.com/GISerDaiShaoqing/d3ltool-skill)；
+D3LTool 主仓不含其内容，发布构建时按 `SKILL_REF` 拉取并随安装包分发，
+MCP 工具数或版本变化时在 skill 仓库同步。
+
 ### 验证 / Verify
 
 ```bash

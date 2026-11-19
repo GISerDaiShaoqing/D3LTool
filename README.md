@@ -30,6 +30,10 @@ two as a matched pair. No more manual order creation, no more browser automation
 - **Built-in search**: by product, date range, MODIS/VIIRS sinusoidal tile (clickable 36×18 tile map)
   or bounding box — search works without an Earthdata login
 - **Coverage**: MODIS, VIIRS (LAADS DAAC), MERRA-2 (GES DISC) — any CMR short_name works too
+- **Search workflow upgrades (v2.8.0)**: HiGLASS 20m band retrieval (bbox/tiles →
+  1° band folders), multi-variant GLASS batch search, search history, results
+  sorting & filename filtering; cancellation works for every search and the
+  progress bar covers NASA products too (pulsing)
 - **GLASS data source** (new in v2.5.0, upgraded in v2.6.0, self-adapting in v2.7.0): search & download the
   GLASS (Global Land Surface Satellite) suite — 133 variants (131 verified against
   real granules) from the public [glass.hku.hk](https://glass.hku.hk) archive, no
@@ -56,7 +60,9 @@ two as a matched pair. No more manual order creation, no more browser automation
   directly via NASA OPeNDAP, no third-party subset service; the modern
   revival of the 2017 MODIS Web Service experiment, in-app
 - **Bilingual UI**: one-click 中文 / English switch (PySide6)
-- **Cross-platform**: Windows exe / macOS .app / Linux binary (CI builds), or `pip install d3ltool`
+- **Cross-platform**: Windows exe / macOS .app / Linux binary (CI builds), or
+  `pip install d3ltool` — Windows needs 10+ (Python 3.12 / Qt6 floor;
+  **Windows 7/8 not supported**)
 - **Proxy support** for complex network environments
 
 ## Install
@@ -150,7 +156,7 @@ subdirectories fail loudly instead of silently returning an empty table. The
 package's homepage (glass.sqdaitools — its 0.6.0 iteration pairs with this
 release).
 
-Compatibility: D3L Tool **2.7.0** ↔ glass.sqdaitools **≥ 0.1.0** — breaking
+Compatibility: D3L Tool **2.8.0** ↔ glass.sqdaitools **≥ 0.1.0** — breaking
 API changes will be announced in both projects' release notes.
 GLASS data are produced by the GLASS product team
 ([glass.hku.hk](https://glass.hku.hk)); please follow their citation policy
@@ -203,7 +209,7 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
   author  = {Dai, Shaoqing},
   orcid   = {0000-0003-0858-4728},
   title   = {D3L Tool of NASA Satellite: a bilingual GUI for searching and downloading NASA MODIS/VIIRS/MERRA-2 data},
-  version = {2.7.0},
+  version = {2.8.0},
   year    = {2026},
   url     = {https://github.com/GISerDaiShaoqing/D3LTool},
 }
@@ -211,6 +217,35 @@ If you use D3LTool in your research, please cite it — see [CITATION.cff](CITAT
 
 ## Changelog
 
+- **2026-11 v2.8.0** — Four search-workflow features plus a cancellation fix.
+  **① Cancellation now works for NASA products**: clicking Cancel restores the
+  panel immediately and late results are discarded (a single CMR request
+  cannot be interrupted mid-flight); CMR queries gain a 90 s watchdog timeout —
+  previously an earthaccess request had NO timeout, so a stalled route hung
+  the search forever.  **② HiGLASS 20m band retrieval**: the two HiGLASS
+  variants (LAI_HR/FAPAR_HR) resolve bbox/tiles against the archive's ~1120
+  one-degree band folders (n018e108 = the cell's SW corner, measured live
+  from the GeoTIFF tiepoint), one listing per band with progress/cancel; band names (n045e120) are accepted directly in the tile field, like the R package.
+  **③ GLASS batch search**: tick several variants in one dialog — per-variant
+  errors are reported, results merge into one table.  **④ Search history**
+  (recent queries refill the form, the menu carries a Clear action) and
+  **results-table sorting + filename filtering** (hidden rows stay out of
+  select-all).  The progress bar now also
+  runs for NASA searches (indeterminate pulse — one request, no honest
+  percentage); OpenCode Console joins the AI assistant's provider presets
+  (pasted keys are trimmed; a key with an embedded line break now raises a
+  clear message instead of a cryptic network error; its free tier is
+  quota-gated for direct API use — free models work unrestricted inside
+  the OpenCode client, sustained third-party API use needs OpenCode Go).
+  The Help menu gains terminal launchers (open a terminal in the download
+  folder, shell selectable in Settings — defaults to PowerShell (pwsh 7
+  LTS when installed, Windows PowerShell fallback, CMD last); optionally
+  jump straight into OpenCode there).  The OpenCode launcher
+  auto-installs the bundled skill PROJECT-LEVEL into
+  `<downloads>/.agents/skills/` (first launch installs, every launch
+  refreshes; never global). The startup banner belongs to the CLI only
+  (`d3ltool` / `d3ltool banner` — block-letter D3LTool art, Claude-Code
+  style).
 - **2026-11 v2.7.0** — cadence-less GLASS variants now **self-adapt instead of
   failing**: ~50 verified variants (FVC, Albedo AVHRR/MIX/0.5D, PAR, RN, SM,
   NDVI/EVI 0.25°, NPP, …) carry no composited cadence in the registry, and

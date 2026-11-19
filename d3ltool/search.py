@@ -2,8 +2,24 @@
 """CMR granule search on top of earthaccess."""
 
 import re
+import threading
+import time
 from dataclasses import dataclass, field
 from urllib.parse import unquote
+
+# A CMR search with count<=2000 is a single HTTPS request; earthaccess 0.19
+# issues it with NO timeout, so a stalled route (common for direct CMR
+# access from CN networks) would hang the search thread forever.  The
+# watchdog bounds that wait and polls the cancel flag meanwhile, so a
+# cancelled search returns promptly even if the socket is stuck.
+CMR_TIMEOUT = 90.0
+_CANCEL_POLL = 0.25
+
+
+class SearchCancelled(RuntimeError):
+    """User stop for CMR searches.  A single in-flight CMR request cannot
+    be interrupted, so the GUI restores itself immediately and discards the
+    pending results; this is raised at the next step boundary."""
 
 
 @dataclass
@@ -52,18 +68,57 @@ def run_search(p: SearchParams, searcher=None, progress=None,
         import earthaccess
         searcher = earthaccess.search_data
 
+    def _chk() -> None:
+        if cancelled and cancelled():
+            raise SearchCancelled("search cancelled")
+
+    def _search_bounded(q: dict):
+        """Run one CMR query under the watchdog: bounded by CMR_TIMEOUT and
+        by the cancel flag — whichever comes first."""
+        box = {}
+
+        def work():
+            try:
+                box["ok"] = searcher(**q)
+            except BaseException as exc:      # propagated verbatim below
+                box["err"] = exc
+
+        th = threading.Thread(target=work, daemon=True)
+        th.start()
+        deadline = time.monotonic() + CMR_TIMEOUT
+        while th.is_alive():
+            _chk()
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    "CMR query timed out after 90 s with no response — "
+                    "check the network/proxy and retry")
+            time.sleep(_CANCEL_POLL)
+        if "err" in box:
+            raise box["err"]
+        return box.get("ok") or []
+
     query = build_query(p)
+    if progress:
+        # total 0 = busy pulse: a CMR search is one request, there is no
+        # honest percentage to show (the GUI bar pulses instead)
+        try:
+            progress(0, 0, p.short_name)
+        except Exception:
+            pass
+    _chk()
     try:
-        granules = searcher(**query) or []
+        granules = _search_bounded(query) or []
     except Exception:
         if not query.get("version"):
             raise
         granules = None
+    _chk()
     if not granules and query.get("version"):
         # CMR may not carry the requested version (e.g. retired collections):
         # retry against the latest version.
         query.pop("version")
-        granules = searcher(**query) or []
+        granules = _search_bounded(query) or []
+    _chk()
 
     if p.tiles:
         # belt & braces in case the name pattern was ignored server-side
@@ -78,14 +133,24 @@ def run_search(p: SearchParams, searcher=None, progress=None,
 
 
 def parse_tiles(text: str) -> list:
-    """Parse 'h04v03, h26v05' (comma/space separated) -> ['h04v03', 'h26v05']."""
-    from . import tiles
+    """Parse 'h04v03, h26v05' (comma/space separated) -> ['h04v03', 'h26v05'].
+
+    HiGLASS 1° band names ('n045e120') pass through unchanged — the GLASS
+    band search consumes them directly (v2.8.0, R-package parity)."""
+    from . import glass, tiles
 
     out = []
     for token in re.split(r"[,\s;]+", (text or "").strip()):
         if not token:
             continue
-        h, v = tiles.parse_tile(token)
+        try:
+            h, v = tiles.parse_tile(token)
+        except ValueError:
+            if glass._BAND_RE.fullmatch(token.strip()):
+                if token not in out:
+                    out.append(token)
+                continue
+            raise
         name = tiles.tile_name(h, v)
         if name not in out:
             out.append(name)

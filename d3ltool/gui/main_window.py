@@ -27,6 +27,7 @@ SITE_URLS = {
     "site_blog": "https://gisersqdai.top/",
     "site_glass": "https://glass.hku.hk/",
     "site_glass_r": "https://gisersqdai.top/glass.sqdaitools/",
+    "site_skill": "https://github.com/GISerDaiShaoqing/d3ltool-skill",
     "site_nasa": "https://ladsweb.modaps.eosdis.nasa.gov/",
     "site_nasa_tools": "https://ladsweb.modaps.eosdis.nasa.gov/tools-and-services/",
 }
@@ -48,10 +49,12 @@ class _SearchThread(QThread):
     done = Signal(list, float)     # granules, elapsed seconds
     failed = Signal(str)
     progress = Signal(object)      # {"done": n, "total": m, "label": str}
+    batch_errors = Signal(dict)    # GLASS batch: variant_id -> error message
 
-    def __init__(self, params, parent=None):
+    def __init__(self, params, parent=None, batch_ids=None):
         super().__init__(parent)
         self._params = params
+        self._batch_ids = batch_ids or None
         self._cancel = threading.Event()
 
     def cancel(self):
@@ -64,13 +67,25 @@ class _SearchThread(QThread):
 
         t0 = _time.time()
         try:
-            granules = search.run_search(
-                self._params, progress=self._on_progress,
-                cancelled=self._cancel.is_set)
+            if self._batch_ids:
+                from .. import glass
+
+                granules, errors = glass.search_batch(
+                    self._batch_ids, self._params.start, self._params.end,
+                    tiles=self._params.tiles, bbox=self._params.bbox,
+                    max_results=self._params.max_results,
+                    progress=self._on_progress, cancelled=self._cancel.is_set)
+            else:
+                granules = search.run_search(
+                    self._params, progress=self._on_progress,
+                    cancelled=self._cancel.is_set)
+                errors = None
         except Exception as exc:
             self.failed.emit(f"{type(exc).__name__}: {exc}")
             return
         self.done.emit(granules, _time.time() - t0)
+        if errors:
+            self.batch_errors.emit(dict(errors))
 
     def _on_progress(self, done, total, label):
         self.progress.emit({"done": done, "total": total, "label": label})
@@ -247,6 +262,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(i18n.tr("status_logged_out"))
 
         self.search_panel.search_requested.connect(self._do_search)
+        self.search_panel.batch_requested.connect(self._do_batch_search)
         self.search_panel.cancel_requested.connect(self._cancel_search)
         self.results_table.enqueue_requested.connect(self._enqueue)
         self.results_table.export_requested.connect(self._export_link_items)
@@ -340,7 +356,7 @@ class MainWindow(QMainWindow):
         menu_sites.addSeparator()
         # data sources used by this tool (v2.7): the GLASS product site and
         # the companion R package's homepage
-        for key in ("site_glass", "site_glass_r"):
+        for key in ("site_glass", "site_glass_r", "site_skill"):
             act = QAction(i18n.tr(key), self)
             act.triggered.connect(lambda _c=False, u=SITE_URLS[key]: self._open_url(u))
             menu_sites.addAction(act)
@@ -388,6 +404,16 @@ class MainWindow(QMainWindow):
         menu_settings.addAction(self.act_settings)
 
         menu_help = self.menuBar().addMenu(i18n.tr("menu_help"))
+        act_term = QAction(i18n.tr("act_open_terminal"), self)
+        act_term.triggered.connect(lambda: self._open_terminal())
+        menu_help.addAction(act_term)
+        self.act_opencode = QAction(i18n.tr("act_open_opencode"), self)
+        self.act_opencode.triggered.connect(lambda: self._open_terminal(True))
+        menu_help.addAction(self.act_opencode)
+        act_skill = QAction(i18n.tr("act_install_skill"), self)
+        act_skill.triggered.connect(self._install_skill)
+        menu_help.addAction(act_skill)
+        menu_help.addSeparator()
         act_donate = QAction(i18n.tr("act_donate"), self)
         act_donate.triggered.connect(self._on_donate)
         menu_help.addAction(act_donate)
@@ -438,22 +464,54 @@ class MainWindow(QMainWindow):
 
     # ---------------------------------------------------------------- search
 
-    def _do_search(self, params):
+    def _do_search(self, params, batch_ids=None):
         if self._search_thread is not None and self._search_thread.isRunning():
             return
-        self.statusBar().showMessage(i18n.tr("search_running", product=params.short_name))
+        product_label = (f"GLASS ×{len(batch_ids)}" if batch_ids
+                         else params.short_name)
+        self.statusBar().showMessage(i18n.tr("search_running", product=product_label))
         self.search_panel.set_searching(True)
-        self._search_thread = _SearchThread(params, self)
+        if not batch_ids:
+            self.search_panel.record_history(params)
+        self._search_thread = _SearchThread(params, self, batch_ids=batch_ids)
         self._search_thread.done.connect(self._on_search_done)
         self._search_thread.failed.connect(self._on_search_failed)
         self._search_thread.progress.connect(self.search_panel.on_search_progress)
+        self._search_thread.batch_errors.connect(self._on_batch_errors)
         self._search_thread.start()
+
+    def _do_batch_search(self, variant_ids):
+        params = self.search_panel.build_params()
+        if params is None:
+            return
+        self._do_search(params, batch_ids=list(variant_ids))
+
+    def _on_batch_errors(self, errors: dict):
+        """批量检索部分失败：结果照常入表，状态栏报失败变体数与首个错误。"""
+        first = next(iter(errors.values()), "")
+        self.statusBar().showMessage(
+            i18n.tr("batch_partial", n=len(errors), first=first[:120]))
 
     def _cancel_search(self):
         t = self._search_thread
         if t is not None and t.isRunning():
             t.cancel()
-            self.statusBar().showMessage(i18n.tr("search_cancelling"))
+            # Cancel = discard: restore the panel immediately instead of
+            # waiting for the worker.  A single CMR request cannot be
+            # interrupted mid-flight (earthaccess pages without a timeout),
+            # so the abandoned thread's pending results are dropped by
+            # disconnecting its signals; GLASS searches still stop for real
+            # within one directory listing via the cooperative flag.
+            for sig, slot in ((t.done, self._on_search_done),
+                              (t.failed, self._on_search_failed),
+                              (t.progress, self.search_panel.on_search_progress)):
+                try:
+                    sig.disconnect(slot)
+                except RuntimeError:
+                    pass
+            self._search_thread = None
+            self.search_panel.set_searching(False)
+            self.statusBar().showMessage(i18n.tr("search_cancelled"))
         else:
             self.search_panel.set_searching(False)
 
@@ -585,6 +643,115 @@ class MainWindow(QMainWindow):
 
     def _on_about(self):
         QMessageBox.about(self, i18n.tr("act_about"), i18n.tr("about_text"))
+
+    def _open_terminal(self, run_opencode: bool = False):
+        """帮助菜单的终端启动器（v2.8）：在下载目录开一个终端，可直接
+        查看、跑 d3ltool CLI；勾选 opencode 项则直接在该目录启动
+        OpenCode（官方客户端，免费模型在客户端内不受限）。shell 由
+        设置对话框的「终端」选项决定（auto/cmd/powershell/pwsh——
+        PowerShell 7 即 LTS 线）；有 Windows Terminal 时包在 wt 里跑
+        （TUI 渲染远好于旧 conhost）；macOS 走 Terminal.app；Linux 试
+        常见终端（仅定位目录，不带命令）。"""
+        import shutil
+        import subprocess
+        import sys
+
+        folder = str(Path(self.config["download_dir"]))
+        command = "opencode" if run_opencode else None
+        oc_path = shutil.which("opencode") if run_opencode else None
+        if run_opencode and oc_path is None:
+            self.statusBar().showMessage(i18n.tr("opencode_missing"))
+            return
+        if run_opencode:
+            # 项目级安装内置 skill（首次即装、每次启动刷新；非全局）：
+            # OpenCode 以下载目录为项目根启动，自动发现 .agents/skills/
+            from .. import skill as skill_mod
+
+            try:
+                Path(folder).mkdir(parents=True, exist_ok=True)
+                skill_mod.install(
+                    Path(folder) / ".agents" / "skills" / "d3ltool")
+            except Exception as exc:
+                self.statusBar().showMessage(
+                    i18n.tr("skill_install_failed", reason=exc))
+        # 子进程 PATH 注入：exe 用户的进程 PATH 里往往没有 opencode 所在
+        # 目录，把 GUI 侧解析到的目录塞进子进程 PATH，裸命令名（opencode）
+        # 才能在开出的 shell 里解析到
+        import os as _os
+
+        env = _os.environ.copy()
+        if oc_path:
+            extra = str(Path(oc_path).parent)
+            env["PATH"] = extra + _os.pathsep + env.get("PATH", "")
+        shell = str(self.config.get("terminal_shell") or "auto").strip().lower()
+        if shell == "auto":
+            # 默认优先 PowerShell（pwsh 7 为 LTS 线），缺则退 5.1，再退 CMD
+            shell = ("pwsh" if shutil.which("pwsh")
+                     else "powershell" if shutil.which("powershell")
+                     else "cmd")
+        try:
+            if sys.platform.startswith("win"):
+                wt = shutil.which("wt")
+                if wt:
+                    # wt 契约：";" 是"新开标签"分隔符——pwsh 链里的分号必须
+                    # 转义成 "\;"，cmd 用 "&" 串联。工作目录由 -d 设定，
+                    # 不需要 cd。（启动横幅只在 CLI 侧出现，这里不链。）
+                    if shell == "cmd":
+                        tail = (["cmd", "/k", command]
+                                if run_opencode else ["cmd"])
+                    else:
+                        tail = ([shell, "-NoExit", "-Command", command]
+                                if run_opencode else [shell, "-NoExit"])
+                    subprocess.Popen([wt, "-d", folder, *tail], cwd=folder,
+                                     env=env,
+                                     creationflags=subprocess.CREATE_NEW_CONSOLE)
+                else:
+                    if shell == "cmd":
+                        seq = f'cd /d "{folder}"'
+                        if run_opencode:
+                            seq += " && opencode"
+                        subprocess.Popen(["cmd", "/k", seq], env=env,
+                                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+                    else:
+                        esc = folder.replace("'", "''")
+                        seq = f"Set-Location -LiteralPath '{esc}'"
+                        if run_opencode:
+                            seq += "; opencode"
+                        subprocess.Popen([shell, "-NoExit", "-Command", seq],
+                                         env=env,
+                                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+            elif sys.platform == "darwin":
+                script = f'cd "{folder}"' + (f'; {command}' if command else "")
+                subprocess.Popen(["osascript", "-e",
+                                  f'tell application "Terminal" to do script '
+                                  f'"{script}"'], env=env)
+            else:
+                for term in ("x-terminal-emulator", "gnome-terminal",
+                             "konsole", "xfce4-terminal"):
+                    if shutil.which(term):
+                        subprocess.Popen([term, f"--working-directory={folder}"],
+                                         env=env)
+                        break
+                else:
+                    raise FileNotFoundError("no terminal emulator found")
+            self.statusBar().showMessage(i18n.tr("terminal_opened"))
+        except Exception as exc:
+            self.statusBar().showMessage(
+                i18n.tr("terminal_failed", reason=exc))
+
+    def _install_skill(self):
+        """把内置 AI Skill 安装到 ~/.agents/skills/d3ltool（ZCode/Claude/
+        Cursor 等 agent 自动发现；重复执行即更新到最新版）。"""
+        from .. import skill as skill_mod
+
+        try:
+            target = skill_mod.install()
+            n = len(skill_mod.installed_files(target))
+            self.statusBar().showMessage(
+                i18n.tr("skill_installed", path=str(target), n=n), 6000)
+        except Exception as exc:
+            self.statusBar().showMessage(
+                i18n.tr("skill_install_failed", reason=exc))
 
     # ------------------------------------------------------- links & donate
 

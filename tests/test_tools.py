@@ -566,3 +566,35 @@ def test_open_download_page_outside_gui(tmp_path, monkeypatch):
     assert out["opened"] is False
     assert out["html_path"].endswith("d3ltool_links.html")
     assert out["hint"].startswith("not in the GUI")
+
+
+def test_search_granules_band_names_reach_glass(monkeypatch):
+    """穿透 MCP 层的带名测试（skill 复核教训：库层测试锁不住工具层——
+    tools.search_granules 曾在预解析时严格拒绝 n045e120）。MCP 传带名
+    必须原样透传到 glass.search；非带名的非法 token 仍然报错。"""
+    import d3ltool.glass as glass
+
+    seen = {}
+
+    def fake_search(short_name, start, end, tiles=None, bbox=None,
+                    max_results=200, progress=None, cancelled=None):
+        seen["tiles"] = tiles
+        return []
+
+    monkeypatch.setattr(glass, "search", fake_search)
+    tools.search_granules("LAI_HR_LAI_V01", "2018-01-01", "2018-12-31",
+                          tiles=["n018e108", "N045E120"], limit=5)
+    assert seen["tiles"] == ["n018e108", "n045e120"]   # 透传 + 小写
+    # 非带状的坏 token 依旧严格报错（不因带名放行而松动）
+    with pytest.raises(ValueError):
+        tools.search_granules("LAI_MODIS_250M", "2018-01-01", "2018-01-02",
+                              tiles=["h04"], limit=5)
+
+
+def test_parse_tiles_accepts_band_names():
+    """GUI 瓦片栏 / CLI 共用的 parse_tiles：带名透传，坏 token 仍报错。"""
+    from d3ltool import search
+
+    assert search.parse_tiles("h28v05, n018e108") == ["h28v05", "n018e108"]
+    with pytest.raises(ValueError):
+        search.parse_tiles("h04")

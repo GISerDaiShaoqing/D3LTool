@@ -45,8 +45,16 @@
 - **MCP/AI 工具数** = `len(d3ltool.tools.REGISTRY)`（当前 13）。
   引用处：README.md、READMEcn.md、index.html、index-cn.html、paper/paper.md、
   user_manual §4.6、docs/mcp.md。
-- **pytest 测试数** = 全量 `python -m pytest tests/ -q` 末行 passed 数（当前 191）。
+- **pytest 测试数** = 全量 `python -m pytest tests/ -q` 末行 passed 数（当前 221）。
   引用处：paper/paper.md、docs/submission_checklist.md。
+- **Skill 对齐行** = skill 仓库
+  [d3ltool-skill](https://github.com/GISerDaiShaoqing/d3ltool-skill) 的
+  `SKILL.md` 里 "对齐 d3ltool vX.Y（N 个 MCP 工具）"：版本号/工具数变化
+  时在 skill 仓库同步并打 tag，再更新 `build.yml` 的 `SKILL_REF`。
+  D3LTool 主仓**不含** skill 内容（.gitignore 排除），CI 打包时按
+  `SKILL_REF` 克隆进 `resources/skill/` 随安装包分发；workspace 的
+  `.agents/skills/d3ltool/` 是安装副本（`d3ltool skill install --dest`
+  刷回）。
 - **版本号**以 `d3ltool/__init__.py` 的 `__version__` 为准，pyproject.toml 与
   CITATION.cff 必须与它一致。
 
@@ -81,7 +89,7 @@ grep -n 'version = "' pyproject.toml && grep -n '__version__' d3ltool/__init__.p
   && grep -n '^version:' CITATION.cff && grep -n 'badge">v' index.html index-cn.html
 
 # ② 上一版本号残留（应无输出；模式按"上一个版本号"滚动更新）
-grep -rn "v2\.6\.0\|V2\.6\.0" README.md READMEcn.md index.html index-cn.html \
+grep -rn "v2\.7\.0\|V2\.7\.0" README.md READMEcn.md index.html index-cn.html \
   docs/*.md docs/copyright/*.md paper/paper.md CITATION.cff | grep -v "更新日志\|Changelog\|变更记录"
 
 # ③ 工具数与测试数

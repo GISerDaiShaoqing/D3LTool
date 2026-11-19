@@ -22,3 +22,9 @@
      paper/paper.md docs/*.md
    ```
    输出逐条判定"动态对齐 vs 历史事实"后再动手。
+5. **跨层能力要各层穿透测试（v2.8.0 教训）**：库层测试锁不住工具层行为——
+   GLASS 带名（n045e120）在 glass 库层透传，但 MCP 工具层（tools.py）与
+   CLI/GUI（search.parse_tiles）的严格预解析曾把它拒掉，"库层测试通过"
+   造成过误导。新增跨层能力（MCP 工具/CLI 参数/内部 API 之间的语义）
+   时，每层都要有测试，或至少实测一遍上层通道；对外文档（含
+   `resources/skill/d3ltool/SKILL.md`）以最严格层的实际行为为准。

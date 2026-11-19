@@ -18,6 +18,7 @@ import typing
 from pathlib import Path
 
 from . import auth, config, engine, glass, links, products, search
+from .glass import _BAND_RE, is_glass_variant
 from .tiles import lonlat_to_tile, parse_tile, tile_bounds_lonlat, tile_name
 
 # ---------------------------------------------------------------- registry
@@ -310,7 +311,16 @@ def search_granules(short_name: str, start: str, end: str, version: str = "",
                     tiles: list = None, bbox: list = None, limit: int = 10) -> dict:
     tile_names = []
     for t in (tiles or []):
-        h, v = parse_tile(str(t).strip().lower())
+        token = str(t).strip().lower()
+        try:
+            h, v = parse_tile(token)
+        except ValueError:
+            # GLASS 带状变体（HiGLASS 20m）直接接受 1° 带名（n045e120），
+            # 与 R 包对齐——其余 token 仍按严格瓦片解析报错
+            if is_glass_variant(short_name) and _BAND_RE.fullmatch(token):
+                tile_names.append(token)
+                continue
+            raise
         tile_names.append(tile_name(h, v))
     box = tuple(float(x) for x in bbox) if bbox else None
     if box and not (-180 <= box[0] < box[2] <= 180 and -90 <= box[1] < box[3] <= 90):

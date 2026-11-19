@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
-"""Settings dialog: download dir / workers / proxy."""
+"""Settings dialog: download dir / workers / proxy / terminal shell."""
 
-from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFileDialog,
-                               QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QSpinBox, QVBoxLayout)
+from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox,
+                               QFileDialog, QFormLayout, QHBoxLayout, QLabel,
+                               QLineEdit, QPushButton, QSpinBox, QVBoxLayout)
 
 from .. import i18n
+
+# terminal launcher choices (stored value -> display label key); Windows
+# only in practice — macOS/Linux ignore it and use the system terminal
+TERMINAL_CHOICES = [("auto", "settings_term_auto"),
+                    ("cmd", "settings_term_cmd"),
+                    ("powershell", "settings_term_powershell"),
+                    ("pwsh", "settings_term_pwsh")]
 
 
 class SettingsDialog(QDialog):
@@ -36,6 +43,14 @@ class SettingsDialog(QDialog):
         self.proxy_edit.setPlaceholderText("http://127.0.0.1:7890 / socks5://...")
         form.addRow(i18n.tr("settings_proxy"), self.proxy_edit)
 
+        self.term_combo = QComboBox()
+        current = (self._config.get("terminal_shell") or "auto").strip().lower()
+        for value, label_key in TERMINAL_CHOICES:
+            self.term_combo.addItem(i18n.tr(label_key), userData=value)
+            if value == current:
+                self.term_combo.setCurrentIndex(self.term_combo.count() - 1)
+        form.addRow(i18n.tr("settings_terminal"), self.term_combo)
+
         layout.addLayout(form)
         layout.addLayout(self._buttons())
 
@@ -62,6 +77,7 @@ class SettingsDialog(QDialog):
             "download_dir": self.dir_edit.text().strip() or self._config.get("download_dir", ""),
             "max_workers": self.workers_spin.value(),
             "proxy_url": self.proxy_edit.text().strip(),
+            "terminal_shell": self.term_combo.currentData(),
         }
         if self._on_save is not None:
             self._on_save(values)

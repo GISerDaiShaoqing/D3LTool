@@ -695,3 +695,149 @@ def test_fetch_hrefs_spaces_requests(monkeypatch):
     glass._fetch_hrefs("https://glass.hku.hk/a/", _Sess())
     glass._fetch_hrefs("https://glass.hku.hk/b/", _Sess())
     assert any(0.04 <= s <= 0.2 for s in sleeps)
+
+
+def test_search_adaptive_cancel_fires_per_listing_in_pass2(monkeypatch):
+    """取消检查必须落在 pass 2 的 DOY 内层（此前只在年边界检查——一年
+    365 个日目录要列完才响应，表现为"点取消像卡死"）。进度同时给出
+    pass-2 的逐目录计数（done, listing_total, 年/日）。"""
+    calls = []
+
+    def fake(url, session=None):
+        calls.append(url)
+        if url.endswith("/archive/SH/MODIS/"):
+            return ["2018/"]
+        if url.endswith("/2018/"):
+            return [f"{d:03d}/" for d in range(1, 61)]   # 60 composite dirs
+        if "/2018/" in url:
+            return ["GLASS09A01.V01.A2018001.h28v05.2020001.hdf"]
+        raise FileNotFoundError(url)
+
+    monkeypatch.setattr(glass, "_fetch_hrefs", fake)
+    seen = []
+
+    def cancelled():                       # fires once four listings happened
+        return len(calls) >= 4
+
+    with pytest.raises(glass.GlassCancelled):
+        glass.search("SH_MODIS", "2018-02-01", "2018-03-31", tiles=["h28v05"],
+                     progress=lambda d, t, l: seen.append((d, t, l)),
+                     cancelled=cancelled)
+    # 2 (root+year) + 2 (032/033) listings — far short of the 31-dir sweep
+    assert len(calls) < 10
+    pass2 = [s for s in seen if s[2].endswith(("/032", "/033"))]
+    assert (1, 29, "2018/032") in pass2    # span-passing dirs = 29 (032..060)
+    assert (2, 29, "2018/033") in pass2
+
+
+def test_search_batch_partial_failure(monkeypatch):
+    """批量检索：部分变体失败继续跑（errors 逐个记录），全失败抛首个错误，
+    取消立即中断；进度标签带变体前缀。"""
+    calls = []
+    seen_labels = []
+
+    def fake_impl(short_name, start, end, tiles, bbox, max_results,
+                  progress, cancelled):
+        calls.append(short_name)
+        if progress:
+            progress(1, 1, "2018/233")
+        if short_name.startswith("BAD"):
+            raise glass.GlassError(f"archive folder not found (404) {short_name}")
+        return [{"url": f"https://x/{short_name}.hdf",
+                 "filename": f"{short_name}.hdf", "date": "2018-08-05",
+                 "tile": "h28v05", "size_mb": 0.0, "size_bytes": 0,
+                 "product": short_name}]
+
+    monkeypatch.setattr(glass, "_search_impl", fake_impl)
+    rows, errors = glass.search_batch(["GOOD1", "BAD1", "GOOD2"],
+                                      "2018-08-01", "2018-08-31",
+                                      progress=lambda d, t, l:
+                                      seen_labels.append(l))
+    assert [r["product"] for r in rows] == ["GOOD1", "GOOD2"]
+    assert set(errors) == {"BAD1"}
+    assert "GOOD1 · 2018/233" in seen_labels     # variant-prefixed label
+    with pytest.raises(RuntimeError):
+        glass.search_batch(["BAD1", "BAD2"], "2018-08-01", "2018-08-31")
+    with pytest.raises(glass.GlassCancelled):
+        glass.search_batch(["GOOD1"], "2018-08-01", "2018-08-31",
+                           cancelled=lambda: True)
+    assert calls == ["GOOD1", "BAD1", "GOOD2", "BAD1", "BAD2"]
+
+
+def test_band_variant_region_selection(monkeypatch):
+    """HiGLASS 带状检索（v2.8）：bbox→1°带求交（SW 角约定——2026-11-18 用
+    Range 读 GeoTIFF tiepoint 实测：n018e108 原点 (108.0, 19.0)，单元
+    [18,19)N×[108,109)E）；年度 TIF 按文件名年份过滤；逐带进度。"""
+    def fake(url, session=None):
+        if url.endswith("/LAI/HR_LAI/V01/"):
+            return ["n018e108/", "n019e108/", "n020e109/", "readme.txt"]
+        if url.endswith("/n018e108/"):
+            return ["HiGLASS_LS20_n018e108_2018_v01_LAI.tif",
+                    "HiGLASS_LS20_n018e108_2019_v01_LAI.tif",
+                    "HiGLASS_LS20_n018e108_2017_v01_LAI.tif"]
+        if url.endswith("/n019e108/"):
+            return ["HiGLASS_LS20_n019e108_2018_v01_LAI.tif"]
+        if url.endswith("/n020e109/"):
+            return ["HiGLASS_LS20_n020e109_2018_v01_LAI.tif"]
+        raise FileNotFoundError(url)
+
+    monkeypatch.setattr(glass, "_fetch_hrefs", fake)
+    seen = []
+    rows = glass.search("LAI_HR_LAI_V01", "2018-01-01", "2018-12-31",
+                        bbox=[108.5, 18.2, 109.5, 19.5],
+                        progress=lambda d, t, l: seen.append((d, t, l)))
+    # n020e109（[20,21)N）不与 bbox 相交；n018e108 只留 2018 年文件
+    assert sorted(r["tile"] for r in rows) == ["n018e108", "n019e108"]
+    assert [r["date"] for r in rows] == ["2018", "2018"]
+    assert rows[0]["filename"].endswith("_2018_v01_LAI.tif")
+    assert seen == [(1, 2, "n018e108"), (2, 2, "n019e108")]
+    # 无区域 → 明确报错（1120 个带不能全列）
+    with pytest.raises(glass.GlassError):
+        glass.search("LAI_HR_LAI_V01", "2018-01-01", "2018-12-31")
+    # 区域不与任何带相交 → 报告带的覆盖范围
+    with pytest.raises(glass.GlassError) as ei:
+        glass.search("LAI_HR_LAI_V01", "2018-01-01", "2018-12-31",
+                     bbox=[0.0, 0.0, 1.0, 1.0])
+    assert "n018e108" in str(ei.value)
+
+
+def test_band_variant_cancel_and_year_span(monkeypatch):
+    """带状检索逐带可取消；跨年查询按年过滤（2018..2019 拿两年）。"""
+    def fake(url, session=None):
+        if url.endswith("/LAI/HR_LAI/V01/"):
+            return ["n018e108/", "n019e108/"]
+        if url.endswith("/n018e108/"):
+            return ["HiGLASS_LS20_n018e108_2018_v01_LAI.tif"]
+        raise FileNotFoundError(url)
+
+    monkeypatch.setattr(glass, "_fetch_hrefs", fake)
+    rows = glass.search("LAI_HR_LAI_V01", "2018-01-01", "2019-12-31",
+                        bbox=[108.0, 18.0, 109.0, 20.0])
+    assert sorted(r["date"] for r in rows) == ["2018"]
+    with pytest.raises(glass.GlassCancelled):
+        glass.search("LAI_HR_LAI_V01", "2018-01-01", "2018-12-31",
+                     bbox=[108.0, 18.0, 109.0, 20.0], cancelled=lambda: True)
+
+
+def test_band_variant_accepts_direct_band_names(monkeypatch):
+    """与 R 包对齐：tiles 字段可直接填带名（n045e120），显式带名与 bbox
+    求交结果取并集；只填带名时不需要 bbox。"""
+    def fake(url, session=None):
+        if url.endswith("/LAI/HR_LAI/V01/"):
+            return ["n018e108/", "n020e109/"]
+        if url.endswith("/n018e108/"):
+            return ["HiGLASS_LS20_n018e108_2018_v01_LAI.tif"]
+        raise FileNotFoundError(url)
+
+    monkeypatch.setattr(glass, "_fetch_hrefs", fake)
+    rows = glass.search("LAI_HR_LAI_V01", "2018-01-01", "2018-12-31",
+                        tiles=["n018e108"])
+    assert [r["tile"] for r in rows] == ["n018e108"]
+    # 显式带名 + 不相交的 bbox → 并集仍含显式带
+    rows = glass.search("LAI_HR_LAI_V01", "2018-01-01", "2018-12-31",
+                        bbox=[0.0, 0.0, 1.0, 1.0], tiles=["n018e108"])
+    assert [r["tile"] for r in rows] == ["n018e108"]
+    # 不存在的带名 → 静默无结果路径走"未选中"报错
+    with pytest.raises(glass.GlassError):
+        glass.search("LAI_HR_LAI_V01", "2018-01-01", "2018-12-31",
+                     tiles=["n999e999"])

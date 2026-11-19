@@ -121,7 +121,8 @@ def doys(v: dict, start: str, end: str, mode: str = "span") -> list:
     return out
 
 
-def doys_from_listing(v: dict, start: str, end: str, session=None) -> list:
+def doys_from_listing(v: dict, start: str, end: str, session=None,
+                      cancelled=None) -> list:
     """Variants without a verified cadence: derive the folders from the
     archive itself and keep those starting inside the range — the R
     package's legacy "start" mode, layout-aware:
@@ -158,6 +159,8 @@ def doys_from_listing(v: dict, start: str, end: str, session=None) -> list:
         return out
     doy_pat = r"^\d{7}$" if layout == "year_yyyddd" else r"^\d{3}$"
     for yname in years:
+        if cancelled is not None and cancelled():
+            raise GlassCancelled("GLASS search cancelled")
         year = int(yname)
         if year < d0.year or year > d1.year:
             continue
@@ -415,6 +418,41 @@ def search(short_name: str, start: str, end: str, tiles=None, bbox=None,
         _CANCELLED[0] = None
 
 
+def search_batch(variant_ids, start, end, tiles=None, bbox=None,
+                 max_results=200, progress=None, cancelled=None) -> tuple:
+    """Search several GLASS variants in one pass (v2.8 批量检索).
+
+    Runs search() per variant with a shared cancel flag and a prefixed
+    progress label ("variant · dir"); a failing variant is recorded in the
+    returned errors dict and the batch continues with the rest.  Returns
+    (rows, errors) — rows carry their own product field; errors maps
+    variant_id -> message.  Raises only when cancelled, or when EVERY
+    variant failed (then the first error propagates for the status bar)."""
+    rows, errors = [], {}
+    for vid in variant_ids:
+        if cancelled and cancelled():
+            raise GlassCancelled("GLASS search cancelled")
+        inner_progress = None
+        if progress:
+            def inner_progress(d, t, l, _vid=vid):
+                try:
+                    progress(d, t, f"{_vid} · {l}")
+                except Exception:
+                    pass
+        try:
+            rows.extend(search(vid, start, end, tiles=tiles, bbox=bbox,
+                               max_results=max_results,
+                               progress=inner_progress, cancelled=cancelled))
+        except GlassCancelled:
+            raise
+        except Exception as exc:
+            errors[vid] = f"{type(exc).__name__}: {exc}"
+    if not rows and errors:
+        raise RuntimeError("GLASS batch search failed: "
+                           + next(iter(errors.values())))
+    return rows, errors
+
+
 def _search_impl(short_name, start, end, tiles, bbox, max_results,
                  progress, cancelled) -> list:
     v = get_variant(short_name)
@@ -426,6 +464,12 @@ def _search_impl(short_name, start, end, tiles, bbox, max_results,
             want.add(_tiles.tile_name(h, vv))
 
     session = _get_session()
+    if is_band_variant(short_name):
+        # HiGLASS 20m: the archive is ~1120 one-degree band folders —
+        # region queries resolve through them, not a flat static listing
+        return _search_band_adaptive(v, start, end, bbox, tiles, session,
+                                     max_results, progress=progress,
+                                     cancelled=cancelled)
     if layout == "flat":
         pairs = [(None, None)]   # static collection: dates play no role
     elif layout == "year_files" and not v.get("cadence_days"):
@@ -445,7 +489,8 @@ def _search_impl(short_name, start, end, tiles, bbox, max_results,
         try:
             pairs = doys(v, start, end)
         except GlassError:
-            pairs = doys_from_listing(v, start, end, session=session)
+            pairs = doys_from_listing(v, start, end, session=session,
+                                      cancelled=cancelled)
 
     rows = []
     errors = []
@@ -606,6 +651,8 @@ def _search_year_doy_adaptive(v: dict, start: str, end: str, want: set,
         seg = urlsplit(root).path.rstrip("/").rsplit("/", 1)[-1].lower()
         try:
             dirs = _listed_dirs(root)
+        except GlassCancelled:
+            raise
         except Exception:
             dirs = []
         cands = [d for d in dirs if not _YEAR_DIR_RE.fullmatch(d)
@@ -700,8 +747,25 @@ def _search_year_doy_adaptive(v: dict, start: str, end: str, want: set,
                     for a, b in zip(sorted(lst), sorted(lst)[1:]) if b > a})
     stride = diffs[0] if diffs else None   # measured cadence, not the registry's
 
-    # pass 2 — span-filter and assemble rows (memo serves every listing)
+    # pass 2 — span-filter and assemble rows (memo serves every listing).
+    # Cancel/progress are checked PER LISTING, not per year: pass 2 is where
+    # hundreds of composite folders get listed one by one, and a per-year
+    # checkpoint made "cancel search" look frozen for minutes.
+    span_of = {}    # year -> composite DOYs that pass the span filter
+    listing_total = 0
+    for year in sorted(plans):
+        keep = []
+        for doy in sorted(plans[year][1]):
+            begin = _doy_date(year, doy)
+            if stride is None or (
+                    begin <= d1 and
+                    begin + timedelta(days=stride - 1) >= d0):
+                keep.append(doy)
+        span_of[year] = keep
+        listing_total += len(keep)
+
     out = []
+    done_listing = 0
 
     def _emit(r, date_s):
         out.append({
@@ -717,14 +781,19 @@ def _search_year_doy_adaptive(v: dict, start: str, end: str, want: set,
     for year in sorted(plans):
         if cancelled and cancelled():
             raise GlassCancelled("GLASS search cancelled")
-        _, dirs3 = plans[year]
+        dirs3 = plans[year][1]
         if dirs3:
-            for doy in sorted(dirs3):
+            for doy in span_of[year]:
+                if cancelled and cancelled():
+                    raise GlassCancelled("GLASS search cancelled")
                 begin = _doy_date(year, doy)
-                if stride is not None and not (
-                        begin <= d1 and
-                        begin + timedelta(days=stride - 1) >= d0):
-                    continue
+                done_listing += 1
+                if progress:
+                    try:
+                        progress(done_listing, max(listing_total, 1),
+                                 f"{year}/{doy:03d}")
+                    except Exception:
+                        pass
                 try:
                     files = list_files(v, year=year, doy=doy, tiles=want,
                                        session=session, fetch=_memo)
@@ -777,6 +846,145 @@ def _search_year_doy_adaptive(v: dict, start: str, end: str, want: set,
 
 def _doy_date(year: int, doy: int) -> date:
     return date(year, 1, 1) + timedelta(days=doy - 1)
+
+
+# ------------------------------------------------- HiGLASS 1° band layout
+#
+# HiGLASS 20m products (LAI_HR / FAPAR_HR) keep the registry's flat label,
+# but the archive really organizes them as ~1120 one-degree band folders
+# (n018e108/…) whose files sit flat inside: one annual GeoTIFF per year
+# (HiGLASS_LS20_n018e108_2018_v01_LAI.tif).  Measured live on 2026-11-18
+# via a 16-byte Range read of the GeoTIFF header: the tiepoint of band
+# n018e108 puts its raster top edge at lat 19.0 — the band name is the
+# cell's SOUTH-WEST corner, cell = [lat, lat+1) × [lon, lon+1).
+BAND_VARIANTS = frozenset({"lai_hr_lai_v01", "fapar_hr_fapar_v01"})
+_BAND_RE = re.compile(r"([ns])(\d{3})([ew])(\d{3})")
+
+
+def is_band_variant(short_name: str) -> bool:
+    """HiGLASS 20m band products — region queries resolve through 1° band
+    folders instead of a flat static listing (extend BAND_VARIANTS when the
+    archive grows more of them)."""
+    return (short_name or "").strip().lower() in BAND_VARIANTS
+
+
+def _band_cell(name: str):
+    m = _BAND_RE.fullmatch(name)
+    if not m:
+        return None
+    lat = int(m.group(2)) * (-1 if m.group(1) == "s" else 1)
+    lon = int(m.group(4)) * (-1 if m.group(3) == "w" else 1)
+    return lat, lon     # the cell's SW corner
+
+
+def _band_intersects(name: str, regions) -> bool:
+    cell = _band_cell(name)
+    if cell is None:
+        return False
+    lat0, lon0 = cell
+    lat1, lon1 = lat0 + 1, lon0 + 1
+    return any(lon0 < e and lon1 > w and lat0 < n and lat1 > s
+               for (w, s, e, n) in regions)
+
+
+def _search_band_adaptive(v, start, end, bbox, tiles, session, max_results,
+                          progress=None, cancelled=None) -> list:
+    """HiGLASS 20m band products: bbox/tiles resolve to intersecting 1°
+    band folders, each band is listed once (progress + cancel per band),
+    and the annual GeoTIFFs are kept when their year touches the range.
+    Tiles translate conservatively to their geographic tile bounds
+    (tile_bounds_lonlat corners), so a map-clicked tile may pull the
+    neighbouring band edge — one extra listing at most, never data loss."""
+    from . import tiles as _tiles
+
+    d0, d1 = _date_range(start, end)
+    root = v["url_root"]
+    regions = []
+    explicit = []                      # band names typed directly, R-style
+    if bbox:
+        west, south, east, north = (float(x) for x in bbox)
+        regions.append((west, south, east, north))
+    for t in (tiles or []):
+        try:
+            h, vv = _tiles.parse_tile(t)
+        except Exception:
+            if _BAND_RE.fullmatch(t.strip()):
+                explicit.append(t.strip())   # "n045e120" — like the R package
+            continue
+        regions.append(_tiles.tile_bounds_lonlat(h, vv))
+    if not regions and not explicit:
+        raise GlassError(
+            f"{v['variant_id']} is a HiGLASS 1°-band product: enter a bbox, "
+            "pick tiles or type band names (n045e120) so bands can be "
+            "selected — the archive holds ~1120 band folders and lists "
+            "them all otherwise")
+    # list the root once: band folders + any stray files
+    hrefs = _fetch_hrefs(root, session)
+    bands = sorted(n.rstrip("/") for n in hrefs
+                   if n.endswith("/") and _BAND_RE.fullmatch(n.rstrip("/")))
+    if not bands:
+        raise GlassError(
+            f"no 1° band folders (nXXXeYYY/) under {root} — the HiGLASS "
+            "band layout is not what this version expects; browse the "
+            "archive directly")
+    selected = {b for b in bands if _band_intersects(b, regions)}
+    selected.update(b for b in bands if b in explicit)   # explicit band names
+    selected = sorted(selected)
+    if not selected:
+        if regions:
+            lat0 = min(r[1] for r in regions)
+            lat1 = max(r[3] for r in regions)
+            lon0 = min(r[0] for r in regions)
+            lon1 = max(r[2] for r in regions)
+            raise GlassError(
+                f"no HiGLASS band folders intersect {lon0:.2f}..{lon1:.2f}E, "
+                f"{lat0:.2f}..{lat1:.2f}N — the archive's bands span roughly "
+                f"{bands[0]} … {bands[-1]}")
+        raise GlassError(
+            f"no band folder(s) matching {', '.join(explicit)} under {root} "
+            "— check the names against the archive listing")
+    rows = []
+    year_re = re.compile(r"(?<!\d)((?:19|20)\d{2})(?!\d)")
+    ext_pat = _ext_pattern(v.get("ext"))
+    total = len(selected)
+    for i, band in enumerate(selected, 1):
+        if cancelled and cancelled():
+            raise GlassCancelled("GLASS search cancelled")
+        if progress:
+            try:
+                progress(i, total, band)
+            except Exception:
+                pass
+        try:
+            files = _fetch_hrefs(f"{root}{band}/", session)
+        except FileNotFoundError:
+            continue                     # a sparse band is a normal gap
+        for f in files:
+            if f.endswith("/") or not ext_pat.search(f):
+                continue
+            m = year_re.search(f)
+            if not m:
+                continue
+            year = int(m.group(1))
+            if not (d0.year <= year <= d1.year):
+                continue
+            rows.append({
+                "url": f"{root}{band}/{f}",
+                "filename": f,
+                "date": str(year),       # annual file keeps its year
+                "tile": band,            # 1° band id instead of hXXvYY
+                "size_mb": 0.0,
+                "size_bytes": 0,
+                "product": v["variant_id"],
+            })
+            if len(rows) >= max_results:
+                return rows
+    if not rows:
+        raise GlassError(
+            f"no annual files for {v['variant_id']} in {start}..{end} under "
+            f"{len(selected)} selected bands — the archive covers years "
+            "written in the filenames (e.g. 2018-2023); pick inside it")
+    return rows
 
 
 # ---------------------------------------------------------------- session

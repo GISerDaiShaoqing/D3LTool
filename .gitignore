@@ -105,3 +105,7 @@ ENV/
 *.js linguist-language=python
 *.css linguist-language=python
 *.html linguist-language=R
+
+# bundled agent skill lives in its own repo (d3ltool-skill); CI clones it
+# into resources/skill at build time — the D3LTool repo carries no copy
+d3ltool/resources/skill/

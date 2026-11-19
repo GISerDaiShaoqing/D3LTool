@@ -104,6 +104,9 @@ Chinese. D3LTool fills this niche by providing a single GUI application with:
   variants without a registered composite cadence self-adapt to the
   archive's real layout (files flat inside the year folder with A-header
   or month-code tokens, or a one-level version wrapper) instead of failing;
+  v2.8 adds HiGLASS 20m band retrieval (region queries resolve against the
+  archive's 1-degree band folders, named by their measured south-west
+  corner) and multi-variant batch search with per-variant error reports;
   post-processing (mosaic/crop/scaling) pairs with the author's companion
   R package `glass.sqdaitools`.
 
@@ -145,7 +148,7 @@ tile map, results and task tables, a slide-out assistant drawer and a
 time-series panel sharing the main engine, settings (download directory,
 worker count, proxy) and a
 language switcher; all strings live in a single i18n module. The test suite
-(191 pytest tests at submission time) covers the tile math, configuration
+(221 pytest tests at submission time) covers the tile math, configuration
 handling, search query construction and version fallbacks, the
 resume/retry engine against a local Range-capable HTTP server, the tool
 registry and agent loop with a local streaming-HTTP fake, an end-to-end

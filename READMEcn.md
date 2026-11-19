@@ -28,6 +28,9 @@ D3L Tool 管"找和下"，后处理在 R 侧完成——两个项目配套使用
 - **内置检索**：按产品、时间范围、MODIS/VIIRS 正弦瓦片（可点击的 36×18 瓦片地图）或经纬度范围检索，
   检索不需要登录
 - **产品覆盖**：MODIS、VIIRS（LAADS DAAC）、MERRA-2（GES DISC），也可输入任意 CMR short_name
+- **检索体验升级（v2.8.0）**：HiGLASS 20m 带状检索（bbox/瓦片 → 1° 带目录）、
+  GLASS 多变体批量检索、检索历史、结果表排序与文件名过滤；
+  所有检索都可取消，进度条同时覆盖 NASA 检索（脉动显示）
 - **GLASS 数据源**（v2.5.0 新增，v2.6.0 全面升级，v2.7.0 自适应）：检索并下载 GLASS（Global Land
   Surface Satellite）产品体系——公开 [glass.hku.hk](https://glass.hku.hk) 档案的
   133 个变体（131 个经真实 granule 核验），无需 Earthdata 登录；四种归档布局
@@ -37,7 +40,7 @@ D3L Tool 管"找和下"，后处理在 R 侧完成——两个项目配套使用
   填充值处理、瓦片镶嵌、重投影裁剪与时序合成仍在 R 侧完成——
   见下文[「GLASS 支持与 glass.sqdaitools」](#glass-支持与-glasssqdaitoolsv250)
 - **健壮下载**：多线程队列、分块进度、HTTP 断点续传、失败自动重试、文件大小校验
-- **MCP 服务器**（v2.1 新增）：`d3ltool-mcp` 把检索/瓦片换算/下载暴露为
+- **MCP 服务器 + Agent Skill**（v2.1 新增；skill 自 v2.8 随包内置）：`d3ltool-mcp` 把检索/瓦片换算/下载暴露为
   [MCP 工具](docs/mcp.md)，Claude Desktop、Claude Code、Codex、Cursor、
   OpenCode、Qoder、ZCode 等 AI 客户端可直接调用
 - **AI 助手**（v2.1 新增，v2.2 改版）：主窗口右缘滑出的悬浮抽屉，数据界面完全
@@ -49,7 +52,9 @@ D3L Tool 管"找和下"，后处理在 R 侧完成——两个项目配套使用
   CSV——数据由 NASA OPeNDAP 直采，不经任何第三方子集服务；2017 年
   MODIS Web Service 实验的现代复活
 - **中英双语**：菜单一键切换中文 / English（PySide6 界面）
-- **跨平台**：Windows exe / macOS .app / Linux 二进制（CI 自动构建），或 `pip install d3ltool`
+- **跨平台**：Windows exe / macOS .app / Linux 二进制（CI 自动构建），或
+  `pip install d3ltool`——Windows 需 Win10+（Python 3.12 / Qt6 硬性下限，
+  **不支持 Win7/8**）
 - **代理支持**：适应复杂网络环境
 
 ## 安装
@@ -136,7 +141,7 @@ Albedo AVHRR/MIX/0.5D、PAR、RN/SM、NDVI/EVI 0.25°、NPP 等）不再迷信
 新增 GLASS 产品官网与配套 R 包主页 glass.sqdaitools（其 0.6.0 迭代与本
 版本同步）。
 
-版本兼容：D3L Tool **2.7.0** ↔ glass.sqdaitools **≥ 0.1.0**——后续若有
+版本兼容：D3L Tool **2.8.0** ↔ glass.sqdaitools **≥ 0.1.0**——后续若有
 API 变更会在两边的 release notes 同步声明。
 GLASS 数据来自 GLASS 产品团队（[glass.hku.hk](https://glass.hku.hk)），
 使用请遵守其引用政策。
@@ -189,6 +194,24 @@ pyinstaller D3LToolNASA.spec --noconfirm   # 产物 dist/D3LToolNASA(.exe/.app)
 
 ## 更新日志
 
+- **2026-11 v2.8.0** — 四项检索体验功能 + 取消修复。**① NASA 产品"取消检索"
+  修复**：点取消立即恢复界面、迟到结果丢弃（CMR 单请求无法中途打断）；CMR
+  查询加 90 秒看门狗超时——此前 earthaccess 请求**无任何超时**，网络阻塞时
+  检索永久挂起。**② HiGLASS 20m 带状检索**：两个 HiGLASS 变体
+  （LAI_HR/FAPAR_HR）按 bbox/瓦片对档案约 1120 个 1° 带目录求交
+  （n018e108 = 单元格西南角——GeoTIFF tiepoint 实测），逐带列表、
+  进度/取消同步；瓦片栏可直接填带名（n045e120，与 R 包对齐）。**③ GLASS 批量检索**：对话框一次勾选多个变体，
+  逐变体报错、结果合并入表。**④ 检索历史**（最近查询一键回填表单，
+  菜单底部带「清除历史」）与**结果表排序 + 文件名过滤**（隐藏行不进
+  全选）。进度条同时用于 NASA 检索（脉动显示，单请求无百分比）；
+  OpenCode **Go 网关**加入 AI 助手服务商预置（`/inference/go/` 路由，
+  自动附带 x-opencode-session 头；粘贴的 key 自动去空白、键内换行给出
+  明确提示；免费档 quota 绑定 OpenCode 官方客户端——非 Go 直连 API
+  会 429，Go 订阅用户用 Console key 直接可用）。帮助菜单新增终端启动器
+  （在下载目录开终端，设置可选 CMD / PowerShell 5.1 / PowerShell 7 (pwsh)，默认优先 PowerShell；可一键进入 OpenCode）。OpenCode 启动自动把内置
+  Skill 以**项目级**装进 `<下载目录>/.agents/skills/`（首次即装、每次
+  刷新，不写全局）。启动动画只属于命令行侧（`d3ltool`/`d3ltool banner`
+  —— 块状 D3LTool ASCII 艺术字，Claude-Code 风格）。
 - **2026-11 v2.7.0** — 未登记合成周期的 GLASS 变体改为**自适应检索**而非
   "cadence 错误"或静默空表：约 50 个核验变体（FVC、Albedo AVHRR/MIX/0.5D、
   PAR、RN/SM、NDVI/EVI 0.25°、NPP 等）登记表无合成周期，而档案实际有

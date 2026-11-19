@@ -10,14 +10,15 @@ overlap each other.
 from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtWidgets import (QComboBox, QDateEdit, QFormLayout, QGridLayout,
                                QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-                               QProgressBar, QPushButton, QScrollArea,
-                               QSpinBox, QVBoxLayout, QWidget)
+                               QMenu, QProgressBar, QPushButton, QScrollArea,
+                               QSpinBox, QToolButton, QVBoxLayout, QWidget)
 
 from .. import glass, i18n, products, search
 from .tile_map import TileMap
 
 CUSTOM_LABEL_ZH = "自定义产品 / Custom"
 BIG_QUERY_DIR_LIMIT = 200   # beyond this the hint warns about listing time
+HISTORY_LIMIT = 10          # recent searches kept in ~/.d3ltool/config.json
 
 
 def _search_cost_estimate(v: dict, start_q, end_q):
@@ -49,6 +50,7 @@ def _search_cost_estimate(v: dict, start_q, end_q):
 class SearchPanel(QWidget):
     search_requested = Signal(object)   # SearchParams
     cancel_requested = Signal()         # user wants the running search stopped
+    batch_requested = Signal(list)      # GLASS variant ids to search in one pass
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -184,7 +186,24 @@ class SearchPanel(QWidget):
         self.search_btn.setObjectName("accentButton")
         self.search_btn.setMinimumHeight(44)
         self.search_btn.clicked.connect(self._on_search_clicked)
-        outer.addWidget(self.search_btn)
+
+        self.history_btn = QToolButton()
+        self.history_btn.setText(i18n.tr("btn_history"))
+        self.history_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.history_btn.setToolTip(i18n.tr("history_tip"))
+        self._history_menu = QMenu(self.history_btn)
+        self.history_btn.setMenu(self._history_menu)
+        self._history_menu.aboutToShow.connect(self._rebuild_history_menu)
+
+        search_row = QHBoxLayout()
+        search_row.addWidget(self.search_btn, 1)   # 主按钮居左占宽
+        self.batch_btn = QPushButton(i18n.tr("btn_batch"))
+        self.batch_btn.setToolTip(i18n.tr("batch_tip"))
+        self.batch_btn.clicked.connect(self._on_batch_clicked)
+        self._batch_dialog = None   # created on demand
+        search_row.addWidget(self.batch_btn)       # 次要小键居右
+        search_row.addWidget(self.history_btn)
+        outer.addLayout(search_row)
 
         self._on_group_changed(0)
 
@@ -216,6 +235,7 @@ class SearchPanel(QWidget):
     def _on_group_changed(self, index):
         text = self.group_combo.currentText()
         self._custom_mode = text == CUSTOM_LABEL_ZH
+        self.batch_btn.setVisible(text == "GLASS")   # batch is GLASS-only
         self.product_combo.clear()
         if self._custom_mode:
             self.version_edit.clear()
@@ -241,7 +261,9 @@ class SearchPanel(QWidget):
         try:
             if glass.is_glass_variant(self.current_short_name()):
                 v = glass.get_variant(self.current_short_name())
-                if v.get("layout") == "flat":
+                if glass.is_band_variant(self.current_short_name()):
+                    hint = i18n.tr("glass_hint_band")
+                elif v.get("layout") == "flat":
                     flat = True
                     hint = i18n.tr("glass_hint_flat")
                 elif not v.get("tiled", True):
@@ -284,6 +306,95 @@ class SearchPanel(QWidget):
             return
         self.search_requested.emit(params)
 
+    def _on_batch_clicked(self):
+        """GLASS 批量检索：勾选多个变体，日期/区域/上限沿用面板当前表单。"""
+        from .batch_dialog import BatchVariantDialog
+
+        if self._busy:
+            self.cancel_requested.emit()
+            return
+        if self._batch_dialog is None:
+            self._batch_dialog = BatchVariantDialog(self)
+        self._batch_dialog.show()
+        self._batch_dialog.raise_()
+        self._batch_dialog.activateWindow()
+        if self._batch_dialog.exec() and self._batch_dialog.selected_variants():
+            self.batch_requested.emit(self._batch_dialog.selected_variants())
+
+    # ------------------------------------------------------------- history
+
+    def record_history(self, params) -> None:
+        """记住一次查询（检索发起即记录——失败查询的重试也走历史）。"""
+        from .. import config
+
+        entry = {
+            "short_name": params.short_name,
+            "version": params.version or "",
+            "start": params.start,
+            "end": params.end,
+            "tiles": list(params.tiles or []),
+            "bbox": [float(x) for x in params.bbox] if params.bbox else None,
+            "max_results": int(params.max_results),
+        }
+        hist = self._load_history()
+        if hist and hist[0] == entry:
+            return               # identical to the newest entry already
+        hist.insert(0, entry)
+        config.update_config(search_history=hist[:HISTORY_LIMIT])
+
+    def _load_history(self) -> list:
+        from .. import config
+
+        raw = config.load_config().get("search_history") or []
+        return [e for e in raw if isinstance(e, dict) and e.get("short_name")]
+
+    def _rebuild_history_menu(self):
+        """关于菜单弹出时重建（配置可能在别处被改写）。"""
+        self._history_menu.clear()
+        hist = self._load_history()
+        if not hist:
+            act = self._history_menu.addAction(i18n.tr("history_empty"))
+            act.setEnabled(False)
+            return
+        for entry in hist[:HISTORY_LIMIT]:
+            label = f"{entry.get('short_name', '')}  " \
+                    f"{entry.get('start', '')} .. {entry.get('end', '')}"
+            tiles = entry.get("tiles") or []
+            if tiles:
+                label += "  [" + " ".join(tiles) + "]"
+            elif entry.get("bbox"):
+                label += "  [bbox]"
+            act = self._history_menu.addAction(label)
+            act.triggered.connect(
+                lambda _checked=False, e=entry: self._restore_history(e))
+        self._history_menu.addSeparator()
+        clear_act = self._history_menu.addAction(i18n.tr("history_clear"))
+        clear_act.triggered.connect(self._clear_history)
+
+    def _clear_history(self) -> None:
+        """清除全部检索历史（search_history 置空并落盘；下次弹出显示占位）。"""
+        from .. import config
+
+        config.update_config(search_history=[])
+
+    def _restore_history(self, entry: dict) -> None:
+        """把一条历史回填进表单（不自动检索，由用户确认后点检索）。"""
+        self._apply_catalog_choice(str(entry.get("short_name", "")),
+                                   str(entry.get("version") or ""))
+        start = QDate.fromString(str(entry.get("start") or ""), "yyyy-MM-dd")
+        end = QDate.fromString(str(entry.get("end") or ""), "yyyy-MM-dd")
+        if start.isValid():
+            self.start_edit.setDate(start)
+        if end.isValid():
+            self.end_edit.setDate(end)
+        self.tile_edit.setText(", ".join(str(t) for t in entry.get("tiles") or []))
+        bbox = entry.get("bbox")
+        self.bbox_edit.setText(
+            ", ".join(f"{float(x):g}" for x in bbox) if bbox else "")
+        if entry.get("max_results"):
+            self.limit_spin.setValue(int(entry["max_results"]))
+        self._update_glass_hint()
+
     # ----------------------------------------------------------------- helpers
 
     def current_short_name(self) -> str:
@@ -301,11 +412,22 @@ class SearchPanel(QWidget):
                                 else i18n.tr("btn_search"))
         if not busy:
             self.search_prog.hide()
+            self._update_glass_hint()   # restores the hint line (CMR busy label cleared)
 
     def on_search_progress(self, payload: dict) -> None:
         """GLASS directory-listing progress: n/m with the folder label on the
-        hint line."""
+        hint line.  A payload with total <= 0 is a busy pulse (CMR searches
+        are one request — no honest percentage): the bar switches to the
+        indeterminate animation and the label lands on the hint line."""
         total = int(payload.get("total") or 0)
+        if total <= 0:
+            self.search_prog.setRange(0, 0)
+            self.search_prog.setValue(0)
+            self.search_prog.show()
+            self.glass_hint.setText(
+                i18n.tr("cmr_busy", product=str(payload.get("label") or "")))
+            self.glass_hint.show()
+            return
         self.search_prog.setRange(0, max(total, 1))
         self.search_prog.setValue(int(payload.get("done") or 0))
         self.search_prog.setFormat(

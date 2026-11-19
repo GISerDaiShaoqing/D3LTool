@@ -18,6 +18,12 @@ DEFAULTS = {
     "ai_model": "",
     "ai_api_key": "",
     "ai_chat_bg": "",       # optional chat-drawer background image path
+    # recent searches (short_name/start/end/tiles/…), newest first, capped —
+    # the 检索历史 dropdown refills the form from these
+    "search_history": [],
+    # terminal launcher (Windows): auto/cmd/powershell/pwsh — PowerShell 7
+    # is the LTS line; wt wraps whichever shell is chosen
+    "terminal_shell": "auto",
 }
 
 

@@ -44,6 +44,7 @@ def test_legacy_menu_links_present():
     # v2.7: the GLASS product site and the companion R package's homepage
     assert SITE_URLS["site_glass"] == "https://glass.hku.hk/"
     assert SITE_URLS["site_glass_r"] == "https://gisersqdai.top/glass.sqdaitools/"
+    assert SITE_URLS["site_skill"] == "https://github.com/GISerDaiShaoqing/d3ltool-skill"
     # the dead Baidu pan share was removed from the menu entirely
     assert "site_baidupan" not in SITE_URLS
     # all seven resource links kept, on their current (2026-09) domains

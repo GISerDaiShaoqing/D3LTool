@@ -125,6 +125,10 @@ def _make_window(tmp_path, monkeypatch):
     cfg = dict(config.DEFAULTS)
     cfg["download_dir"] = str(tmp_path / "downloads")
     monkeypatch.setattr(config, "load_config", lambda: cfg)
+    # 检索历史等 update_config 写盘路径也必须隔离——测试不得碰真实 ~/.d3ltool
+    monkeypatch.setattr(config, "CONFIG_DIR", tmp_path / ".d3ltool")
+    monkeypatch.setattr(config, "CONFIG_FILE",
+                        tmp_path / ".d3ltool" / "config.json")
 
     from PySide6.QtWidgets import QApplication
 
@@ -669,5 +673,395 @@ def test_glass_batch_enqueues_without_login(tmp_path, monkeypatch):
         window._enqueue([glass_row, nasa_row])
         assert len(gate_calls) == 1          # mixed batch asks for login once
         assert len(added) == 1               # gate said no -> nothing queued
+    finally:
+        window.close()
+
+
+def test_main_window_cancel_discards_late_results(tmp_path, monkeypatch):
+    """取消=立即恢复+丢弃：点"取消检索"按钮立刻回到"检索"、busy 复位，
+    迟到完成的 worker 结果不得再碰结果表（CMR 单请求无法中断，只能丢弃；
+    GLASS 则由协作标志在 ≤1 次列表内真正停机）。"""
+    import threading
+
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        from d3ltool.search import SearchParams
+
+        from d3ltool.gui import main_window as mw
+        from d3ltool.i18n import tr as _tr
+
+        gate = threading.Event()
+
+        def fake_run(p, searcher=None, progress=None, cancelled=None):
+            gate.wait(5)               # block like a slow CMR request
+            return []
+
+        monkeypatch.setattr(mw.search, "run_search", fake_run)
+        window._do_search(SearchParams(short_name="MOD13Q1",
+                                       start="2018-01-01", end="2018-01-02"))
+        t = window._search_thread
+        assert t is not None and t.isRunning()
+        window._cancel_search()
+        assert window._search_thread is None
+        assert window.search_panel._busy is False
+        assert window.search_panel.search_btn.text() == _tr("btn_search")
+        gate.set()                     # the abandoned worker finishes late
+        assert t.wait(5000)
+        assert window.results_table.table.rowCount() == 0
+        assert window._search_thread is None
+    finally:
+        window.close()
+
+
+def test_search_panel_busy_pulse_for_cmr(tmp_path, monkeypatch):
+    """CMR 检索的进度条复用：total<=0 是 busy 脉冲——条转不定式动画，
+    提示行显示"正在查询 CMR：产品"；结束后条隐藏、提示行复位。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        sp = window.search_panel
+        sp.on_search_progress({"done": 0, "total": 0, "label": "MOD13Q1"})
+        assert not sp.search_prog.isHidden()
+        assert (sp.search_prog.minimum(), sp.search_prog.maximum()) == (0, 0)
+        assert "MOD13Q1" in sp.glass_hint.text()
+        sp.set_searching(False)
+        assert sp.search_prog.isHidden()
+        assert sp.glass_hint.isHidden()
+    finally:
+        window.close()
+
+
+def test_search_history_roundtrip(tmp_path, monkeypatch):
+    """检索历史：发起即记录（失败重试也走历史）、去重连续相同、菜单重建
+    与表单回填；持久化进 tmp 隔离的 config.json。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        import d3ltool.config as config
+
+        from d3ltool.search import SearchParams
+
+        sp = window.search_panel
+        p1 = SearchParams(short_name="MOD13Q1", start="2018-01-01",
+                          end="2018-01-02", tiles=["h28v05"], max_results=50)
+        p2 = SearchParams(short_name="LAI_MODIS_250M", start="2018-08-01",
+                          end="2018-08-31", tiles=["h28v05"], max_results=200)
+        sp.record_history(p1)
+        sp.record_history(p1)          # 与最新一条相同 → 不重复
+        sp.record_history(p2)
+        sp.record_history(p1)          # 再查 p1 → 回到最前
+        hist = sp._load_history()
+        assert [e["short_name"] for e in hist] == ["MOD13Q1", "LAI_MODIS_250M", "MOD13Q1"]
+        assert config.load_config()["search_history"] == hist
+        sp._rebuild_history_menu()
+        texts = [a.text() for a in sp._history_menu.actions() if a.text()]
+        # 3 条历史 + 底部「清除历史」（分隔符无文本被滤掉）
+        assert len(texts) == 4 and "MOD13Q1" in texts[0]
+        # 回填（不自动检索）：产品（含自定义补入）、日期、瓦片、上限
+        sp._restore_history(hist[1])
+        assert sp.current_short_name() == "LAI_MODIS_250M"
+        assert sp.start_edit.date().toString("yyyy-MM-dd") == "2018-08-01"
+        assert sp.end_edit.date().toString("yyyy-MM-dd") == "2018-08-31"
+        assert sp.tile_edit.text() == "h28v05"
+        assert sp.limit_spin.value() == 200
+        # 空历史占位
+        import d3ltool.gui.search_panel as spp
+
+        monkeypatch.setattr(config, "load_config",
+                            lambda: {**config.DEFAULTS, "search_history": []})
+        sp._rebuild_history_menu()
+        acts = sp._history_menu.actions()
+        assert len(acts) == 1 and not acts[0].isEnabled()
+        del spp
+    finally:
+        window.close()
+
+
+def test_results_table_sort_and_filter(tmp_path, monkeypatch):
+    """v2.8 结果表：列头排序（视觉行序 ≠ 源行序，UserRole 源行号保正确性）
+    + 文件名过滤（隐藏行不进全选，入队/导出走源行映射）。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        from PySide6.QtCore import Qt
+
+        rt = window.results_table
+        granules = [{
+            "url": f"https://x/{i}.hdf", "filename": f"G{i:02d}.hdf",
+            "date": f"2018-01-{i:02d}", "tile": "h28v05",
+            "size_mb": 20.0 - i, "size_bytes": 0, "product": "T",
+        } for i in range(1, 4)]
+        rt.populate(granules)
+        # size 升序（18,19,20）→ 视觉第 0 行是 G03（源行 2）
+        rt.table.sortItems(4)   # AscendingOrder by default indicator
+        assert rt.table.item(0, 1).text() == "G03.hdf"
+        check = rt.table.item(0, 0)
+        assert check.data(Qt.ItemDataRole.UserRole) == 2
+        # 先全不选清掉 populate 的默认全勾；过滤只留 G01（升序后视觉行 2）
+        # → 行 0/1 隐藏；全选不碰隐藏行
+        rt.select_none_btn.click()
+        rt.filter_edit.setText("G01")
+        assert rt.table.isRowHidden(0) and not rt.table.isRowHidden(2)
+        rt.select_all_btn.click()
+        assert rt.table.item(0, 0).checkState() != Qt.CheckState.Checked
+        assert rt.table.item(2, 0).checkState() == Qt.CheckState.Checked
+        # 入队走源行映射（直接取，不发信号）：勾上 G03 后源 granules[2]
+        rt.filter_edit.setText("")
+        rt.table.item(0, 0).setCheckState(Qt.CheckState.Checked)
+        items = rt._checked_items()
+        assert [it["filename"] for it in items] == ["G03.hdf", "G01.hdf"]
+        assert items[0]["url"] == "https://x/3.hdf"
+    finally:
+        window.close()
+
+
+def test_batch_dialog_and_wiring(tmp_path, monkeypatch):
+    """GLASS 批量检索：批量按钮仅 GLASS 组显示；对话框勾选→确认带出 ids；
+    线程走 glass.search_batch，部分失败进状态栏、结果照常入表。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        from PySide6.QtCore import Qt
+
+        sp = window.search_panel
+        assert sp.batch_btn.isHidden()          # 默认 MODIS 组 → 隐藏
+        gidx = next(i for i in range(sp.group_combo.count())
+                    if sp.group_combo.itemText(i) == "GLASS")
+        sp.group_combo.setCurrentIndex(gidx)
+        assert not sp.batch_btn.isHidden()
+        # 对话框：勾选前两个变体（登记表序，核验排前）
+        from d3ltool.gui.batch_dialog import BatchVariantDialog
+
+        dlg = BatchVariantDialog(window)
+        assert dlg.listw.count() >= 2
+        dlg.listw.item(0).setCheckState(Qt.CheckState.Checked)
+        dlg.listw.item(1).setCheckState(Qt.CheckState.Checked)
+        ids = [str(dlg.listw.item(i).data(Qt.ItemDataRole.UserRole))
+               for i in (0, 1)]
+        dlg.batch_confirmed = ids
+        assert dlg.selected_variants() == ids
+        # 信号接线 + 线程批量执行（mock 引擎）
+        import d3ltool.glass as glassmod
+
+        seen = {}
+
+        def fake_batch(vids, start, end, tiles=None, bbox=None,
+                       max_results=200, progress=None, cancelled=None):
+            seen.update(vids=vids, max_results=max_results)
+            return ([{"url": "https://x/a.hdf", "filename": "a.hdf",
+                      "date": "2018-08-05", "tile": "h28v05", "size_mb": 0.0,
+                      "size_bytes": 0, "product": vids[0]}],
+                    {vids[1]: "GlassError: boom"})
+
+        monkeypatch.setattr(glassmod, "search_batch", fake_batch)
+        window._do_batch_search(ids)
+        t = window._search_thread
+        assert t is not None and t.wait(8000)
+        app.processEvents()                     # 送达排队信号
+        assert seen["vids"] == ids
+        assert window.results_table.table.rowCount() == 1
+        assert "1 个变体失败" in window.statusBar().currentMessage()
+    finally:
+        window.close()
+
+
+def test_band_variant_hint(tmp_path, monkeypatch):
+    """HiGLASS 带状变体的提示行：告诉用户需要 bbox/瓦片，日期可用。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        sp = window.search_panel
+        sp._apply_catalog_choice("LAI_HR_LAI_V01", "")
+        assert not sp.glass_hint.isHidden()
+        assert "1°" in sp.glass_hint.text()
+        assert sp.start_edit.isEnabled()
+        assert sp.end_edit.isEnabled()
+    finally:
+        window.close()
+
+
+def test_search_history_clear(tmp_path, monkeypatch):
+    """「历史」菜单底部有「清除历史」：置空并落盘，下次弹出显示占位。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        import d3ltool.config as config
+
+        from d3ltool.search import SearchParams
+
+        from d3ltool.i18n import tr as _tr
+
+        sp = window.search_panel
+        sp.record_history(SearchParams(short_name="MOD13Q1",
+                                       start="2018-01-01", end="2018-01-02"))
+        sp._rebuild_history_menu()
+        acts = sp._history_menu.actions()
+        assert acts[-1].text() == _tr("history_clear")
+        acts[-1].trigger()
+        assert config.load_config()["search_history"] == []
+        sp._rebuild_history_menu()
+        acts = sp._history_menu.actions()
+        assert len(acts) == 1 and not acts[0].isEnabled()
+    finally:
+        window.close()
+
+
+def test_terminal_launcher(tmp_path, monkeypatch):
+    """帮助菜单终端启动器：菜单项存在；Windows 分支参数正确
+    （wt 优先 + cmd 回退，命令经 cmd /k 携带）；opencode 缺失时只提示。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        import shutil as _shutil
+        import subprocess as _subprocess
+
+        from d3ltool.i18n import tr as _tr
+
+        menu = [a for a in window.menuBar().actions()
+                if a.text() == _tr("menu_help")][0].menu()
+        texts = [a.text() for a in menu.actions()]
+        assert _tr("act_open_terminal") in texts
+        assert _tr("act_open_opencode") in texts
+
+        spawned = []
+        monkeypatch.setattr(_subprocess, "Popen",
+                            lambda args, **kw: spawned.append(args))
+        monkeypatch.setattr(_shutil, "which",
+                            lambda name: r"C:\wt.exe" if name == "wt" else None)
+        window._open_terminal()
+        assert spawned and spawned[0][0] == r"C:\wt.exe"
+        assert str(tmp_path / "downloads") in " ".join(spawned[0])
+        assert spawned[0][-1] == "cmd"
+        spawned.clear()
+        monkeypatch.setattr(_shutil, "which",
+                            lambda name: (r"C:\wt.exe" if name == "wt" else
+                                          r"C:\oc\opencode.exe"
+                                          if name == "opencode" else None))
+        window._open_terminal(True)
+        assert spawned[0][0] == r"C:\wt.exe"
+        assert spawned[0][-3:] == ["cmd", "/k", "opencode"]
+        # 项目级 skill 随启动自动安装（下载目录/.agents/skills/，非全局）
+        assert (tmp_path / "downloads" / ".agents" / "skills" / "d3ltool"
+                / "SKILL.md").is_file()
+        # wt 不存在 → cmd /k 回退（opencode 需在场，否则触发防呆提示）
+        monkeypatch.setattr(_shutil, "which",
+                            lambda name: (r"C:\oc\opencode.exe"
+                                          if name == "opencode" else None))
+        spawned.clear()
+        window._open_terminal(True)
+        assert spawned[0][:2] == ["cmd", "/k"]
+        assert spawned[0][2].endswith("&& opencode")
+        # opencode 未安装 → 状态栏提示、不弹窗
+        monkeypatch.setattr(_shutil, "which", lambda name: None)
+        spawned.clear()
+        window.statusBar().clearMessage()
+        window._open_terminal(True)
+        assert "opencode" in window.statusBar().currentMessage()
+        assert not spawned
+    finally:
+        window.close()
+
+
+def test_terminal_shell_choices(tmp_path, monkeypatch):
+    """设置对话框的「终端」选项：pwsh/powershell 分支生成对应命令行
+    （Set-Location + -NoExit），wt 存在时包进 Windows Terminal。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        import shutil as _shutil
+        import subprocess as _subprocess
+
+        from d3ltool.gui.settings_dialog import SettingsDialog
+
+        spawned = []
+        monkeypatch.setattr(_subprocess, "Popen",
+                            lambda args, **kw: spawned.append(args))
+        monkeypatch.setattr(_shutil, "which",
+                            lambda name: (r"C:\wt.exe" if name == "wt" else
+                                          r"C:\oc\opencode.exe"
+                                          if name == "opencode" else None))
+        # pwsh（LTS）：wt 路径无分号——cd 由 wt -d 承担，命令单 token
+        window.config["terminal_shell"] = "pwsh"
+        window._open_terminal(True)
+        assert spawned[-1][0] == r"C:\wt.exe"
+        assert spawned[-1][3] == "pwsh" and "-NoExit" in spawned[-1]
+        assert spawned[-1][-1] == "opencode"
+        # wt 分号坑：链里不得出现分号（banner 已撤出启动器，链即单命令）
+        assert not any(";" in str(a) for a in spawned[-1])
+        # Windows PowerShell 5.1：exe 为 powershell
+        window.config["terminal_shell"] = "powershell"
+        window._open_terminal(False)
+        assert spawned[-1][3] == "powershell"
+        # 无 wt → 直接起 shell 进程（重置回 pwsh）
+        monkeypatch.setattr(_shutil, "which", lambda name: None)
+        window.config["terminal_shell"] = "pwsh"
+        window._open_terminal(False)
+        assert spawned[-1][0] == "pwsh" and spawned[-1][1] == "-NoExit"
+        assert spawned[-1][-1].endswith("'")   # Set-Location 定位，无命令
+        # 设置对话框保存 terminal_shell
+        dlg = SettingsDialog(window, config=dict(window.config), on_save=None)
+        idx = next(i for i in range(dlg.term_combo.count())
+                   if dlg.term_combo.itemData(i) == "pwsh")
+        dlg.term_combo.setCurrentIndex(idx)
+        values = {}
+        dlg._on_save = lambda v: values.update(v)
+        dlg._save()
+        assert values["terminal_shell"] == "pwsh"
+    finally:
+        window.close()
+
+
+def test_terminal_auto_prefers_powershell(tmp_path, monkeypatch):
+    """auto 解析顺序：pwsh（LTS）→ Windows PowerShell → CMD——默认即为
+    PowerShell，没装 pwsh 的机器自动退 5.1。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        import shutil as _shutil
+        import subprocess as _subprocess
+
+        spawned = []
+        monkeypatch.setattr(_subprocess, "Popen",
+                            lambda args, **kw: spawned.append(args))
+        # 装了 pwsh → auto 用 pwsh
+        monkeypatch.setattr(_shutil, "which",
+                            lambda name: (r"C:\wt.exe" if name == "wt" else
+                                          r"C:\ps7\pwsh.exe"
+                                          if name == "pwsh" else None))
+        window.config["terminal_shell"] = "auto"
+        window._open_terminal(False)
+        assert spawned[-1][3] == "pwsh"
+        # 没装 pwsh → 退 Windows PowerShell 5.1
+        monkeypatch.setattr(_shutil, "which",
+                            lambda name: (r"C:\wt.exe" if name == "wt" else
+                                          r"C:\ps5\powershell.exe"
+                                          if name == "powershell" else None))
+        window._open_terminal(False)
+        assert spawned[-1][3] == "powershell"
+        # PowerShell 系也没有 → CMD
+        monkeypatch.setattr(_shutil, "which",
+                            lambda name: (r"C:\wt.exe" if name == "wt" else None))
+        window._open_terminal(False)
+        assert spawned[-1][3] == "cmd"
+    finally:
+        window.close()
+
+
+def test_results_check_header_indicator(tmp_path, monkeypatch):
+    """排序指示器不落在勾选列（v2.8 回归：36px 列里「选」+箭头裁成乱码）：
+    初始给文件名列；点勾选列头弹回文件名列。"""
+    pytest.importorskip("PySide6")
+    app, window = _make_window(tmp_path, monkeypatch)
+    try:
+        from PySide6.QtCore import Qt
+
+        rt = window.results_table
+        rt.populate([])
+        header = rt.table.horizontalHeader()
+        assert header.sortIndicatorSection() == 1          # COL_NAME
+        header.sectionClicked.emit(0)                      # COL_CHECK
+        assert header.sortIndicatorSection() == 1
+        assert rt.table.columnWidth(0) == 48
     finally:
         window.close()
