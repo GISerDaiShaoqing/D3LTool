@@ -6,11 +6,18 @@ name: build
 on:
   workflow_dispatch:
   push:
+    branches:
+      - master          # 每次 push 先构建一轮（产物仅在 Actions 里，不挂 Release）
     tags:
-      - "v*"
+      - "v*"            # 打 tag 才正式挂 Release
 
 permissions:
   contents: write
+
+# 分支构建可被新 push 顶掉；tag 构建永不取消
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   build:

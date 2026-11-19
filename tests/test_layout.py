@@ -913,8 +913,15 @@ def test_terminal_launcher(tmp_path, monkeypatch):
     pytest.importorskip("PySide6")
     app, window = _make_window(tmp_path, monkeypatch)
     try:
-        import shutil as _shutil
+        import sys as _sys
         import subprocess as _subprocess
+
+        # 终端启动器测试在 CI 三平台都要跑：显式钉到 win32 分支，
+        # 并补上 Linux/macOS subprocess 缺失的 CREATE_NEW_CONSOLE
+        monkeypatch.setattr(_sys, "platform", "win32")
+        monkeypatch.setattr(_subprocess, "CREATE_NEW_CONSOLE", 0,
+                            raising=False)
+        import shutil as _shutil
 
         from d3ltool.i18n import tr as _tr
 
@@ -969,8 +976,15 @@ def test_terminal_shell_choices(tmp_path, monkeypatch):
     pytest.importorskip("PySide6")
     app, window = _make_window(tmp_path, monkeypatch)
     try:
-        import shutil as _shutil
+        import sys as _sys
         import subprocess as _subprocess
+
+        # 终端启动器测试在 CI 三平台都要跑：显式钉到 win32 分支，
+        # 并补上 Linux/macOS subprocess 缺失的 CREATE_NEW_CONSOLE
+        monkeypatch.setattr(_sys, "platform", "win32")
+        monkeypatch.setattr(_subprocess, "CREATE_NEW_CONSOLE", 0,
+                            raising=False)
+        import shutil as _shutil
 
         from d3ltool.gui.settings_dialog import SettingsDialog
 
@@ -1018,8 +1032,15 @@ def test_terminal_auto_prefers_powershell(tmp_path, monkeypatch):
     pytest.importorskip("PySide6")
     app, window = _make_window(tmp_path, monkeypatch)
     try:
-        import shutil as _shutil
+        import sys as _sys
         import subprocess as _subprocess
+
+        # 终端启动器测试在 CI 三平台都要跑：显式钉到 win32 分支，
+        # 并补上 Linux/macOS subprocess 缺失的 CREATE_NEW_CONSOLE
+        monkeypatch.setattr(_sys, "platform", "win32")
+        monkeypatch.setattr(_subprocess, "CREATE_NEW_CONSOLE", 0,
+                            raising=False)
+        import shutil as _shutil
 
         spawned = []
         monkeypatch.setattr(_subprocess, "Popen",
